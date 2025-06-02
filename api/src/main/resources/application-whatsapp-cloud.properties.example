@@ -1,0 +1,29 @@
+# Example configuration for WhatsApp Business Cloud API
+# Copy this to application-whatsapp-cloud.properties to use
+
+spring.application.name=Rubia Chat Server
+
+# Disable DataSource, Redis and RabbitMQ for testing messaging
+spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+# Messaging Configuration
+messaging.provider=whatsapp-cloud
+
+# WhatsApp Provider Configuration - Works with ANY provider!
+# For WhatsApp Business Cloud API:
+whatsapp.provider.account-id=${WHATSAPP_ACCOUNT_ID:your_business_account_id}
+whatsapp.provider.auth-token=${WHATSAPP_AUTH_TOKEN:your_permanent_access_token}
+whatsapp.provider.phone-number=${WHATSAPP_PHONE_NUMBER:+5511999999999}
+whatsapp.provider.api-url=${WHATSAPP_API_URL:https://graph.facebook.com/v18.0}
+
+# For SendGrid (example):
+# whatsapp.provider.account-id=${WHATSAPP_ACCOUNT_ID:your_sendgrid_api_key}
+# whatsapp.provider.auth-token=${WHATSAPP_AUTH_TOKEN:not_used}
+# whatsapp.provider.phone-number=${WHATSAPP_PHONE_NUMBER:+5511999999999}
+# whatsapp.provider.api-url=${WHATSAPP_API_URL:https://api.sendgrid.com/v3}
+
+# For 360Dialog (example):
+# whatsapp.provider.account-id=${WHATSAPP_ACCOUNT_ID:your_client_id}
+# whatsapp.provider.auth-token=${WHATSAPP_AUTH_TOKEN:your_api_key}
+# whatsapp.provider.phone-number=${WHATSAPP_PHONE_NUMBER:+5511999999999}
+# whatsapp.provider.api-url=${WHATSAPP_API_URL:https://waba.360dialog.io}
