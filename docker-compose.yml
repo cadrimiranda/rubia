@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: rubia-postgres
+    environment:
+      POSTGRES_DB: rubia
+      POSTGRES_USER: rubia_user
+      POSTGRES_PASSWORD: rubia_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    networks:
+      - rubia-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rubia_user -d rubia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PgAdmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rubia-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@rubia.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - rubia-network
+    depends_on:
+      - postgres
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: rubia-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rubia-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rubia-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rubia_user
+      RABBITMQ_DEFAULT_PASS: rubia_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - rubia-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Spring Boot API
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: rubia-api
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/rubia
+      SPRING_DATASOURCE_USERNAME: rubia_user
+      SPRING_DATASOURCE_PASSWORD: rubia_password
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: rubia_user
+      SPRING_RABBITMQ_PASSWORD: rubia_password
+    ports:
+      - "8080:8080"
+    networks:
+      - rubia-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # React Client
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: rubia-client
+    ports:
+      - "3000:80"
+    networks:
+      - rubia-network
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  rubia-network:
+    driver: bridge
