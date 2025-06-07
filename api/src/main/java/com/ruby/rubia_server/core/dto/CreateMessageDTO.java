@@ -22,6 +22,9 @@ public class CreateMessageDTO {
     @NotNull(message = "ID da conversa é obrigatório")
     private UUID conversationId;
     
+    @NotNull(message = "ID da empresa é obrigatório")
+    private UUID companyId;
+    
     @NotBlank(message = "Conteúdo da mensagem é obrigatório")
     @Size(max = 4000, message = "Conteúdo não pode exceder 4000 caracteres")
     private String content;

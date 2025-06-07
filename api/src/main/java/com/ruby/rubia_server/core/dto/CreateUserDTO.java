@@ -30,6 +30,9 @@ public class CreateUserDTO {
     @Size(min = 6, max = 100, message = "Senha deve ter entre 6 e 100 caracteres")
     private String password;
     
+    @NotNull(message = "ID da empresa é obrigatório")
+    private UUID companyId;
+    
     private UUID departmentId;
     
     @NotNull(message = "Role é obrigatório")
