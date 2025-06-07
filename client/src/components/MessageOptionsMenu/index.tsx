@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import type { Chat } from '../../types'
 import { useChatStore } from '../../store/useChatStore'
+import { useConfirmDialog } from '../ConfirmDialog'
 
 interface MessageOptionsMenuProps {
   chat: Chat
@@ -17,6 +18,7 @@ interface MessageOptionsMenuProps {
 
 const MessageOptionsMenu = ({ chat }: MessageOptionsMenuProps) => {
   const { assignToAgent, blockCustomer, changeStatus, pinConversation } = useChatStore()
+  const { confirmBlock, confirmFinalize } = useConfirmDialog()
 
   const handleTransferChat = () => {
     const agentId = prompt('ID do agente para transferir:')
@@ -34,15 +36,15 @@ const MessageOptionsMenu = ({ chat }: MessageOptionsMenuProps) => {
   }
 
   const handleBlockContact = () => {
-    if (window.confirm('Tem certeza que deseja bloquear este contato?')) {
+    confirmBlock(chat.contact.name, () => {
       blockCustomer(chat.id)
-    }
+    })
   }
 
   const handleFinalizeChat = () => {
-    if (window.confirm('Tem certeza que deseja finalizar esta conversa?')) {
+    confirmFinalize(chat.contact.name, () => {
       changeStatus(chat.id, 'finalizados')
-    }
+    })
   }
 
   const handleRemoveFromWaiting = () => {

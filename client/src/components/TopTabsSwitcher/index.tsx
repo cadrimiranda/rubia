@@ -14,14 +14,32 @@ const TopTabsSwitcher = () => {
     return chats.filter(chat => chat.status === status).length
   }
 
-  const getBadgeColor = () => {
-    return 'bg-ruby-500 text-white'
+  const getUnreadCount = (status: ChatStatus): number => {
+    return chats
+      .filter(chat => chat.status === status)
+      .reduce((total, chat) => total + chat.unreadCount, 0)
+  }
+
+  const getBadgeColor = (status: ChatStatus) => {
+    const unreadCount = getUnreadCount(status)
+    const isActive = currentStatus === status
+    
+    if (unreadCount > 0) {
+      return 'bg-red-500 text-white'
+    }
+    
+    if (isActive) {
+      return 'bg-ruby-500 text-white'
+    }
+    
+    return 'bg-gray-400 text-white'
   }
 
   return (
     <div className="flex bg-neutral-100 p-1" style={{ borderRadius: '100px' }}>
       {tabs.map((tab) => {
         const count = getTabCount(tab.key)
+        const unreadCount = getUnreadCount(tab.key)
         const isActive = currentStatus === tab.key
         
         const getButtonClass = () => {
@@ -44,11 +62,19 @@ const TopTabsSwitcher = () => {
             style={{ borderRadius: '100px' }}
           >
             <span>{tab.label}</span>
-            <span
-              className={`px-2 py-0.5 rounded-2xl text-xs font-semibold min-w-[20px] text-center ${getBadgeColor()}`}
-            >
-              {count}
-            </span>
+            <div className="flex items-center gap-1">
+              {/* Badge principal com contagem */}
+              <span
+                className={`px-2 py-0.5 rounded-2xl text-xs font-semibold min-w-[20px] text-center ${getBadgeColor(tab.key)}`}
+              >
+                {count}
+              </span>
+              
+              {/* Badge adicional para não lidas */}
+              {unreadCount > 0 && (
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
+            </div>
           </button>
         )
       })}
