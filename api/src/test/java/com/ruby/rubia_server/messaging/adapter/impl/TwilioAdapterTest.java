@@ -15,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class TwilioAdapterTest {
@@ -27,9 +28,9 @@ class TwilioAdapterTest {
 
     @BeforeEach
     void setUp() {
-        when(config.getAccountId()).thenReturn("test_account_id");
-        when(config.getAuthToken()).thenReturn("test_auth_token");
-        when(config.getPhoneNumber()).thenReturn("whatsapp:+14155238886");
+        lenient().when(config.getAccountId()).thenReturn("test_account_id");
+        lenient().when(config.getAuthToken()).thenReturn("test_auth_token");
+        lenient().when(config.getPhoneNumber()).thenReturn("whatsapp:+14155238886");
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.CreateConversationDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Department;
@@ -10,6 +11,7 @@ import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.ConversationChannel;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.enums.UserRole;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.CustomerRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
@@ -46,6 +48,9 @@ class ConversationServiceTest {
     @Mock
     private DepartmentRepository departmentRepository;
     
+    @Mock
+    private CompanyRepository companyRepository;
+    
     @InjectMocks
     private ConversationService conversationService;
     
@@ -53,12 +58,14 @@ class ConversationServiceTest {
     private Customer customer;
     private User user;
     private Department department;
+    private Company company;
     private CreateConversationDTO createDTO;
     private UpdateConversationDTO updateDTO;
     private UUID conversationId;
     private UUID customerId;
     private UUID userId;
     private UUID departmentId;
+    private UUID companyId;
     
     @BeforeEach
     void setUp() {
@@ -66,16 +73,26 @@ class ConversationServiceTest {
         customerId = UUID.randomUUID();
         userId = UUID.randomUUID();
         departmentId = UUID.randomUUID();
+        companyId = UUID.randomUUID();
+        
+        company = Company.builder()
+                .id(companyId)
+                .name("Test Company")
+                .slug("test-company")
+                .isActive(true)
+                .build();
         
         customer = Customer.builder()
                 .id(customerId)
                 .phone("+5511999999001")
                 .name("João Silva")
+                .company(company)
                 .build();
         
         department = Department.builder()
                 .id(departmentId)
                 .name("Comercial")
+                .company(company)
                 .build();
         
         user = User.builder()
@@ -84,6 +101,7 @@ class ConversationServiceTest {
                 .email("agent@test.com")
                 .role(UserRole.AGENT)
                 .department(department)
+                .company(company)
                 .build();
         
         conversation = Conversation.builder()
@@ -91,6 +109,7 @@ class ConversationServiceTest {
                 .customer(customer)
                 .assignedUser(user)
                 .department(department)
+                .company(company)
                 .status(ConversationStatus.ENTRADA)
                 .channel(ConversationChannel.WHATSAPP)
                 .priority(0)
@@ -101,6 +120,7 @@ class ConversationServiceTest {
         
         createDTO = CreateConversationDTO.builder()
                 .customerId(customerId)
+                .companyId(companyId)
                 .assignedUserId(userId)
                 .departmentId(departmentId)
                 .status(ConversationStatus.ENTRADA)

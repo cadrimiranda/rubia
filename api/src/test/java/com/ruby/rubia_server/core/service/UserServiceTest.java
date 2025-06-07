@@ -4,9 +4,11 @@ import com.ruby.rubia_server.core.dto.CreateUserDTO;
 import com.ruby.rubia_server.core.dto.UpdateUserDTO;
 import com.ruby.rubia_server.core.dto.UserDTO;
 import com.ruby.rubia_server.core.dto.UserLoginDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.UserRole;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,27 +39,41 @@ class UserServiceTest {
     @Mock
     private DepartmentRepository departmentRepository;
     
+    @Mock
+    private CompanyRepository companyRepository;
+    
     @InjectMocks
     private UserService userService;
     
     private User user;
+    private Company company;
     private Department department;
     private CreateUserDTO createDTO;
     private UpdateUserDTO updateDTO;
     private UserLoginDTO loginDTO;
     private UUID userId;
+    private UUID companyId;
     private UUID departmentId;
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
+        companyId = UUID.randomUUID();
         departmentId = UUID.randomUUID();
+        
+        company = Company.builder()
+                .id(companyId)
+                .name("Test Company")
+                .slug("test-company")
+                .isActive(true)
+                .build();
         
         department = Department.builder()
                 .id(departmentId)
                 .name("Comercial")
                 .description("Departamento comercial")
+                .company(company)
                 .autoAssign(true)
                 .build();
         
@@ -66,6 +82,7 @@ class UserServiceTest {
                 .name("João Silva")
                 .email("joao@test.com")
                 .passwordHash(passwordEncoder.encode("password123"))
+                .company(company)
                 .department(department)
                 .role(UserRole.AGENT)
                 .avatarUrl("avatar.jpg")
@@ -78,6 +95,7 @@ class UserServiceTest {
                 .name("João Silva")
                 .email("joao@test.com")
                 .password("password123")
+                .companyId(companyId)
                 .departmentId(departmentId)
                 .role(UserRole.AGENT)
                 .avatarUrl("avatar.jpg")
@@ -97,6 +115,7 @@ class UserServiceTest {
     @Test
     void create_ShouldCreateUser_WhenValidData() {
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(departmentRepository.findById(departmentId)).thenReturn(Optional.of(department));
         when(userRepository.save(any(User.class))).thenReturn(user);
         
@@ -109,6 +128,7 @@ class UserServiceTest {
         assertThat(result.getDepartmentId()).isEqualTo(departmentId);
         
         verify(userRepository).existsByEmail("joao@test.com");
+        verify(companyRepository).findById(companyId);
         verify(departmentRepository).findById(departmentId);
         verify(userRepository).save(any(User.class));
     }
@@ -128,12 +148,14 @@ class UserServiceTest {
     @Test
     void create_ShouldThrowException_WhenDepartmentNotFound() {
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(departmentRepository.findById(departmentId)).thenReturn(Optional.empty());
         
         assertThatThrownBy(() -> userService.create(createDTO))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Departamento não encontrado");
         
+        verify(companyRepository).findById(companyId);
         verify(departmentRepository).findById(departmentId);
         verify(userRepository, never()).save(any(User.class));
     }
@@ -176,26 +198,28 @@ class UserServiceTest {
     
     @Test
     void findAll_ShouldReturnAllUsers() {
-        when(userRepository.findAllOrderedByName()).thenReturn(List.of(user));
+        when(userRepository.findAll()).thenReturn(List.of(user));
         
         List<UserDTO> result = userService.findAll();
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("João Silva");
         
-        verify(userRepository).findAllOrderedByName();
+        verify(userRepository).findAll();
     }
     
     @Test
     void findAvailableAgents_ShouldReturnOnlineAgents() {
-        when(userRepository.findAvailableAgents()).thenReturn(List.of(user));
+        user.setRole(UserRole.AGENT);
+        user.setIsOnline(true);
+        when(userRepository.findAll()).thenReturn(List.of(user));
         
         List<UserDTO> result = userService.findAvailableAgents();
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getRole()).isEqualTo(UserRole.AGENT);
         
-        verify(userRepository).findAvailableAgents();
+        verify(userRepository).findAll();
     }
     
     @Test

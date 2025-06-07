@@ -3,7 +3,9 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.CreateDepartmentDTO;
 import com.ruby.rubia_server.core.dto.DepartmentDTO;
 import com.ruby.rubia_server.core.dto.UpdateDepartmentDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Department;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,22 +31,36 @@ class DepartmentServiceTest {
     @Mock
     private DepartmentRepository departmentRepository;
     
+    @Mock
+    private CompanyRepository companyRepository;
+    
     @InjectMocks
     private DepartmentService departmentService;
     
+    private Company company;
     private Department department;
     private CreateDepartmentDTO createDTO;
     private UpdateDepartmentDTO updateDTO;
+    private UUID companyId;
     private UUID departmentId;
     
     @BeforeEach
     void setUp() {
+        companyId = UUID.randomUUID();
         departmentId = UUID.randomUUID();
+        
+        company = Company.builder()
+                .id(companyId)
+                .name("Test Company")
+                .slug("test-company")
+                .isActive(true)
+                .build();
         
         department = Department.builder()
                 .id(departmentId)
                 .name("Comercial")
                 .description("Departamento comercial")
+                .company(company)
                 .autoAssign(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -53,6 +69,7 @@ class DepartmentServiceTest {
         createDTO = CreateDepartmentDTO.builder()
                 .name("Comercial")
                 .description("Departamento comercial")
+                .companyId(companyId)
                 .autoAssign(true)
                 .build();
         
@@ -66,6 +83,7 @@ class DepartmentServiceTest {
     @Test
     void create_ShouldCreateDepartment_WhenValidData() {
         when(departmentRepository.existsByName(anyString())).thenReturn(false);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(departmentRepository.save(any(Department.class))).thenReturn(department);
         
         DepartmentDTO result = departmentService.create(createDTO);
@@ -76,6 +94,7 @@ class DepartmentServiceTest {
         assertThat(result.getAutoAssign()).isTrue();
         
         verify(departmentRepository).existsByName("Comercial");
+        verify(companyRepository).findById(companyId);
         verify(departmentRepository).save(any(Department.class));
     }
     

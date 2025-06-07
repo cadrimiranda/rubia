@@ -3,11 +3,13 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.CreateMessageDTO;
 import com.ruby.rubia_server.core.dto.MessageDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.*;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
@@ -41,6 +43,9 @@ class MessageServiceTest {
     @Mock
     private UserRepository userRepository;
     
+    @Mock
+    private CompanyRepository companyRepository;
+    
     @InjectMocks
     private MessageService messageService;
     
@@ -48,22 +53,33 @@ class MessageServiceTest {
     private Conversation conversation;
     private Customer customer;
     private User user;
+    private Company company;
     private CreateMessageDTO createDTO;
     private UpdateMessageDTO updateDTO;
     private UUID messageId;
     private UUID conversationId;
     private UUID userId;
+    private UUID companyId;
     
     @BeforeEach
     void setUp() {
         messageId = UUID.randomUUID();
         conversationId = UUID.randomUUID();
         userId = UUID.randomUUID();
+        companyId = UUID.randomUUID();
+        
+        company = Company.builder()
+                .id(companyId)
+                .name("Test Company")
+                .slug("test-company")
+                .isActive(true)
+                .build();
         
         customer = Customer.builder()
                 .id(UUID.randomUUID())
                 .phone("+5511999999001")
                 .name("João Silva")
+                .company(company)
                 .build();
         
         user = User.builder()
@@ -71,12 +87,14 @@ class MessageServiceTest {
                 .name("Agent Silva")
                 .email("agent@test.com")
                 .role(UserRole.AGENT)
+                .company(company)
                 .build();
         
         conversation = Conversation.builder()
                 .id(conversationId)
                 .customer(customer)
                 .assignedUser(user)
+                .company(company)
                 .status(ConversationStatus.ENTRADA)
                 .channel(ConversationChannel.WHATSAPP)
                 .build();
@@ -90,11 +108,13 @@ class MessageServiceTest {
                 .messageType(MessageType.TEXT)
                 .status(MessageStatus.SENT)
                 .isAiGenerated(false)
+                .company(company)
                 .createdAt(LocalDateTime.now())
                 .build();
         
         createDTO = CreateMessageDTO.builder()
                 .conversationId(conversationId)
+                .companyId(companyId)
                 .content("Hello world")
                 .senderType(SenderType.CUSTOMER)
                 .senderId(null)
@@ -111,7 +131,6 @@ class MessageServiceTest {
     @Test
     void create_ShouldCreateMessage_WhenValidData() {
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
-        when(messageRepository.existsByExternalMessageId(anyString())).thenReturn(false);
         when(messageRepository.save(any(Message.class))).thenReturn(message);
         
         MessageDTO result = messageService.create(createDTO);
@@ -141,6 +160,7 @@ class MessageServiceTest {
     void create_ShouldThrowException_WhenExternalMessageIdAlreadyExists() {
         CreateMessageDTO dtoWithExternalId = CreateMessageDTO.builder()
                 .conversationId(conversationId)
+                .companyId(companyId)
                 .content("Hello world")
                 .senderType(SenderType.CUSTOMER)
                 .externalMessageId("external_123")
