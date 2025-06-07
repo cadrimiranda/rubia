@@ -16,23 +16,36 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     
     Optional<User> findByEmail(String email);
     
-    List<User> findByDepartmentId(UUID departmentId);
+    Optional<User> findByEmailAndCompanyId(String email, UUID companyId);
     
-    List<User> findByIsOnlineTrue();
+    Optional<User> findByWhatsappNumberAndCompanyId(String whatsappNumber, UUID companyId);
     
-    List<User> findByRole(UserRole role);
+    List<User> findByCompanyId(UUID companyId);
     
-    @Query("SELECT u FROM User u WHERE u.department.id = :departmentId AND u.isOnline = true")
-    List<User> findAvailableAgentsByDepartment(@Param("departmentId") UUID departmentId);
+    List<User> findByDepartmentIdAndCompanyId(UUID departmentId, UUID companyId);
     
-    @Query("SELECT u FROM User u WHERE u.role = 'AGENT' AND u.isOnline = true")
-    List<User> findAvailableAgents();
+    List<User> findByIsOnlineTrueAndCompanyId(UUID companyId);
     
-    @Query("SELECT u FROM User u ORDER BY u.name ASC")
-    List<User> findAllOrderedByName();
+    List<User> findByRoleAndCompanyId(UserRole role, UUID companyId);
+    
+    List<User> findByIsWhatsappActiveTrueAndCompanyId(UUID companyId);
+    
+    @Query("SELECT u FROM User u WHERE u.department.id = :departmentId AND u.isOnline = true AND u.company.id = :companyId")
+    List<User> findAvailableAgentsByDepartmentAndCompany(@Param("departmentId") UUID departmentId, @Param("companyId") UUID companyId);
+    
+    @Query("SELECT u FROM User u WHERE u.role = 'AGENT' AND u.isOnline = true AND u.company.id = :companyId")
+    List<User> findAvailableAgentsByCompany(@Param("companyId") UUID companyId);
+    
+    @Query("SELECT u FROM User u WHERE u.company.id = :companyId ORDER BY u.name ASC")
+    List<User> findByCompanyIdOrderedByName(@Param("companyId") UUID companyId);
     
     boolean existsByEmail(String email);
     
-    @Query("SELECT COUNT(u) FROM User u WHERE u.department.id = :departmentId")
-    long countByDepartmentId(@Param("departmentId") UUID departmentId);
+    boolean existsByEmailAndCompanyId(String email, UUID companyId);
+    
+    @Query("SELECT COUNT(u) FROM User u WHERE u.department.id = :departmentId AND u.company.id = :companyId")
+    long countByDepartmentIdAndCompanyId(@Param("departmentId") UUID departmentId, @Param("companyId") UUID companyId);
+    
+    @Query("SELECT COUNT(u) FROM User u WHERE u.company.id = :companyId")
+    long countByCompanyId(@Param("companyId") UUID companyId);
 }

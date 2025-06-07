@@ -38,6 +38,10 @@ public class Customer {
     @Builder.Default
     private Boolean isBlocked = false;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+    
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

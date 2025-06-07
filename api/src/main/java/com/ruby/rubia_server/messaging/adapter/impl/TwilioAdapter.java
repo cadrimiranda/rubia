@@ -34,10 +34,16 @@ public class TwilioAdapter implements MessagingAdapter {
     
     @Override
     public MessageResult sendMessage(String to, String message) {
+        return sendMessage(to, message, null);
+    }
+    
+    public MessageResult sendMessage(String to, String message, String fromNumber) {
         try {
+            String fromPhoneNumber = fromNumber != null ? fromNumber : config.getPhoneNumber();
+            
             Message twilioMessage = Message.creator(
                 new PhoneNumber(formatPhoneNumber(to)),
-                new PhoneNumber(config.getPhoneNumber()),
+                new PhoneNumber(formatPhoneNumber(fromPhoneNumber)),
                 message
             ).create();
             
@@ -57,10 +63,16 @@ public class TwilioAdapter implements MessagingAdapter {
     
     @Override
     public MessageResult sendMediaMessage(String to, String mediaUrl, String caption) {
+        return sendMediaMessage(to, mediaUrl, caption, null);
+    }
+    
+    public MessageResult sendMediaMessage(String to, String mediaUrl, String caption, String fromNumber) {
         try {
+            String fromPhoneNumber = fromNumber != null ? fromNumber : config.getPhoneNumber();
+            
             var messageCreator = Message.creator(
                 new PhoneNumber(formatPhoneNumber(to)),
-                new PhoneNumber(config.getPhoneNumber()),
+                new PhoneNumber(formatPhoneNumber(fromPhoneNumber)),
                 caption != null ? caption : ""
             );
             
