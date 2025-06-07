@@ -48,12 +48,11 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     @Query("SELECT m FROM Message m WHERE m.isAiGenerated = true AND m.conversation.id = :conversationId")
     List<Message> findAiGeneratedMessagesByConversation(@Param("conversationId") UUID conversationId);
     
-    @Query("SELECT m FROM Message m WHERE " +
-           "to_tsvector('portuguese', m.content) @@ plainto_tsquery('portuguese', :searchTerm)")
+    @Query("SELECT m FROM Message m WHERE LOWER(m.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     List<Message> searchByContent(@Param("searchTerm") String searchTerm);
     
     @Query("SELECT m FROM Message m WHERE m.conversation.id = :conversationId AND " +
-           "to_tsvector('portuguese', m.content) @@ plainto_tsquery('portuguese', :searchTerm)")
+           "LOWER(m.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     List<Message> searchByContentInConversation(@Param("conversationId") UUID conversationId, 
                                               @Param("searchTerm") String searchTerm);
     
