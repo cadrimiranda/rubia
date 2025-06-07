@@ -45,23 +45,70 @@ export interface Chat {
 }
 
 export interface ChatStore {
+  // Estado principal
   chats: Chat[]
   activeChat: Chat | null
   currentStatus: ChatStatus
   searchQuery: string
+  
+  // Estados de carregamento
   isLoading: boolean
-  setActiveChat: (chat: Chat | null) => void
+  isLoadingMessages: boolean
+  isSending: boolean
+  
+  // Paginação
+  currentPage: number
+  hasMore: boolean
+  totalChats: number
+  
+  // Erros
+  error: string | null
+  
+  // Cache de mensagens por conversa
+  messagesCache: Record<string, {
+    messages: Message[]
+    page: number
+    hasMore: boolean
+  }>
+  
+  // Navegação
+  setActiveChat: (chat: Chat | null) => Promise<void>
   setCurrentStatus: (status: ChatStatus) => void
   setSearchQuery: (query: string) => void
-  sendMessage: (chatId: string, content: string) => void
-  markAsRead: (chatId: string) => void
-  addTag: (chatId: string, tag: Tag) => void
-  removeTag: (chatId: string, tagId: string) => void
-  transferChat: (chatId: string, agentName: string) => void
-  blockContact: (chatId: string) => void
-  finalizeChat: (chatId: string) => void
-  pinChat: (chatId: string) => void
+  
+  // Carregamento de dados
+  loadConversations: (status?: ChatStatus, page?: number) => Promise<void>
+  loadMessages: (chatId: string, page?: number) => Promise<void>
+  refreshConversations: () => Promise<void>
+  
+  // Envio de mensagens
+  sendMessage: (chatId: string, content: string) => Promise<void>
+  
+  // Ações de conversa
+  markAsRead: (chatId: string) => Promise<void>
+  assignToAgent: (chatId: string, agentId: string) => Promise<void>
+  changeStatus: (chatId: string, status: ChatStatus) => Promise<void>
+  pinConversation: (chatId: string) => Promise<void>
+  blockCustomer: (chatId: string) => Promise<void>
+  
+  // Tags
+  addTag: (chatId: string, tag: Tag) => Promise<void>
+  removeTag: (chatId: string, tagId: string) => Promise<void>
+  
+  // Busca
+  searchConversations: (query: string) => Promise<void>
+  searchMessages: (query: string) => Promise<void>
+  
+  // Utilitários
   getFilteredChats: () => Chat[]
+  clearError: () => void
+  clearCache: () => void
+  
+  // Métodos legados (para compatibilidade)
+  transferChat: (chatId: string, agentName: string) => Promise<void>
+  blockContact: (chatId: string) => Promise<void>
+  finalizeChat: (chatId: string) => Promise<void>
+  pinChat: (chatId: string) => Promise<void>
 }
 
 export interface MessageOptionsMenuItem {

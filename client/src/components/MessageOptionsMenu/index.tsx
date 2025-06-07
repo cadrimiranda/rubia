@@ -16,12 +16,12 @@ interface MessageOptionsMenuProps {
 }
 
 const MessageOptionsMenu = ({ chat }: MessageOptionsMenuProps) => {
-  const { transferChat, blockContact, finalizeChat, pinChat } = useChatStore()
+  const { assignToAgent, blockCustomer, changeStatus, pinConversation } = useChatStore()
 
   const handleTransferChat = () => {
-    const agentName = prompt('Nome do agente para transferir:')
-    if (agentName) {
-      transferChat(chat.id, agentName)
+    const agentId = prompt('ID do agente para transferir:')
+    if (agentId) {
+      assignToAgent(chat.id, agentId)
     }
   }
 
@@ -35,13 +35,13 @@ const MessageOptionsMenu = ({ chat }: MessageOptionsMenuProps) => {
 
   const handleBlockContact = () => {
     if (window.confirm('Tem certeza que deseja bloquear este contato?')) {
-      blockContact(chat.id)
+      blockCustomer(chat.id)
     }
   }
 
   const handleFinalizeChat = () => {
     if (window.confirm('Tem certeza que deseja finalizar esta conversa?')) {
-      finalizeChat(chat.id)
+      changeStatus(chat.id, 'finalizados')
     }
   }
 
@@ -50,7 +50,7 @@ const MessageOptionsMenu = ({ chat }: MessageOptionsMenuProps) => {
   }
 
   const handlePinChat = () => {
-    pinChat(chat.id)
+    pinConversation(chat.id)
   }
 
   const menuItems = [

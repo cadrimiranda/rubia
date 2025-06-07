@@ -4,20 +4,21 @@ import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import ChatMessage from "../components/ChatMessage";
 import ChatInput from "../components/ChatInput";
+import ChatDataProvider from "../components/ChatDataProvider";
+import UserHeader from "../components/UserHeader";
+import { OfflineBanner } from "../components/ConnectionStatus";
+import TypingIndicator from "../components/TypingIndicator";
 import { useChatStore } from "../store/useChatStore";
-import { initializeMockData } from "../mocks/data";
+import { useNotifications } from "../hooks/useNotifications";
 
 const ChatPage = () => {
   const { activeChat, setActiveChat } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Inicializar sistema de notificações
+  useNotifications();
 
-  useEffect(() => {
-    // Inicializar dados mock
-    const mockData = initializeMockData();
-    // Simular carregamento dos chats
-    useChatStore.setState({ chats: mockData });
-  }, []);
 
   useEffect(() => {
     // Auto scroll para a última mensagem
@@ -81,6 +82,7 @@ const ChatPage = () => {
               {activeChat.messages.map((message) => (
                 <ChatMessage key={message.id} message={message} />
               ))}
+              <TypingIndicator conversationId={activeChat.id} />
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -92,25 +94,36 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="h-screen w-full flex bg-gradient-to-br from-rose-50 to-rose-100">
-      {/* Sidebar - Hidden on mobile when chat is active */}
-      <div
-        className={`${
-          isMobile && activeChat ? "hidden" : "block"
-        } w-full md:w-80 lg:w-96 xl:w-80 flex-shrink-0`}
-      >
-        <Sidebar />
-      </div>
+    <ChatDataProvider>
+      <div className="h-screen w-full flex flex-col bg-gradient-to-br from-rose-50 to-rose-100">
+        {/* User Header */}
+        <UserHeader />
+        
+        {/* Offline Banner */}
+        <OfflineBanner />
+        
+        {/* Main Chat Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Sidebar - Hidden on mobile when chat is active */}
+          <div
+            className={`${
+              isMobile && activeChat ? "hidden" : "block"
+            } w-full md:w-80 lg:w-96 xl:w-80 flex-shrink-0`}
+          >
+            <Sidebar />
+          </div>
 
-      {/* Chat Area - Full width on mobile when active */}
-      <div
-        className={`${
-          isMobile && !activeChat ? "hidden" : "flex-1"
-        } min-w-0 flex`}
-      >
-        {renderChatArea()}
+          {/* Chat Area - Full width on mobile when active */}
+          <div
+            className={`${
+              isMobile && !activeChat ? "hidden" : "flex-1"
+            } min-w-0 flex`}
+          >
+            {renderChatArea()}
+          </div>
+        </div>
       </div>
-    </div>
+    </ChatDataProvider>
   );
 };
 

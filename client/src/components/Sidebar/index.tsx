@@ -1,12 +1,42 @@
-import { MessageCircle, Plus } from "lucide-react";
+import { useEffect, useRef, useCallback } from "react";
+import { MessageCircle, Plus, Loader2 } from "lucide-react";
 import SearchBar from "../SearchBar";
 import TopTabsSwitcher from "../TopTabsSwitcher";
 import ChatListItem from "../ChatListItem";
+import ComponentErrorBoundary from "../ComponentErrorBoundary";
+import { ChatListSkeleton } from "../skeletons";
 import { useChatStore } from "../../store/useChatStore";
 
 const Sidebar = () => {
-  const { getFilteredChats } = useChatStore();
+  const { getFilteredChats, loadConversations, currentStatus, currentPage, hasMore, isLoading } = useChatStore();
   const filteredChats = getFilteredChats();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+  // Load more conversations when scrolling to bottom
+  const loadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      loadConversations(currentStatus, currentPage + 1);
+    }
+  }, [isLoading, hasMore, currentStatus, currentPage, loadConversations]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (loadingRef.current) {
+      observer.observe(loadingRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   return (
     <div className="h-full bg-white border-r border-gray-200 flex flex-col shadow-sm rounded-r-[32px]">
@@ -29,8 +59,10 @@ const Sidebar = () => {
       </div>
 
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto bg-gray-50/30">
-        {filteredChats.length === 0 ? (
+      <div ref={scrollRef} className="flex-1 overflow-y-auto bg-gray-50/30">
+        {isLoading && filteredChats.length === 0 ? (
+          <ChatListSkeleton count={8} />
+        ) : filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-500 px-8">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
               <MessageCircle size={24} className="text-gray-400" />
@@ -43,8 +75,22 @@ const Sidebar = () => {
         ) : (
           <div>
             {filteredChats.map((chat) => (
-              <ChatListItem key={chat.id} chat={chat} />
+              <ComponentErrorBoundary key={chat.id} componentName="ChatListItem">
+                <ChatListItem chat={chat} />
+              </ComponentErrorBoundary>
             ))}
+            
+            {/* Loading indicator for infinite scroll */}
+            {hasMore && (
+              <div ref={loadingRef} className="flex items-center justify-center py-4">
+                {isLoading && (
+                  <div className="flex items-center space-x-2 text-gray-500">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-sm">Carregando mais conversas...</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

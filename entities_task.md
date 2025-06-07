@@ -29,32 +29,32 @@
 **Prioridade: ALTA** (prerequisito para User)
 
 #### 1.1.1 Criar entidade Department
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/entity/Department.java`
-- [ ] Anotar com `@Entity`, `@Table`, `@Data`, `@Builder`
-- [ ] Implementar campos: id, name, description, autoAssign, createdAt, updatedAt
-- [ ] Anotar relacionamentos: `@OneToMany` para users, aiConfigurations
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/entity/Department.java`
+- [x] Anotar com `@Entity`, `@Table`, `@Data`, `@Builder`
+- [x] Implementar campos: id, name, description, autoAssign, createdAt, updatedAt
+- [x] Anotar relacionamentos: `@OneToMany` para users, aiConfigurations
 
 #### 1.1.2 Criar DepartmentRepository
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/repository/DepartmentRepository.java`
-- [ ] Extender `JpaRepository<Department, UUID>`
-- [ ] Adicionar métodos customizados: `findByName`, `findByAutoAssignTrue`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/repository/DepartmentRepository.java`
+- [x] Extender `JpaRepository<Department, UUID>`
+- [x] Adicionar métodos customizados: `findByName`, `findByAutoAssignTrue`
 
 #### 1.1.3 Criar DTOs para Department
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/DepartmentDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateDepartmentDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateDepartmentDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/DepartmentDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateDepartmentDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateDepartmentDTO.java`
 
 #### 1.1.4 Criar DepartmentService
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/service/DepartmentService.java`
-- [ ] Implementar CRUD: create, findById, findAll, update, delete
-- [ ] Implementar métodos específicos: findByAutoAssign, countUsers
-- [ ] Adicionar validações e tratamento de erro
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/service/DepartmentService.java`
+- [x] Implementar CRUD: create, findById, findAll, update, delete
+- [x] Implementar métodos específicos: findByAutoAssign, countUsers
+- [x] Adicionar validações e tratamento de erro
 
 #### 1.1.5 Criar DepartmentController
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/controller/DepartmentController.java`
-- [ ] Anotar com `@RestController`, `@RequestMapping("/api/departments")`
-- [ ] Implementar endpoints CRUD: POST, GET, PUT, DELETE
-- [ ] Adicionar validação com `@Valid` e tratamento de exceções
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/controller/DepartmentController.java`
+- [x] Anotar com `@RestController`, `@RequestMapping("/api/departments")`
+- [x] Implementar endpoints CRUD: POST, GET, PUT, DELETE
+- [x] Adicionar validação com `@Valid` e tratamento de exceções
 
 #### 1.1.6 Criar testes unitários Department
 - [ ] Criar `src/test/java/com/ruby/rubia_server/core/service/DepartmentServiceTest.java`
@@ -65,34 +65,34 @@
 **Prioridade: ALTA** (prerequisito para Conversation)
 
 #### 1.2.1 Criar entidade User
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/entity/User.java`
-- [ ] Implementar campos: id, name, email, passwordHash, departmentId, role, avatarUrl, isOnline, lastSeen
-- [ ] Anotar relacionamentos: `@ManyToOne` para department, `@OneToMany` para conversations
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/entity/User.java`
+- [x] Implementar campos: id, name, email, passwordHash, departmentId, role, avatarUrl, isOnline, lastSeen
+- [x] Anotar relacionamentos: `@ManyToOne` para department, `@OneToMany` para conversations
 
 #### 1.2.2 Criar UserRole enum
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/enums/UserRole.java`
-- [ ] Implementar valores: ADMIN, SUPERVISOR, AGENT
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/enums/UserRole.java`
+- [x] Implementar valores: ADMIN, SUPERVISOR, AGENT
 
 #### 1.2.3 Criar UserRepository
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/repository/UserRepository.java`
-- [ ] Adicionar métodos: `findByEmail`, `findByDepartmentId`, `findByIsOnlineTrue`, `findByRole`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/repository/UserRepository.java`
+- [x] Adicionar métodos: `findByEmail`, `findByDepartmentId`, `findByIsOnlineTrue`, `findByRole`
 
 #### 1.2.4 Criar DTOs para User
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UserDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateUserDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateUserDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UserLoginDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UserDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateUserDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateUserDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UserLoginDTO.java`
 
 #### 1.2.5 Criar UserService
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/service/UserService.java`
-- [ ] Implementar CRUD + autenticação
-- [ ] Implementar métodos: updateOnlineStatus, findAvailableAgents, assignToDepartment
-- [ ] Adicionar hash de senha com BCrypt
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/service/UserService.java`
+- [x] Implementar CRUD + autenticação
+- [x] Implementar métodos: updateOnlineStatus, findAvailableAgents, assignToDepartment
+- [x] Adicionar hash de senha com BCrypt
 
 #### 1.2.6 Criar UserController
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/controller/UserController.java`
-- [ ] Implementar endpoints CRUD + login/logout
-- [ ] Adicionar endpoints: PUT /online-status, GET /available-agents
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/controller/UserController.java`
+- [x] Implementar endpoints CRUD + login/logout
+- [x] Adicionar endpoints: PUT /online-status, GET /available-agents
 
 #### 1.2.7 Criar testes unitários User
 - [ ] Criar testes para UserService (CRUD + business logic)
@@ -103,29 +103,29 @@
 **Prioridade: ALTA** (prerequisito para Conversation)
 
 #### 1.3.1 Criar entidade Customer
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/entity/Customer.java`
-- [ ] Implementar campos: id, phone, name, whatsappId, profileUrl, isBlocked
-- [ ] Anotar relacionamentos: `@OneToMany` para conversations, customerContext
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/entity/Customer.java`
+- [x] Implementar campos: id, phone, name, whatsappId, profileUrl, isBlocked
+- [x] Anotar relacionamentos: `@OneToMany` para conversations, customerContext
 
 #### 1.3.2 Criar CustomerRepository
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/repository/CustomerRepository.java`
-- [ ] Adicionar métodos: `findByPhone`, `findByWhatsappId`, `findByIsBlockedFalse`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/repository/CustomerRepository.java`
+- [x] Adicionar métodos: `findByPhone`, `findByWhatsappId`, `findByIsBlockedFalse`
 
 #### 1.3.3 Criar DTOs para Customer
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/CustomerDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateCustomerDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateCustomerDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/CustomerDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateCustomerDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateCustomerDTO.java`
 
 #### 1.3.4 Criar CustomerService
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/service/CustomerService.java`
-- [ ] Implementar CRUD + métodos específicos
-- [ ] Implementar: findOrCreateByPhone, blockCustomer, unblockCustomer
-- [ ] Adicionar validação de telefone (formato brasileiro)
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/service/CustomerService.java`
+- [x] Implementar CRUD + métodos específicos
+- [x] Implementar: findOrCreateByPhone, blockCustomer, unblockCustomer
+- [x] Adicionar validação de telefone (formato brasileiro)
 
 #### 1.3.5 Criar CustomerController
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/controller/CustomerController.java`
-- [ ] Implementar endpoints CRUD
-- [ ] Adicionar endpoints: PUT /{id}/block, PUT /{id}/unblock
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/controller/CustomerController.java`
+- [x] Implementar endpoints CRUD
+- [x] Adicionar endpoints: PUT /{id}/block, PUT /{id}/unblock
 
 #### 1.3.6 Criar testes unitários Customer
 - [ ] Criar testes para CustomerService
@@ -136,38 +136,38 @@
 **Prioridade: ALTA** (core do sistema)
 
 #### 1.4.1 Criar enums para Conversation
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/enums/ConversationStatus.java`
-- [ ] Implementar valores: ENTRADA, ESPERANDO, FINALIZADOS
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/enums/ConversationChannel.java`
-- [ ] Implementar valores: WHATSAPP, WEB, TELEGRAM
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/enums/ConversationStatus.java`
+- [x] Implementar valores: ENTRADA, ESPERANDO, FINALIZADOS
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/enums/ConversationChannel.java`
+- [x] Implementar valores: WHATSAPP, WEB, TELEGRAM
 
 #### 1.4.2 Criar entidade Conversation
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/entity/Conversation.java`
-- [ ] Implementar campos: id, customerId, assignedUserId, departmentId, status, channel, priority, isPinned, closedAt
-- [ ] Anotar relacionamentos: `@ManyToOne` para customer/user/department, `@OneToMany` para messages
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/entity/Conversation.java`
+- [x] Implementar campos: id, customerId, assignedUserId, departmentId, status, channel, priority, isPinned, closedAt
+- [x] Anotar relacionamentos: `@ManyToOne` para customer/user/department, `@OneToMany` para messages
 
 #### 1.4.3 Criar ConversationRepository
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/repository/ConversationRepository.java`
-- [ ] Adicionar métodos: `findByStatus`, `findByCustomerId`, `findByAssignedUserId`, `findByIsPinnedTrue`
-- [ ] Adicionar queries com ordenação por updatedAt
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/repository/ConversationRepository.java`
+- [x] Adicionar métodos: `findByStatus`, `findByCustomerId`, `findByAssignedUserId`, `findByIsPinnedTrue`
+- [x] Adicionar queries com ordenação por updatedAt
 
 #### 1.4.4 Criar DTOs para Conversation
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/ConversationDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateConversationDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateConversationDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/ConversationSummaryDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/ConversationDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateConversationDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateConversationDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/ConversationSummaryDTO.java`
 
 #### 1.4.5 Criar ConversationService
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/service/ConversationService.java`
-- [ ] Implementar CRUD + business logic
-- [ ] Implementar: assignToUser, changeStatus, pinConversation, getByStatusWithPagination
-- [ ] Adicionar lógica de auto-assignment de departamento
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/service/ConversationService.java`
+- [x] Implementar CRUD + business logic
+- [x] Implementar: assignToUser, changeStatus, pinConversation, getByStatusWithPagination
+- [x] Adicionar lógica de auto-assignment de departamento
 
 #### 1.4.6 Criar ConversationController
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/controller/ConversationController.java`
-- [ ] Implementar endpoints CRUD + ações específicas
-- [ ] Adicionar endpoints: PUT /{id}/assign, PUT /{id}/status, PUT /{id}/pin
-- [ ] Adicionar paginação para listagem
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/controller/ConversationController.java`
+- [x] Implementar endpoints CRUD + ações específicas
+- [x] Adicionar endpoints: PUT /{id}/assign, PUT /{id}/status, PUT /{id}/pin
+- [x] Adicionar paginação para listagem
 
 #### 1.4.7 Criar testes unitários Conversation
 - [ ] Criar testes para ConversationService
@@ -178,41 +178,41 @@
 **Prioridade: ALTA** (core do sistema)
 
 #### 1.5.1 Criar enums para Message
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/enums/SenderType.java`
-- [ ] Implementar valores: CUSTOMER, AGENT, AI, SYSTEM
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/enums/MessageType.java`
-- [ ] Implementar valores: TEXT, IMAGE, AUDIO, FILE, LOCATION, CONTACT
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/enums/MessageStatus.java`
-- [ ] Implementar valores: SENDING, SENT, DELIVERED, READ, FAILED
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/enums/SenderType.java`
+- [x] Implementar valores: CUSTOMER, AGENT, AI, SYSTEM
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/enums/MessageType.java`
+- [x] Implementar valores: TEXT, IMAGE, AUDIO, FILE, LOCATION, CONTACT
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/enums/MessageStatus.java`
+- [x] Implementar valores: SENDING, SENT, DELIVERED, READ, FAILED
 
 #### 1.5.2 Criar entidade Message
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/entity/Message.java`
-- [ ] Implementar campos: id, conversationId, content, senderType, senderId, messageType, mediaUrl, externalMessageId, isAiGenerated, aiConfidence, status, deliveredAt, readAt
-- [ ] Anotar relacionamentos: `@ManyToOne` para conversation
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/entity/Message.java`
+- [x] Implementar campos: id, conversationId, content, senderType, senderId, messageType, mediaUrl, externalMessageId, isAiGenerated, aiConfidence, status, deliveredAt, readAt
+- [x] Anotar relacionamentos: `@ManyToOne` para conversation
 
 #### 1.5.3 Criar MessageRepository
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/repository/MessageRepository.java`
-- [ ] Adicionar métodos: `findByConversationId`, `findByExternalMessageId`, `findBySenderType`
-- [ ] Adicionar query para busca full-text no content
-- [ ] Adicionar paginação para mensagens de uma conversa
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/repository/MessageRepository.java`
+- [x] Adicionar métodos: `findByConversationId`, `findByExternalMessageId`, `findBySenderType`
+- [x] Adicionar query para busca full-text no content
+- [x] Adicionar paginação para mensagens de uma conversa
 
 #### 1.5.4 Criar DTOs para Message
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/MessageDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateMessageDTO.java`
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateMessageDTO.java`
-- [ ] Adaptar DTOs existentes (IncomingMessage) para trabalhar com Message entity
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/MessageDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/CreateMessageDTO.java`
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/dto/UpdateMessageDTO.java`
+- [x] Adaptar DTOs existentes (IncomingMessage) para trabalhar com Message entity
 
 #### 1.5.5 Criar MessageService
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/service/MessageService.java`
-- [ ] Implementar CRUD + integração com messaging existente
-- [ ] Implementar: sendMessage, markAsRead, markAsDelivered, searchInContent
-- [ ] Integrar com MessagingService existente
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/service/MessageService.java`
+- [x] Implementar CRUD + integração com messaging existente
+- [x] Implementar: sendMessage, markAsRead, markAsDelivered, searchInContent
+- [x] Integrar com MessagingService existente
 
 #### 1.5.6 Criar MessageController
-- [ ] Criar `src/main/java/com/ruby/rubia_server/core/controller/MessageController.java`
-- [ ] Implementar endpoints CRUD + ações específicas
-- [ ] Adicionar endpoints: PUT /{id}/read, PUT /{id}/delivered, GET /search
-- [ ] Adicionar WebSocket para mensagens em tempo real
+- [x] Criar `src/main/java/com/ruby/rubia_server/core/controller/MessageController.java`
+- [x] Implementar endpoints CRUD + ações específicas
+- [x] Adicionar endpoints: PUT /{id}/read, PUT /{id}/delivered, GET /search
+- [x] Adicionar WebSocket para mensagens em tempo real
 
 #### 1.5.7 Criar testes unitários Message
 - [ ] Criar testes para MessageService
@@ -359,11 +359,11 @@
 **Prioridade: ALTA**
 
 #### 4.1.1 Criar migrations principais
-- [ ] Criar `src/main/resources/db/migration/V1__create_departments_table.sql`
-- [ ] Criar `src/main/resources/db/migration/V2__create_users_table.sql`
-- [ ] Criar `src/main/resources/db/migration/V3__create_customers_table.sql`
-- [ ] Criar `src/main/resources/db/migration/V4__create_conversations_table.sql`
-- [ ] Criar `src/main/resources/db/migration/V5__create_messages_table.sql`
+- [x] Criar `src/main/resources/db/migration/V1__create_departments_table.sql`
+- [x] Criar `src/main/resources/db/migration/V2__create_users_table.sql`
+- [x] Criar `src/main/resources/db/migration/V3__create_customers_table.sql`
+- [x] Criar `src/main/resources/db/migration/V4__create_conversations_table.sql`
+- [x] Criar `src/main/resources/db/migration/V5__create_messages_table.sql`
 
 #### 4.1.2 Criar migrations de apoio
 - [ ] Criar `src/main/resources/db/migration/V6__create_tags_tables.sql`

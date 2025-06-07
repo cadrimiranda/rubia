@@ -1,18 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input, Tooltip } from "antd";
 import { Smile, Paperclip, Mic, Send, FileText, Plus } from "lucide-react";
 import { useChatStore } from "../../store/useChatStore";
+import { webSocketEventHandlers } from "../../websocket/eventHandlers";
 
 const ChatInput = () => {
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"message" | "notes">("message");
-  const { activeChat, sendMessage } = useChatStore();
+  const activeChat = useChatStore((state) => state.activeChat);
+  const sendMessage = useChatStore((state) => state.sendMessage);
+  const isSending = useChatStore((state) => state.isSending);
+  const typingTimeoutRef = useRef<number | undefined>(undefined);
+  const isTypingRef = useRef(false);
 
-  const handleSendMessage = () => {
-    if (!message.trim() || !activeChat) return;
+  const handleSendMessage = async () => {
+    if (!message.trim() || !activeChat || isSending) return;
 
-    sendMessage(activeChat.id, message.trim());
-    setMessage("");
+    try {
+      // Para de enviar indicador de digitação
+      if (isTypingRef.current) {
+        webSocketEventHandlers.stopTyping(activeChat.id);
+        isTypingRef.current = false;
+      }
+      
+      await sendMessage(activeChat.id, message.trim());
+      setMessage("");
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      // A mensagem permanece no input para o usuário tentar novamente
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -21,6 +37,52 @@ const ChatInput = () => {
       handleSendMessage();
     }
   };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMessage = e.target.value;
+    setMessage(newMessage);
+    
+    if (!activeChat) return;
+    
+    // Gerenciar indicador de digitação
+    if (newMessage.trim() && !isTypingRef.current) {
+      // Começou a digitar
+      webSocketEventHandlers.sendTyping(activeChat.id);
+      isTypingRef.current = true;
+    }
+    
+    // Reset do timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Para de enviar indicador após 3 segundos de inatividade
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTypingRef.current) {
+        webSocketEventHandlers.stopTyping(activeChat.id);
+        isTypingRef.current = false;
+      }
+    }, 3000);
+    
+    // Se o input estiver vazio, para imediatamente
+    if (!newMessage.trim() && isTypingRef.current) {
+      webSocketEventHandlers.stopTyping(activeChat.id);
+      isTypingRef.current = false;
+    }
+  };
+  
+  // Cleanup do typing indicator quando componente desmonta ou chat muda
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (isTypingRef.current && activeChat) {
+        webSocketEventHandlers.stopTyping(activeChat.id);
+        isTypingRef.current = false;
+      }
+    };
+  }, [activeChat]);
 
   const handleEmojiClick = () => {
     console.log("Abrir seletor de emoji");
@@ -93,7 +155,7 @@ const ChatInput = () => {
                 <div className="flex-1">
                   <Input.TextArea
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
                     placeholder="Digite sua mensagem…"
                     autoSize={{ minRows: 1, maxRows: 4 }}
@@ -113,12 +175,21 @@ const ChatInput = () => {
                 {/* Send Button */}
                 <div className="flex-shrink-0">
                   {message.trim() && (
-                    <Tooltip title="Enviar (⏎)">
+                    <Tooltip title={isSending ? "Enviando..." : "Enviar (⏎)"}>
                       <button
                         onClick={handleSendMessage}
-                        className="w-10 h-10 bg-ruby-500 text-white hover:bg-ruby-600 rounded-full transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg transform hover:scale-105"
+                        disabled={isSending}
+                        className={`w-10 h-10 text-white rounded-full transition-all duration-200 flex items-center justify-center shadow-md ${
+                          isSending 
+                            ? "bg-gray-400 cursor-not-allowed" 
+                            : "bg-ruby-500 hover:bg-ruby-600 hover:shadow-lg transform hover:scale-105"
+                        }`}
                       >
-                        <Send size={18} />
+                        {isSending ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send size={18} />
+                        )}
                       </button>
                     </Tooltip>
                   )}
