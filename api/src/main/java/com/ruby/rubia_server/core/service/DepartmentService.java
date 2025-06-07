@@ -3,7 +3,9 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.CreateDepartmentDTO;
 import com.ruby.rubia_server.core.dto.DepartmentDTO;
 import com.ruby.rubia_server.core.dto.UpdateDepartmentDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Department;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import java.util.UUID;
 public class DepartmentService {
     
     private final DepartmentRepository departmentRepository;
+    private final CompanyRepository companyRepository;
     
     public DepartmentDTO create(CreateDepartmentDTO createDTO) {
         log.info("Creating department with name: {}", createDTO.getName());
@@ -28,9 +31,13 @@ public class DepartmentService {
             throw new IllegalArgumentException("Departamento com nome '" + createDTO.getName() + "' já existe");
         }
         
+        Company company = companyRepository.findById(createDTO.getCompanyId())
+                .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
+        
         Department department = Department.builder()
                 .name(createDTO.getName())
                 .description(createDTO.getDescription())
+                .company(company)
                 .autoAssign(createDTO.getAutoAssign())
                 .build();
         
