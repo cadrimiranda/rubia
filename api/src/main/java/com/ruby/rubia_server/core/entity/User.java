@@ -37,6 +37,10 @@ public class User {
     @JoinColumn(name = "department_id")
     private Department department;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
@@ -50,6 +54,13 @@ public class User {
     
     @Column(name = "last_seen")
     private LocalDateTime lastSeen;
+    
+    @Column(name = "whatsapp_number", unique = true)
+    private String whatsappNumber;
+    
+    @Column(name = "is_whatsapp_active")
+    @Builder.Default
+    private Boolean isWhatsappActive = false;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

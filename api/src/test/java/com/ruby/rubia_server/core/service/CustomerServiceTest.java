@@ -3,7 +3,9 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.UpdateCustomerDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Customer;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.CustomerRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,17 +31,30 @@ class CustomerServiceTest {
     @Mock
     private CustomerRepository customerRepository;
     
+    @Mock
+    private CompanyRepository companyRepository;
+    
     @InjectMocks
     private CustomerService customerService;
     
     private Customer customer;
+    private Company company;
     private CreateCustomerDTO createDTO;
     private UpdateCustomerDTO updateDTO;
     private UUID customerId;
+    private UUID companyId;
     
     @BeforeEach
     void setUp() {
         customerId = UUID.randomUUID();
+        companyId = UUID.randomUUID();
+        
+        company = Company.builder()
+                .id(companyId)
+                .name("Test Company")
+                .slug("test-company")
+                .isActive(true)
+                .build();
         
         customer = Customer.builder()
                 .id(customerId)
@@ -48,6 +63,7 @@ class CustomerServiceTest {
                 .whatsappId("wa_001")
                 .profileUrl("profile.jpg")
                 .isBlocked(false)
+                .company(company)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -57,6 +73,7 @@ class CustomerServiceTest {
                 .name("João Silva")
                 .whatsappId("wa_001")
                 .profileUrl("profile.jpg")
+                .companyId(companyId)
                 .isBlocked(false)
                 .build();
         

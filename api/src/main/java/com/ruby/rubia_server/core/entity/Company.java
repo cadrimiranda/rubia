@@ -13,12 +13,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "departments")
+@Table(name = "companies")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Department {
+public class Company {
     
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -27,19 +27,39 @@ public class Department {
     @Column(nullable = false)
     private String name;
     
+    @Column(nullable = false, unique = true)
+    private String slug;
+    
     @Column(columnDefinition = "TEXT")
     private String description;
     
-    @Column(name = "auto_assign")
+    @Column(name = "contact_email")
+    private String contactEmail;
+    
+    @Column(name = "contact_phone")
+    private String contactPhone;
+    
+    @Column(name = "logo_url")
+    private String logoUrl;
+    
+    @Column(name = "is_active")
     @Builder.Default
-    private Boolean autoAssign = true;
+    private Boolean isActive = true;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
-    private Company company;
+    @Column(name = "plan_type")
+    @Builder.Default
+    private String planType = "BASIC";
     
-    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<User> users;
+    @Column(name = "max_users")
+    @Builder.Default
+    private Integer maxUsers = 10;
+    
+    @Column(name = "max_whatsapp_numbers")
+    @Builder.Default
+    private Integer maxWhatsappNumbers = 1;
+    
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Department> departments;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

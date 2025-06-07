@@ -4,9 +4,11 @@ import com.ruby.rubia_server.core.dto.CreateUserDTO;
 import com.ruby.rubia_server.core.dto.UpdateUserDTO;
 import com.ruby.rubia_server.core.dto.UserDTO;
 import com.ruby.rubia_server.core.dto.UserLoginDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.UserRole;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class UserService {
     
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
+    private final CompanyRepository companyRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     public UserDTO create(CreateUserDTO createDTO) {
@@ -35,6 +38,9 @@ public class UserService {
         if (userRepository.existsByEmail(createDTO.getEmail())) {
             throw new IllegalArgumentException("Usuário com email '" + createDTO.getEmail() + "' já existe");
         }
+        
+        Company company = companyRepository.findById(createDTO.getCompanyId())
+                .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
         
         Department department = null;
         if (createDTO.getDepartmentId() != null) {
@@ -46,6 +52,7 @@ public class UserService {
                 .name(createDTO.getName())
                 .email(createDTO.getEmail())
                 .passwordHash(passwordEncoder.encode(createDTO.getPassword()))
+                .company(company)
                 .department(department)
                 .role(createDTO.getRole())
                 .avatarUrl(createDTO.getAvatarUrl())
@@ -82,7 +89,7 @@ public class UserService {
     public List<UserDTO> findAll() {
         log.debug("Finding all users");
         
-        return userRepository.findAllOrderedByName()
+        return userRepository.findAll()
                 .stream()
                 .map(this::toDTO)
                 .toList();
@@ -92,8 +99,11 @@ public class UserService {
     public List<UserDTO> findByDepartment(UUID departmentId) {
         log.debug("Finding users by department: {}", departmentId);
         
-        return userRepository.findByDepartmentId(departmentId)
+        // Note: This method should ideally receive companyId for proper multi-tenancy
+        // For now, using findAll and filtering by department
+        return userRepository.findAll()
                 .stream()
+                .filter(user -> user.getDepartment() != null && user.getDepartment().getId().equals(departmentId))
                 .map(this::toDTO)
                 .toList();
     }
@@ -102,8 +112,11 @@ public class UserService {
     public List<UserDTO> findAvailableAgents() {
         log.debug("Finding available agents");
         
-        return userRepository.findAvailableAgents()
+        // Note: This method should ideally receive companyId for proper multi-tenancy
+        // For now, using findAll and filtering
+        return userRepository.findAll()
                 .stream()
+                .filter(user -> user.getRole() == UserRole.AGENT && Boolean.TRUE.equals(user.getIsOnline()))
                 .map(this::toDTO)
                 .toList();
     }
@@ -112,8 +125,14 @@ public class UserService {
     public List<UserDTO> findAvailableAgentsByDepartment(UUID departmentId) {
         log.debug("Finding available agents by department: {}", departmentId);
         
-        return userRepository.findAvailableAgentsByDepartment(departmentId)
+        // Note: This method should ideally receive companyId for proper multi-tenancy
+        // For now, using findAll and filtering
+        return userRepository.findAll()
                 .stream()
+                .filter(user -> user.getDepartment() != null && 
+                               user.getDepartment().getId().equals(departmentId) &&
+                               user.getRole() == UserRole.AGENT && 
+                               Boolean.TRUE.equals(user.getIsOnline()))
                 .map(this::toDTO)
                 .toList();
     }
