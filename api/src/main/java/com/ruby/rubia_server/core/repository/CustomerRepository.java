@@ -13,26 +13,32 @@ import java.util.UUID;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     
-    Optional<Customer> findByPhone(String phone);
     
-    Optional<Customer> findByWhatsappId(String whatsappId);
     
-    List<Customer> findByIsBlockedFalse();
     
-    List<Customer> findByIsBlockedTrue();
+    // Company-scoped methods
+    Optional<Customer> findByPhoneAndCompanyId(String phone, UUID companyId);
     
-    @Query("SELECT c FROM Customer c WHERE c.isBlocked = false ORDER BY c.name ASC")
-    List<Customer> findActiveCustomersOrderedByName();
+    Optional<Customer> findByWhatsappIdAndCompanyId(String whatsappId, UUID companyId);
     
-    @Query("SELECT c FROM Customer c WHERE " +
+    List<Customer> findByCompanyId(UUID companyId);
+    
+    List<Customer> findByIsBlockedFalseAndCompanyId(UUID companyId);
+    
+    List<Customer> findByIsBlockedTrueAndCompanyId(UUID companyId);
+    
+    @Query("SELECT c FROM Customer c WHERE c.isBlocked = false AND c.company.id = :companyId ORDER BY c.name ASC")
+    List<Customer> findActiveCustomersByCompanyOrderedByName(@Param("companyId") UUID companyId);
+    
+    @Query("SELECT c FROM Customer c WHERE c.company.id = :companyId AND (" +
            "LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "c.phone LIKE CONCAT('%', :searchTerm, '%')")
-    List<Customer> searchByNameOrPhone(@Param("searchTerm") String searchTerm);
+           "c.phone LIKE CONCAT('%', :searchTerm, '%'))")
+    List<Customer> searchByNameOrPhoneAndCompany(@Param("searchTerm") String searchTerm, @Param("companyId") UUID companyId);
     
-    boolean existsByPhone(String phone);
+    boolean existsByPhoneAndCompanyId(String phone, UUID companyId);
     
-    boolean existsByWhatsappId(String whatsappId);
+    boolean existsByWhatsappIdAndCompanyId(String whatsappId, UUID companyId);
     
-    @Query("SELECT COUNT(c) FROM Customer c WHERE c.isBlocked = false")
-    long countActiveCustomers();
+    @Query("SELECT COUNT(c) FROM Customer c WHERE c.isBlocked = false AND c.company.id = :companyId")
+    long countActiveCustomersByCompany(@Param("companyId") UUID companyId);
 }

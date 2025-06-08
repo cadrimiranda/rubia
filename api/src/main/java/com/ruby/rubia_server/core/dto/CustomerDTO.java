@@ -15,6 +15,7 @@ import java.util.UUID;
 public class CustomerDTO {
     
     private UUID id;
+    private UUID companyId;
     private String phone;
     private String name;
     private String whatsappId;

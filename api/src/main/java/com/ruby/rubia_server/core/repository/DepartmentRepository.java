@@ -12,12 +12,18 @@ import java.util.UUID;
 @Repository
 public interface DepartmentRepository extends JpaRepository<Department, UUID> {
     
-    Optional<Department> findByName(String name);
+    Optional<Department> findByIdAndCompanyId(UUID id, UUID companyId);
     
-    List<Department> findByAutoAssignTrue();
+    Optional<Department> findByNameAndCompanyId(String name, UUID companyId);
     
-    @Query("SELECT d FROM Department d ORDER BY d.name ASC")
-    List<Department> findAllOrderedByName();
+    List<Department> findByAutoAssignTrueAndCompanyId(UUID companyId);
     
-    boolean existsByName(String name);
+    @Query("SELECT d FROM Department d WHERE d.company.id = :companyId ORDER BY d.name ASC")
+    List<Department> findAllByCompanyIdOrderedByName(UUID companyId);
+    
+    boolean existsByNameAndCompanyId(String name, UUID companyId);
+    
+    boolean existsByIdAndCompanyId(UUID id, UUID companyId);
+    
+    void deleteByIdAndCompanyId(UUID id, UUID companyId);
 }

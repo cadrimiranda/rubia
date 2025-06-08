@@ -15,6 +15,7 @@ import java.util.UUID;
 public class DepartmentDTO {
     
     private UUID id;
+    private UUID companyId;
     private String name;
     private String description;
     private Boolean autoAssign;

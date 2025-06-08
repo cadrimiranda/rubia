@@ -17,6 +17,7 @@ import java.util.UUID;
 public class ConversationDTO {
     
     private UUID id;
+    private UUID companyId;
     private UUID customerId;
     private String customerName;
     private String customerPhone;

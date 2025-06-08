@@ -19,6 +19,7 @@ import java.util.UUID;
 public class MessageDTO {
     
     private UUID id;
+    private UUID companyId;
     private UUID conversationId;
     private String content;
     private SenderType senderType;
