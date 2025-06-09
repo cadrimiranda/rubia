@@ -44,6 +44,10 @@ export interface UserDTO {
   isOnline: boolean
   lastSeen?: string
   companyId: string
+  birthDate?: string
+  weight?: number
+  height?: number
+  address?: string
   createdAt: string
   updatedAt: string
 }
@@ -124,6 +128,33 @@ export interface CreateCustomerRequest {
 export interface UpdateCustomerRequest {
   name?: string
   profileUrl?: string
+}
+
+export interface CreateUserRequest {
+  name: string
+  email: string
+  password: string
+  companyId: string
+  departmentId?: string
+  role: UserRole
+  avatarUrl?: string
+  birthDate?: string
+  weight?: number
+  height?: number
+  address?: string
+}
+
+export interface UpdateUserRequest {
+  name?: string
+  email?: string
+  password?: string
+  departmentId?: string
+  role?: UserRole
+  avatarUrl?: string
+  birthDate?: string
+  weight?: number
+  height?: number
+  address?: string
 }
 
 export interface LoginRequest {

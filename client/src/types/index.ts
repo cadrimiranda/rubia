@@ -13,6 +13,14 @@ export interface User {
   phone?: string
   whatsappId?: string
   isBlocked?: boolean
+  bloodType?: string
+  lastDonation?: string
+  totalDonations?: number
+  birthDate?: string
+  weight?: number
+  height?: number
+  address?: string
+  email?: string
 }
 
 export interface Tag {

@@ -29,7 +29,7 @@ const TopTabsSwitcher = () => {
     }
     
     if (isActive) {
-      return 'bg-ruby-500 text-white'
+      return 'bg-blue-500 text-white'
     }
     
     return 'bg-gray-400 text-white'
@@ -46,7 +46,7 @@ const TopTabsSwitcher = () => {
           let baseClass = 'h-8 px-3 text-sm font-medium transition-all duration-200 flex items-center gap-1 flex-1 justify-center'
           
           if (isActive) {
-            baseClass += ' bg-white text-ruby-500 shadow-sm'
+            baseClass += ' bg-white text-blue-500 shadow-sm'
           } else {
             baseClass += ' bg-transparent text-neutral-600 hover:text-neutral-700 hover:bg-neutral-200/50'
           }

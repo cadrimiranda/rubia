@@ -159,7 +159,7 @@ const UserHeader = () => {
                 {user.name}
               </div>
               <div className="text-xs text-gray-500 truncate max-w-32">
-                {user.email}
+                Tipo sanguíneo: B+ • Última doação: 15/01/2025
               </div>
             </div>
           </div>

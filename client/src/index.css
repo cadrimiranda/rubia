@@ -27,7 +27,7 @@ button:focus {
 }
 
 button:focus-visible {
-  outline: 2px solid rgba(225, 29, 72, 0.3) !important;
+  outline: 2px solid rgba(59, 130, 246, 0.3) !important;
   outline-offset: 2px !important;
 }
 

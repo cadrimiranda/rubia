@@ -10,40 +10,80 @@ export const mockTags: Tag[] = [
 export const mockUsers: User[] = [
   {
     id: '1',
-    name: 'Lilia - AT Santa Casa',
+    name: 'Maria Silva',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b172-9e1f?w=150&h=150&fit=crop&crop=face',
     isOnline: true,
-    phone: '+55 11 99999-0001'
+    phone: '+55 11 99999-0001',
+    email: 'maria.silva@email.com',
+    bloodType: 'O+',
+    lastDonation: '15/01/2025',
+    totalDonations: 8,
+    birthDate: '15/08/1985',
+    weight: 65,
+    height: 165,
+    address: 'Rua das Flores, 123 - São Paulo, SP'
   },
   {
     id: '2',
-    name: 'Kelly Rocha - BIOCOR',
+    name: 'João Santos',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
     isOnline: false,
     lastSeen: new Date(Date.now() - 1000 * 60 * 30),
-    phone: '+55 11 99999-0002'
+    phone: '+55 11 99999-0002',
+    email: 'joao.santos@email.com',
+    bloodType: 'A-',
+    lastDonation: '08/02/2025',
+    totalDonations: 15,
+    birthDate: '22/03/1990',
+    weight: 75,
+    height: 178,
+    address: 'Av. Paulista, 456 - São Paulo, SP'
   },
   {
     id: '3',
-    name: 'Evandro Thiesen - Clínica LeVitá',
+    name: 'Ana Costa',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
     isOnline: true,
-    phone: '+55 11 99999-0003'
+    phone: '+55 11 99999-0003',
+    email: 'ana.costa@email.com',
+    bloodType: 'B+',
+    lastDonation: '15/01/2025',
+    totalDonations: 3,
+    birthDate: '10/12/1992',
+    weight: 58,
+    height: 160,
+    address: 'Rua Augusta, 789 - São Paulo, SP'
   },
   {
     id: '4',
-    name: 'Maria Luiza - BIOCOR',
+    name: 'Carlos Oliveira',
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
     isOnline: false,
     lastSeen: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    phone: '+55 11 99999-0004'
+    phone: '+55 11 99999-0004',
+    email: 'carlos.oliveira@email.com',
+    bloodType: 'AB+',
+    lastDonation: '20/12/2024',
+    totalDonations: 12,
+    birthDate: '05/07/1988',
+    weight: 80,
+    height: 182,
+    address: 'Rua da Consolação, 321 - São Paulo, SP'
   },
   {
     id: '5',
-    name: 'Allan Bruno',
+    name: 'Patricia Lima',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
     isOnline: true,
-    phone: '+55 11 99999-0005'
+    phone: '+55 11 99999-0005',
+    email: 'patricia.lima@email.com',
+    bloodType: 'O-',
+    lastDonation: '10/11/2024',
+    totalDonations: 6,
+    birthDate: '18/01/1987',
+    weight: 62,
+    height: 170,
+    address: 'Alameda Santos, 654 - São Paulo, SP'
   }
 ]
 
@@ -62,9 +102,9 @@ export const mockChats: Chat[] = [
     id: '1',
     contact: mockUsers[0],
     messages: [
-      createMessage('1', 'Olá! Gostaria de saber mais sobre os serviços da Santa Casa.', true, 120),
-      createMessage('2', 'Olá Lilia! Claro, posso te ajudar. Que tipo de serviço você procura?', false, 118),
-      createMessage('3', 'Agradeço a disponibilidade e atenção', true, 5)
+      createMessage('1', 'Olá! Gostaria de agendar uma doação de sangue.', true, 120),
+      createMessage('2', 'Olá Maria! Claro, posso te ajudar. Temos horários disponíveis esta semana. Qual seria o melhor dia para você?', false, 118),
+      createMessage('3', 'Obrigada pela lembrança! Posso doar na próxima semana.', true, 5)
     ],
     status: 'entrada',
     assignedAgent: 'Fabiana',
@@ -78,8 +118,8 @@ export const mockChats: Chat[] = [
     id: '2',
     contact: mockUsers[1],
     messages: [
-      createMessage('4', 'Pode me ligar agora se quiser. Não consegui olhar o vídeo de ontem', true, 45),
-      createMessage('5', 'Claro! Vou te ligar em instantes. Sobre qual vídeo você está falando?', false, 43)
+      createMessage('4', 'Preciso reagendar minha doação.', true, 45),
+      createMessage('5', 'Claro! Qual seria o melhor horário para você? Temos disponibilidade na próxima semana.', false, 43)
     ],
     status: 'entrada',
     assignedAgent: 'Fabiana',
@@ -93,9 +133,9 @@ export const mockChats: Chat[] = [
     id: '3',
     contact: mockUsers[2],
     messages: [
-      createMessage('6', 'Vamos agendar uma demonstração?', true, 180),
-      createMessage('7', 'Perfeito! Qual o melhor horário para você?', false, 175),
-      createMessage('8', 'Podemos dar continuidade à aquisição de um novo sistema', true, 25)
+      createMessage('6', 'Qual o horário disponível para amanhã?', true, 180),
+      createMessage('7', 'Temos horários às 9h, 14h e 16h. Qual prefere?', false, 175),
+      createMessage('8', 'Prefiro às 14h, muito obrigada!', true, 25)
     ],
     status: 'esperando',
     assignedAgent: 'Fabiana',
@@ -109,8 +149,8 @@ export const mockChats: Chat[] = [
     id: '4',
     contact: mockUsers[3],
     messages: [
-      createMessage('9', 'Pode sim', true, 90),
-      createMessage('10', 'Ótimo! Te ligo em alguns minutos.', false, 88)
+      createMessage('9', 'Posso trazer meu exame de sangue?', true, 90),
+      createMessage('10', 'Claro! Isso vai agilizar o processo. Nos vemos amanhã às 14h.', false, 88)
     ],
     status: 'esperando',
     assignedAgent: 'Fabiana',
@@ -124,8 +164,8 @@ export const mockChats: Chat[] = [
     id: '5',
     contact: mockUsers[4],
     messages: [
-      createMessage('11', 'conseguiu olhar o vídeo de ontem?', true, 720),
-      createMessage('12', 'Sim! Muito interessante, vamos conversar mais sobre isso.', false, 715)
+      createMessage('11', 'Muito obrigada pelo atendimento!', true, 720),
+      createMessage('12', 'Foi um prazer ajudar! Qualquer dúvida, estamos à disposição.', false, 715)
     ],
     status: 'finalizados',
     assignedAgent: 'Fabiana',

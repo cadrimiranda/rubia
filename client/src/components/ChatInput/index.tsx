@@ -100,7 +100,7 @@ const ChatInput = () => {
     return (
       <div className="p-4">
         <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-6">
-          <div className="text-center text-ruby-600">
+          <div className="text-center text-blue-600">
             <p className="text-sm">Inicie a conversa enviando uma mensagem…</p>
           </div>
         </div>
@@ -118,7 +118,7 @@ const ChatInput = () => {
               onClick={() => setActiveTab("message")}
               className={`h-8 px-3 text-sm font-medium rounded-xl transition-all duration-200 ${
                 activeTab === "message"
-                  ? "bg-ruby-500 text-white shadow-sm"
+                  ? "bg-blue-500 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -128,7 +128,7 @@ const ChatInput = () => {
               onClick={() => setActiveTab("notes")}
               className={`h-8 px-3 text-sm font-medium rounded-xl transition-all duration-200 flex items-center gap-2 ${
                 activeTab === "notes"
-                  ? "bg-ruby-500 text-white shadow-sm"
+                  ? "bg-blue-500 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -157,7 +157,7 @@ const ChatInput = () => {
                     value={message}
                     onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
-                    placeholder="Digite sua mensagem…"
+                    placeholder="Digite sua mensagem..."
                     autoSize={{ minRows: 1, maxRows: 4 }}
                     className="!border-0 bg-white resize-none rounded-2xl"
                     style={{
@@ -182,7 +182,7 @@ const ChatInput = () => {
                         className={`w-10 h-10 text-white rounded-full transition-all duration-200 flex items-center justify-center shadow-md ${
                           isSending 
                             ? "bg-gray-400 cursor-not-allowed" 
-                            : "bg-ruby-500 hover:bg-ruby-600 hover:shadow-lg transform hover:scale-105"
+                            : "bg-blue-500 hover:bg-blue-600 hover:shadow-lg transform hover:scale-105"
                         }`}
                       >
                         {isSending ? (
@@ -202,7 +202,7 @@ const ChatInput = () => {
                   <Tooltip title="Adicionar emoji">
                     <button
                       onClick={handleEmojiClick}
-                      className="p-2 text-ruby-500 hover:bg-ruby-500 hover:text-white rounded-lg transition-all duration-200"
+                      className="p-2 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-all duration-200"
                     >
                       <Smile size={20} />
                     </button>
@@ -211,7 +211,7 @@ const ChatInput = () => {
                   <Tooltip title="Anexar arquivo">
                     <button
                       onClick={handleAttachmentClick}
-                      className="p-2 text-ruby-500 hover:bg-ruby-500 hover:text-white rounded-lg transition-all duration-200"
+                      className="p-2 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-all duration-200"
                     >
                       <Paperclip size={20} />
                     </button>
@@ -296,7 +296,7 @@ const ChatInput = () => {
                   <Tooltip title="Gravar áudio">
                     <button
                       onClick={handleAudioClick}
-                      className="p-2 text-ruby-500 hover:bg-ruby-500 hover:text-white rounded-lg transition-all duration-200"
+                      className="p-2 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-all duration-200"
                     >
                       <Mic size={20} />
                     </button>

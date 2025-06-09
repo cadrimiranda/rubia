@@ -36,7 +36,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       <div
         className={`relative max-w-xs lg:max-w-md px-4 py-3 shadow-md transition-all duration-200 ${
           isFromUser
-            ? "bg-emerald-600 text-white rounded-2xl rounded-br-md border border-rose-700"
+            ? "bg-blue-500 text-white rounded-2xl rounded-br-md border border-blue-600"
             : "bg-white text-gray-700 rounded-2xl rounded-bl-md border border-gray-200"
         }`}
       >

@@ -22,8 +22,8 @@ const ChatListItem = ({ chat }: ChatListItemProps) => {
       onClick={handleClick}
       className={`relative flex items-start px-4 py-3 cursor-pointer transition-all duration-200 group ${
         isActive
-          ? 'bg-ruby-50 shadow-sm border-l-4 border-l-ruby-500'
-          : 'hover:bg-ruby-50/30'
+          ? 'bg-blue-50 shadow-sm border-l-4 border-l-blue-500'
+          : 'hover:bg-blue-50/30'
       }`}
     >
       {/* Avatar Section */}
@@ -48,7 +48,7 @@ const ChatListItem = ({ chat }: ChatListItemProps) => {
         
         {/* Unread Indicator */}
         {chat.unreadCount > 0 && (
-          <div className="absolute -top-1 -left-1 w-3 h-3 bg-ruby-500 rounded-full ring-2 ring-white"></div>
+          <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white"></div>
         )}
       </div>
 
@@ -58,7 +58,7 @@ const ChatListItem = ({ chat }: ChatListItemProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <h4 className={`truncate text-lg font-semibold ${
-              isActive ? 'text-ruby-500' : 'text-neutral-900'
+              isActive ? 'text-blue-500' : 'text-neutral-900'
             }`}>
               {chat.contact.name}
             </h4>
@@ -68,7 +68,7 @@ const ChatListItem = ({ chat }: ChatListItemProps) => {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {chat.unreadCount > 0 && (
-              <span className="bg-ruby-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+              <span className="bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
                 {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
               </span>
             )}
@@ -88,14 +88,21 @@ const ChatListItem = ({ chat }: ChatListItemProps) => {
           }
         </p>
 
-        {/* Tags Row */}
+        {/* Blood Type & Medical Info Row */}
         <div className="flex items-center justify-between pt-0.5">
-          <ChatTags tags={chat.tags} compact showAgent={false} />
+          <div className="flex items-center gap-2">
+            {chat.contact.bloodType && (
+              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                {chat.contact.bloodType}
+              </span>
+            )}
+            <ChatTags tags={chat.tags} compact showAgent={false} />
+          </div>
           {chat.assignedAgent && (
             <div className={`text-xs font-medium px-2 py-1 rounded-xl border ${
               isActive 
-                ? 'bg-white text-ruby-500 border-ruby-500' 
-                : 'bg-ruby-50 text-ruby-500 border-ruby-100'
+                ? 'bg-white text-blue-500 border-blue-500' 
+                : 'bg-blue-50 text-blue-500 border-blue-100'
             }`}>
               {chat.assignedAgent}
             </div>

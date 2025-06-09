@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -61,6 +62,18 @@ public class User {
     @Column(name = "is_whatsapp_active")
     @Builder.Default
     private Boolean isWhatsappActive = false;
+    
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+    
+    @Column(name = "weight")
+    private Double weight;
+    
+    @Column(name = "height")
+    private Double height;
+    
+    @Column(name = "address")
+    private String address;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

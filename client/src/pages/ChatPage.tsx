@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Heart } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import ChatHeader from "../components/ChatHeader";
 import ChatMessage from "../components/ChatMessage";
@@ -15,10 +15,9 @@ const ChatPage = () => {
   const { activeChat, setActiveChat } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Inicializar sistema de notificações
   useNotifications();
-
 
   useEffect(() => {
     // Auto scroll para a última mensagem
@@ -42,17 +41,14 @@ const ChatPage = () => {
   const renderChatArea = () => {
     if (!activeChat) {
       return (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center px-8">
-            <div className="w-24 h-24 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <MessageCircle size={40} className="text-rose-500" />
-            </div>
-            <h3 className="text-xl font-medium text-rose-800 mb-3">
-              Bem-vindo ao Chat Corporativo
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <Heart className="w-16 h-16 text-gray-300 mb-4 mx-auto" />
+            <h3 className="text-xl text-gray-400 mb-2 font-medium">
+              Selecione um doador
             </h3>
-            <p className="text-rose-600 max-w-sm">
-              Selecione uma conversa na lista ao lado para começar a atender
-              seus clientes
+            <p className="text-gray-400 m-0">
+              Escolha uma conversa existente ou inicie uma nova
             </p>
           </div>
         </div>
@@ -98,10 +94,10 @@ const ChatPage = () => {
       <div className="h-screen w-full flex flex-col bg-gradient-to-br from-rose-50 to-rose-100">
         {/* User Header */}
         <UserHeader />
-        
+
         {/* Offline Banner */}
         <OfflineBanner />
-        
+
         {/* Main Chat Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar - Hidden on mobile when chat is active */}

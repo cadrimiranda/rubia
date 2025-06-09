@@ -190,7 +190,7 @@ class AuthService {
 
     try {
       const response = await apiClient.put<UserDTO>(`/api/users/${currentUser.id}`, userData)
-      const updatedUser = this.mapUserDtoToAuthUser(response)
+      const updatedUser = this.mapUserDtoToAuthUser(response, currentUser.companyId, currentUser.companySlug)
       this.setUser(updatedUser)
       return updatedUser
     } catch (error) {

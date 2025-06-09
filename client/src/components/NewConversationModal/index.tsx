@@ -1,124 +1,137 @@
-import { useState, useEffect } from 'react'
-import { Modal, Input, Button, List, Avatar, Typography, Empty, Spin, message } from 'antd'
-import { Search, Phone, User, Plus } from 'lucide-react'
-import { customerApi } from '../../api/services/customerApi'
-import { conversationApi } from '../../api/services/conversationApi'
-import { useChatStore } from '../../store/useChatStore'
-import type { CustomerDTO } from '../../api/types'
+import { useState, useEffect } from "react";
+import {
+  Modal,
+  Input,
+  Button,
+  List,
+  Avatar,
+  Typography,
+  Empty,
+  Spin,
+  message,
+} from "antd";
+import { Search, Phone, User, Plus } from "lucide-react";
+import { customerApi } from "../../api/services/customerApi";
+import { conversationApi } from "../../api/services/conversationApi";
+import { useChatStore } from "../../store/useChatStore";
+import type { CustomerDTO } from "../../api/types";
+import { conversationAdapter } from "../../adapters";
 
-const { Text } = Typography
+const { Text } = Typography;
 
 interface NewConversationModalProps {
-  open: boolean
-  onClose: () => void
+  open: boolean;
+  onClose: () => void;
 }
 
 export const NewConversationModal: React.FC<NewConversationModalProps> = ({
   open,
-  onClose
+  onClose,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [customers, setCustomers] = useState<CustomerDTO[]>([])
-  const [loading, setLoading] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const { loadConversations, currentStatus, setActiveChat } = useChatStore()
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customers, setCustomers] = useState<CustomerDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const { loadConversations, currentStatus, setActiveChat } = useChatStore();
 
   // Buscar customers quando modal abrir ou query mudar
   useEffect(() => {
     if (open) {
-      searchCustomers()
+      searchCustomers();
     }
-  }, [open, searchQuery])
+  }, [open, searchQuery]);
 
   const searchCustomers = async () => {
     try {
-      setLoading(true)
-      
+      setLoading(true);
+
       if (searchQuery.trim()) {
         // Buscar por telefone ou nome
-        const results = await customerApi.search(searchQuery.trim())
-        setCustomers(results || [])
+        const results = await customerApi.search(searchQuery.trim());
+        setCustomers(results || []);
       } else {
         // Carregar customers recentes
-        const results = await customerApi.getRecent(20)
-        setCustomers(results || [])
+        const results = await customerApi.getRecent(20);
+        setCustomers(results || []);
       }
     } catch (error) {
-      console.error('Erro ao buscar customers:', error)
-      message.error('Erro ao buscar contatos')
-      setCustomers([]) // Garantir que customers seja sempre um array
+      console.error("Erro ao buscar customers:", error);
+      message.error("Erro ao buscar contatos");
+      setCustomers([]); // Garantir que customers seja sempre um array
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const createConversation = async (customer: CustomerDTO) => {
     try {
-      setCreating(true)
-      
+      setCreating(true);
+
       // Criar nova conversa
       const conversation = await conversationApi.create({
         customerId: customer.id,
-        channel: 'WEB'
-      })
+        channel: "WEB",
+      });
+
+      setActiveChat(conversationAdapter.toChat(conversation));
 
       // Recarregar lista de conversas
-      await loadConversations(currentStatus, 0)
-      
+      await loadConversations(currentStatus, 0);
+
       // Abrir a conversa criada
       // setActiveChat(conversationAdapter.toChat(conversation))
-      
-      message.success(`Conversa iniciada com ${customer.name || customer.phone}`)
-      onClose()
-      
+
+      message.success(
+        `Conversa iniciada com ${customer.name || customer.phone}`
+      );
+      onClose();
     } catch (error) {
-      console.error('Erro ao criar conversa:', error)
-      message.error('Erro ao iniciar conversa')
+      console.error("Erro ao criar conversa:", error);
+      message.error("Erro ao iniciar conversa");
     } finally {
-      setCreating(false)
+      setCreating(false);
     }
-  }
+  };
 
   const createNewCustomer = async () => {
-    const phone = searchQuery.trim()
-    
+    const phone = searchQuery.trim();
+
     if (!phone) {
-      message.warning('Digite um número de telefone')
-      return
+      message.warning("Digite um número de telefone");
+      return;
     }
 
     try {
-      setCreating(true)
-      
+      setCreating(true);
+
       // Criar novo customer
       const customer = await customerApi.create({
         phone,
-        name: phone // Usar telefone como nome inicial
-      })
-      
+        name: phone, // Usar telefone como nome inicial
+      });
+
       // Criar conversa com o novo customer
-      await createConversation(customer)
-      
+      await createConversation(customer);
     } catch (error) {
-      console.error('Erro ao criar customer:', error)
-      message.error('Erro ao criar contato')
+      console.error("Erro ao criar customer:", error);
+      message.error("Erro ao criar contato");
     } finally {
-      setCreating(false)
+      setCreating(false);
     }
-  }
+  };
 
   const isPhoneNumber = (query: string) => {
-    return /^\+?[\d\s\-\(\)]+$/.test(query.trim())
-  }
+    return /^\+?[\d\s\-\\(\\)]+$/.test(query.trim());
+  };
 
   const handleClose = () => {
-    setSearchQuery('')
-    setCustomers([])
-    onClose()
-  }
+    setSearchQuery("");
+    setCustomers([]);
+    onClose();
+  };
 
   // Garantir que customers seja sempre um array
-  const safeCustomers = customers || []
+  const safeCustomers = customers || [];
 
   return (
     <Modal
@@ -141,30 +154,33 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
         />
 
         {/* Create new customer option */}
-        {searchQuery.trim() && isPhoneNumber(searchQuery) && safeCustomers.length === 0 && !loading && (
-          <div className="border rounded-lg p-3 bg-blue-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Phone size={16} className="text-blue-600" />
+        {searchQuery.trim() &&
+          isPhoneNumber(searchQuery) &&
+          safeCustomers.length === 0 &&
+          !loading && (
+            <div className="border rounded-lg p-3 bg-blue-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Phone size={16} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <Text strong>Novo contato</Text>
+                    <div className="text-sm text-gray-500">{searchQuery}</div>
+                  </div>
                 </div>
-                <div>
-                  <Text strong>Novo contato</Text>
-                  <div className="text-sm text-gray-500">{searchQuery}</div>
-                </div>
+                <Button
+                  type="primary"
+                  icon={<Plus size={16} />}
+                  onClick={createNewCustomer}
+                  loading={creating}
+                  size="small"
+                >
+                  Criar
+                </Button>
               </div>
-              <Button
-                type="primary"
-                icon={<Plus size={16} />}
-                onClick={createNewCustomer}
-                loading={creating}
-                size="small"
-              >
-                Criar
-              </Button>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Results */}
         <div className="max-h-96 overflow-y-auto">
@@ -220,7 +236,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
         </div>
       </div>
     </Modal>
-  )
-}
+  );
+};
 
-export default NewConversationModal
+export default NewConversationModal;

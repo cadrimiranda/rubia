@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -30,4 +31,13 @@ public class UpdateUserDTO {
     private UserRole role;
     
     private String avatarUrl;
+    
+    private LocalDate birthDate;
+    
+    private Double weight;
+    
+    private Double height;
+    
+    @Size(max = 500, message = "Endereço deve ter no máximo 500 caracteres")
+    private String address;
 }

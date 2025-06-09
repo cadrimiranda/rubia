@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useChatStore } from '../store/useChatStore'
-import { webSocketManager } from '../websocket'
 
 interface ChatDataProviderProps {
   children: React.ReactNode

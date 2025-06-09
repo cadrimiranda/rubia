@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { MessageCircle, Plus, Loader2 } from "lucide-react";
+import { MessageCircle, Plus, Loader2, Heart } from "lucide-react";
 import SearchBar from "../SearchBar";
 import TopTabsSwitcher from "../TopTabsSwitcher";
 import ChatListItem from "../ChatListItem";
@@ -45,9 +45,12 @@ const Sidebar = () => {
       {/* Header */}
       <div className="px-4 py-4 ">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-lg font-semibold text-gray-900">Conversas</h1>
+          <div className="flex items-center gap-3">
+            <Heart className="text-red-500" fill="currentColor" size={24} />
+            <h1 className="text-lg font-semibold text-gray-900">Centro de Sangue</h1>
+          </div>
           <button 
-            className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-200"
+            className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all duration-200"
             onClick={() => setIsNewConversationModalOpen(true)}
           >
             <Plus size={18} />
