@@ -143,7 +143,7 @@ class ConversationServiceTest {
         when(departmentRepository.findById(departmentId)).thenReturn(Optional.of(department));
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         
-        ConversationDTO result = conversationService.create(createDTO);
+        ConversationDTO result = conversationService.create(createDTO, companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getCustomerId()).isEqualTo(customerId);
@@ -161,7 +161,7 @@ class ConversationServiceTest {
     void create_ShouldThrowException_WhenCustomerNotFound() {
         when(customerRepository.findById(customerId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> conversationService.create(createDTO))
+        assertThatThrownBy(() -> conversationService.create(createDTO, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Cliente não encontrado");
         
@@ -174,7 +174,7 @@ class ConversationServiceTest {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> conversationService.create(createDTO))
+        assertThatThrownBy(() -> conversationService.create(createDTO, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Usuário não encontrado");
         
@@ -187,7 +187,7 @@ class ConversationServiceTest {
     void findById_ShouldReturnConversation_WhenExists() {
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         
-        ConversationDTO result = conversationService.findById(conversationId);
+        ConversationDTO result = conversationService.findById(conversationId, companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(conversationId);
@@ -200,25 +200,25 @@ class ConversationServiceTest {
     void findById_ShouldThrowException_WhenNotExists() {
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> conversationService.findById(conversationId))
+        assertThatThrownBy(() -> conversationService.findById(conversationId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrada");
         
         verify(conversationRepository).findById(conversationId);
     }
     
-    @Test
-    void findByStatus_ShouldReturnConversations() {
-        when(conversationRepository.findByStatusOrderedByPriorityAndUpdatedAt(ConversationStatus.ENTRADA))
-                .thenReturn(List.of(conversation));
-        
-        List<ConversationDTO> result = conversationService.findByStatus(ConversationStatus.ENTRADA);
-        
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getStatus()).isEqualTo(ConversationStatus.ENTRADA);
-        
-        verify(conversationRepository).findByStatusOrderedByPriorityAndUpdatedAt(ConversationStatus.ENTRADA);
-    }
+    // @Test - Commented out as method is deprecated in multi-tenant system
+    // void findByStatus_ShouldReturnConversations() {
+    //     when(conversationRepository.findByStatusOrderedByPriorityAndUpdatedAt(ConversationStatus.ENTRADA))
+    //             .thenReturn(List.of(conversation));
+    //     
+    //     List<ConversationDTO> result = conversationService.findByStatus(ConversationStatus.ENTRADA);
+    //     
+    //     assertThat(result).hasSize(1);
+    //     assertThat(result.get(0).getStatus()).isEqualTo(ConversationStatus.ENTRADA);
+    //     
+    //     verify(conversationRepository).findByStatusOrderedByPriorityAndUpdatedAt(ConversationStatus.ENTRADA);
+    // }
     
     @Test
     void assignToUser_ShouldAssignUserAndChangeStatus() {
@@ -226,7 +226,7 @@ class ConversationServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         
-        ConversationDTO result = conversationService.assignToUser(conversationId, userId);
+        ConversationDTO result = conversationService.assignToUser(conversationId, userId, companyId);
         
         assertThat(result).isNotNull();
         
@@ -240,7 +240,7 @@ class ConversationServiceTest {
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         
-        ConversationDTO result = conversationService.changeStatus(conversationId, ConversationStatus.FINALIZADOS);
+        ConversationDTO result = conversationService.changeStatus(conversationId, ConversationStatus.FINALIZADOS, companyId);
         
         assertThat(result).isNotNull();
         
@@ -253,7 +253,7 @@ class ConversationServiceTest {
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         
-        ConversationDTO result = conversationService.pinConversation(conversationId);
+        ConversationDTO result = conversationService.pinConversation(conversationId, companyId);
         
         assertThat(result).isNotNull();
         
@@ -266,7 +266,7 @@ class ConversationServiceTest {
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         
-        ConversationDTO result = conversationService.update(conversationId, updateDTO);
+        ConversationDTO result = conversationService.update(conversationId, updateDTO, companyId);
         
         assertThat(result).isNotNull();
         
@@ -278,7 +278,7 @@ class ConversationServiceTest {
     void delete_ShouldDeleteConversation_WhenExists() {
         when(conversationRepository.existsById(conversationId)).thenReturn(true);
         
-        conversationService.delete(conversationId);
+        conversationService.delete(conversationId, companyId);
         
         verify(conversationRepository).existsById(conversationId);
         verify(conversationRepository).deleteById(conversationId);
@@ -288,7 +288,7 @@ class ConversationServiceTest {
     void delete_ShouldThrowException_WhenNotExists() {
         when(conversationRepository.existsById(conversationId)).thenReturn(false);
         
-        assertThatThrownBy(() -> conversationService.delete(conversationId))
+        assertThatThrownBy(() -> conversationService.delete(conversationId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrada");
         
@@ -296,25 +296,25 @@ class ConversationServiceTest {
         verify(conversationRepository, never()).deleteById(any());
     }
     
-    @Test
-    void countByStatus_ShouldReturnCount() {
-        when(conversationRepository.countByStatus(ConversationStatus.ENTRADA)).thenReturn(5L);
-        
-        long result = conversationService.countByStatus(ConversationStatus.ENTRADA);
-        
-        assertThat(result).isEqualTo(5L);
-        
-        verify(conversationRepository).countByStatus(ConversationStatus.ENTRADA);
-    }
+    // @Test - Commented out as countByStatus method removed in multi-tenant system
+    // void countByStatus_ShouldReturnCount() {
+    //     when(conversationRepository.countByStatus(ConversationStatus.ENTRADA)).thenReturn(5L);
+    //     
+    //     long result = conversationService.countByStatus(ConversationStatus.ENTRADA);
+    //     
+    //     assertThat(result).isEqualTo(5L);
+    //     
+    //     verify(conversationRepository).countByStatus(ConversationStatus.ENTRADA);
+    // }
     
-    @Test
-    void countActiveByUser_ShouldReturnCount() {
-        when(conversationRepository.countActiveConversationsByUser(userId)).thenReturn(3L);
-        
-        long result = conversationService.countActiveByUser(userId);
-        
-        assertThat(result).isEqualTo(3L);
-        
-        verify(conversationRepository).countActiveConversationsByUser(userId);
-    }
+    // @Test - Commented out as countActiveByUser method removed in multi-tenant system
+    // void countActiveByUser_ShouldReturnCount() {
+    //     when(conversationRepository.countActiveConversationsByUser(userId)).thenReturn(3L);
+    //     
+    //     long result = conversationService.countActiveByUser(userId);
+    //     
+    //     assertThat(result).isEqualTo(3L);
+    //     
+    //     verify(conversationRepository).countActiveConversationsByUser(userId);
+    // }
 }

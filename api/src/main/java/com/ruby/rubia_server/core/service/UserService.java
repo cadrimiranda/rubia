@@ -35,8 +35,8 @@ public class UserService {
     public UserDTO create(CreateUserDTO createDTO) {
         log.info("Creating user with email: {}", createDTO.getEmail());
         
-        if (userRepository.existsByEmail(createDTO.getEmail())) {
-            throw new IllegalArgumentException("Usuário com email '" + createDTO.getEmail() + "' já existe");
+        if (userRepository.existsByEmailAndCompanyId(createDTO.getEmail(), createDTO.getCompanyId())) {
+            throw new IllegalArgumentException("Usuário com email '" + createDTO.getEmail() + "' já existe nesta empresa");
         }
         
         Company company = companyRepository.findById(createDTO.getCompanyId())
@@ -76,63 +76,51 @@ public class UserService {
     }
     
     @Transactional(readOnly = true)
-    public UserDTO findByEmail(String email) {
-        log.debug("Finding user by email: {}", email);
+    public UserDTO findByEmailAndCompany(String email, UUID companyId) {
+        log.debug("Finding user by email: {} for company: {}", email, companyId);
         
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        User user = userRepository.findByEmailAndCompanyId(email, companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado nesta empresa"));
         
         return toDTO(user);
     }
     
     @Transactional(readOnly = true)
-    public List<UserDTO> findAll() {
-        log.debug("Finding all users");
+    public List<UserDTO> findAllByCompany(UUID companyId) {
+        log.debug("Finding all users for company: {}", companyId);
         
-        return userRepository.findAll()
+        return userRepository.findByCompanyId(companyId)
                 .stream()
                 .map(this::toDTO)
                 .toList();
     }
     
     @Transactional(readOnly = true)
-    public List<UserDTO> findByDepartment(UUID departmentId) {
-        log.debug("Finding users by department: {}", departmentId);
+    public List<UserDTO> findByDepartmentAndCompany(UUID departmentId, UUID companyId) {
+        log.debug("Finding users by department: {} for company: {}", departmentId, companyId);
         
-        // Note: This method should ideally receive companyId for proper multi-tenancy
-        // For now, using findAll and filtering by department
-        return userRepository.findAll()
+        return userRepository.findByDepartmentIdAndCompanyId(departmentId, companyId)
                 .stream()
-                .filter(user -> user.getDepartment() != null && user.getDepartment().getId().equals(departmentId))
                 .map(this::toDTO)
                 .toList();
     }
     
     @Transactional(readOnly = true)
-    public List<UserDTO> findAvailableAgents() {
-        log.debug("Finding available agents");
+    public List<UserDTO> findAvailableAgentsByCompany(UUID companyId) {
+        log.debug("Finding available agents for company: {}", companyId);
         
-        // Note: This method should ideally receive companyId for proper multi-tenancy
-        // For now, using findAll and filtering
-        return userRepository.findAll()
+        return userRepository.findAvailableAgentsByCompany(companyId)
                 .stream()
-                .filter(user -> user.getRole() == UserRole.AGENT && Boolean.TRUE.equals(user.getIsOnline()))
                 .map(this::toDTO)
                 .toList();
     }
     
     @Transactional(readOnly = true)
-    public List<UserDTO> findAvailableAgentsByDepartment(UUID departmentId) {
-        log.debug("Finding available agents by department: {}", departmentId);
+    public List<UserDTO> findAvailableAgentsByDepartmentAndCompany(UUID departmentId, UUID companyId) {
+        log.debug("Finding available agents by department: {} for company: {}", departmentId, companyId);
         
-        // Note: This method should ideally receive companyId for proper multi-tenancy
-        // For now, using findAll and filtering
-        return userRepository.findAll()
+        return userRepository.findAvailableAgentsByDepartmentAndCompany(departmentId, companyId)
                 .stream()
-                .filter(user -> user.getDepartment() != null && 
-                               user.getDepartment().getId().equals(departmentId) &&
-                               user.getRole() == UserRole.AGENT && 
-                               Boolean.TRUE.equals(user.getIsOnline()))
                 .map(this::toDTO)
                 .toList();
     }
@@ -149,8 +137,8 @@ public class UserService {
         
         if (updateDTO.getEmail() != null) {
             if (!updateDTO.getEmail().equals(user.getEmail()) && 
-                userRepository.existsByEmail(updateDTO.getEmail())) {
-                throw new IllegalArgumentException("Usuário com email '" + updateDTO.getEmail() + "' já existe");
+                userRepository.existsByEmailAndCompanyId(updateDTO.getEmail(), user.getCompany().getId())) {
+                throw new IllegalArgumentException("Usuário com email '" + updateDTO.getEmail() + "' já existe nesta empresa");
             }
             user.setEmail(updateDTO.getEmail());
         }
@@ -213,10 +201,10 @@ public class UserService {
     }
     
     @Transactional(readOnly = true)
-    public boolean validateLogin(UserLoginDTO loginDTO) {
-        log.debug("Validating login for email: {}", loginDTO.getEmail());
+    public boolean validateLoginByCompany(UserLoginDTO loginDTO, UUID companyId) {
+        log.debug("Validating login for email: {} in company: {}", loginDTO.getEmail(), companyId);
         
-        User user = userRepository.findByEmail(loginDTO.getEmail())
+        User user = userRepository.findByEmailAndCompanyId(loginDTO.getEmail(), companyId)
                 .orElse(null);
         
         if (user == null) {
@@ -242,6 +230,7 @@ public class UserService {
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .companyId(user.getCompany() != null ? user.getCompany().getId() : null)
                 .departmentId(user.getDepartment() != null ? user.getDepartment().getId() : null)
                 .departmentName(user.getDepartment() != null ? user.getDepartment().getName() : null)
                 .role(user.getRole())

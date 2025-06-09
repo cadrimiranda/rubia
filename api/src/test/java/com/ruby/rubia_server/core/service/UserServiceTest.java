@@ -185,41 +185,41 @@ class UserServiceTest {
     }
     
     @Test
-    void findByEmail_ShouldReturnUser_WhenExists() {
-        when(userRepository.findByEmail("joao@test.com")).thenReturn(Optional.of(user));
+    void findByEmailAndCompany_ShouldReturnUser_WhenExists() {
+        when(userRepository.findByEmailAndCompanyId("joao@test.com", companyId)).thenReturn(Optional.of(user));
         
-        UserDTO result = userService.findByEmail("joao@test.com");
+        UserDTO result = userService.findByEmailAndCompany("joao@test.com", companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getEmail()).isEqualTo("joao@test.com");
         
-        verify(userRepository).findByEmail("joao@test.com");
+        verify(userRepository).findByEmailAndCompanyId("joao@test.com", companyId);
     }
     
     @Test
-    void findAll_ShouldReturnAllUsers() {
-        when(userRepository.findAll()).thenReturn(List.of(user));
+    void findAllByCompany_ShouldReturnAllUsers() {
+        when(userRepository.findByCompanyId(companyId)).thenReturn(List.of(user));
         
-        List<UserDTO> result = userService.findAll();
+        List<UserDTO> result = userService.findAllByCompany(companyId);
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("João Silva");
         
-        verify(userRepository).findAll();
+        verify(userRepository).findByCompanyId(companyId);
     }
     
     @Test
-    void findAvailableAgents_ShouldReturnOnlineAgents() {
+    void findAvailableAgentsByCompany_ShouldReturnOnlineAgents() {
         user.setRole(UserRole.AGENT);
         user.setIsOnline(true);
-        when(userRepository.findAll()).thenReturn(List.of(user));
+        when(userRepository.findAvailableAgentsByCompany(companyId)).thenReturn(List.of(user));
         
-        List<UserDTO> result = userService.findAvailableAgents();
+        List<UserDTO> result = userService.findAvailableAgentsByCompany(companyId);
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getRole()).isEqualTo(UserRole.AGENT);
         
-        verify(userRepository).findAll();
+        verify(userRepository).findAvailableAgentsByCompany(companyId);
     }
     
     @Test
@@ -249,27 +249,27 @@ class UserServiceTest {
         verify(userRepository).save(any(User.class));
     }
     
-    @Test
-    void validateLogin_ShouldReturnTrue_WhenCredentialsAreValid() {
-        when(userRepository.findByEmail("joao@test.com")).thenReturn(Optional.of(user));
-        
-        boolean result = userService.validateLogin(loginDTO);
-        
-        assertThat(result).isTrue();
-        
-        verify(userRepository).findByEmail("joao@test.com");
-    }
+    // @Test - Commented out as validateLogin method removed in multi-tenant system
+    // void validateLogin_ShouldReturnTrue_WhenCredentialsAreValid() {
+    //     when(userRepository.findByEmail("joao@test.com")).thenReturn(Optional.of(user));
+    //     
+    //     boolean result = userService.validateLogin(loginDTO);
+    //     
+    //     assertThat(result).isTrue();
+    //     
+    //     verify(userRepository).findByEmail("joao@test.com");
+    // }
     
-    @Test
-    void validateLogin_ShouldReturnFalse_WhenUserNotFound() {
-        when(userRepository.findByEmail("joao@test.com")).thenReturn(Optional.empty());
-        
-        boolean result = userService.validateLogin(loginDTO);
-        
-        assertThat(result).isFalse();
-        
-        verify(userRepository).findByEmail("joao@test.com");
-    }
+    // @Test - Commented out as validateLogin method removed in multi-tenant system
+    // void validateLogin_ShouldReturnFalse_WhenUserNotFound() {
+    //     when(userRepository.findByEmail("joao@test.com")).thenReturn(Optional.empty());
+    //     
+    //     boolean result = userService.validateLogin(loginDTO);
+    //     
+    //     assertThat(result).isFalse();
+    //     
+    //     verify(userRepository).findByEmail("joao@test.com");
+    // }
     
     @Test
     void delete_ShouldDeleteUser_WhenExists() {

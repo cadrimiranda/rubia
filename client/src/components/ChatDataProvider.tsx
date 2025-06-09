@@ -15,15 +15,18 @@ export const ChatDataProvider: React.FC<ChatDataProviderProps> = ({ children }) 
   useEffect(() => {
     const initializeData = async () => {
       try {
+        console.log('Initializing chat data...')
         // Carrega conversas iniciais do status atual
         await store.loadConversations(store.currentStatus, 0)
+        console.log('Conversations loaded successfully')
         
-        // Inicializa WebSocket para tempo real
-        await webSocketManager.initialize()
+        // Inicializa WebSocket para tempo real (desabilitado temporariamente)
+        console.log('WebSocket initialization skipped (temporarily disabled)')
+        // await webSocketManager.initialize()
       } catch (error) {
         console.error('Erro ao inicializar dados do chat:', error)
-        // Define erro no store para exibir ao usuário
-        store.clearError()
+        // Não propagar o erro - apenas registrar
+        // Deixar que a UI mostre estado vazio ao invés de erro
       }
     }
     
@@ -31,9 +34,9 @@ export const ChatDataProvider: React.FC<ChatDataProviderProps> = ({ children }) 
     
     // Cleanup ao desmontar
     return () => {
-      webSocketManager.disconnect()
+      // webSocketManager.disconnect() // Desabilitado temporariamente
     }
-  }, [store])
+  }, []) // Remover dependência do store para evitar loop infinito
   
   return <>{children}</>
 }

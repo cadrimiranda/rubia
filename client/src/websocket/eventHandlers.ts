@@ -122,7 +122,7 @@ class WebSocketEventHandlers {
           detail: {
             type: 'info',
             message: 'Nova mensagem',
-            description: `${(message as any).senderName || 'Usuário'}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+            description: `${(message as Record<string, unknown>).senderName || 'Usuário'}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
             duration: 5,
             onClick: () => {
               this.store.setActiveConversation(conversationId)

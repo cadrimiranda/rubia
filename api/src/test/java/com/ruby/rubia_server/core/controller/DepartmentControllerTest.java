@@ -36,6 +36,9 @@ class DepartmentControllerTest {
     @MockBean
     private DepartmentService departmentService;
     
+    @MockBean
+    private com.ruby.rubia_server.core.util.CompanyContextUtil companyContextUtil;
+    
     @Autowired
     private ObjectMapper objectMapper;
     
@@ -76,7 +79,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void create_ShouldReturnCreated_WhenValidData() throws Exception {
-        when(departmentService.create(any(CreateDepartmentDTO.class))).thenReturn(departmentDTO);
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.create(any(CreateDepartmentDTO.class), eq(companyId))).thenReturn(departmentDTO);
         
         mockMvc.perform(post("/api/departments")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -107,7 +111,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void findById_ShouldReturnDepartment_WhenExists() throws Exception {
-        when(departmentService.findById(departmentId)).thenReturn(departmentDTO);
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.findById(departmentId, companyId)).thenReturn(departmentDTO);
         
         mockMvc.perform(get("/api/departments/{id}", departmentId))
                 .andExpect(status().isOk())
@@ -118,7 +123,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void findById_ShouldReturnNotFound_WhenNotExists() throws Exception {
-        when(departmentService.findById(departmentId))
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.findById(departmentId, companyId))
                 .thenThrow(new IllegalArgumentException("Departamento não encontrado"));
         
         mockMvc.perform(get("/api/departments/{id}", departmentId))
@@ -128,7 +134,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void findAll_ShouldReturnAllDepartments() throws Exception {
-        when(departmentService.findAll()).thenReturn(List.of(departmentDTO));
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.findAll(companyId)).thenReturn(List.of(departmentDTO));
         
         mockMvc.perform(get("/api/departments"))
                 .andExpect(status().isOk())
@@ -140,7 +147,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void findAll_ShouldReturnAutoAssignOnly_WhenParameterIsTrue() throws Exception {
-        when(departmentService.findByAutoAssign()).thenReturn(List.of(departmentDTO));
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.findByAutoAssign(companyId)).thenReturn(List.of(departmentDTO));
         
         mockMvc.perform(get("/api/departments")
                 .param("autoAssignOnly", "true"))
@@ -152,7 +160,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void update_ShouldReturnUpdatedDepartment_WhenValidData() throws Exception {
-        when(departmentService.update(eq(departmentId), any(UpdateDepartmentDTO.class)))
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.update(eq(departmentId), any(UpdateDepartmentDTO.class), eq(companyId)))
                 .thenReturn(departmentDTO);
         
         mockMvc.perform(put("/api/departments/{id}", departmentId)
@@ -166,7 +175,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void update_ShouldReturnNotFound_WhenNotExists() throws Exception {
-        when(departmentService.update(eq(departmentId), any(UpdateDepartmentDTO.class)))
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        when(departmentService.update(eq(departmentId), any(UpdateDepartmentDTO.class), eq(companyId)))
                 .thenThrow(new IllegalArgumentException("Departamento não encontrado"));
         
         mockMvc.perform(put("/api/departments/{id}", departmentId)
@@ -179,6 +189,8 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void delete_ShouldReturnNoContent_WhenExists() throws Exception {
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
+        
         mockMvc.perform(delete("/api/departments/{id}", departmentId)
                 .with(csrf()))
                 .andExpect(status().isNoContent());
@@ -187,8 +199,9 @@ class DepartmentControllerTest {
     @Test
     @WithMockUser
     void delete_ShouldReturnNotFound_WhenNotExists() throws Exception {
+        when(companyContextUtil.getCurrentCompanyId()).thenReturn(companyId);
         doThrow(new IllegalArgumentException("Departamento não encontrado"))
-                .when(departmentService).delete(departmentId);
+                .when(departmentService).delete(departmentId, companyId);
         
         mockMvc.perform(delete("/api/departments/{id}", departmentId)
                 .with(csrf()))

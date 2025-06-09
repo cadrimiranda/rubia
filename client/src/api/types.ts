@@ -43,6 +43,7 @@ export interface UserDTO {
   avatarUrl?: string
   isOnline: boolean
   lastSeen?: string
+  companyId: string
   createdAt: string
   updatedAt: string
 }
@@ -128,12 +129,15 @@ export interface UpdateCustomerRequest {
 export interface LoginRequest {
   email: string
   password: string
+  companySlug?: string
 }
 
 export interface LoginResponse {
   token: string
   user: UserDTO
   expiresIn: number
+  companyId: string
+  companySlug: string
 }
 
 // Filtros para listagens

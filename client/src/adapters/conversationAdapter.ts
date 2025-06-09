@@ -22,7 +22,10 @@ class ConversationAdapter {
       isPinned: dto.isPinned,
       status: this.mapStatus(dto.status),
       assignedAgent: dto.assignedUser?.name,
-      tags: [], // TODO: implementar quando tags estiverem disponíveis
+      tags: [],
+      priority: dto.priority || 0,
+      channel: dto.channel || 'WHATSAPP',
+      closedAt: dto.closedAt ? new Date(dto.closedAt) : undefined,
       createdAt: new Date(dto.createdAt),
       updatedAt: new Date(dto.updatedAt)
     }
@@ -164,6 +167,10 @@ class ConversationAdapter {
    * Converte array de ConversationDTO para array de Chat
    */
   toChatArray(dtos: ConversationDTO[]): Chat[] {
+    if (!dtos || !Array.isArray(dtos)) {
+      console.warn('conversationAdapter.toChatArray: dtos is not a valid array:', dtos)
+      return []
+    }
     return dtos.map(dto => this.toChat(dto))
   }
 
@@ -186,11 +193,12 @@ class ConversationAdapter {
   /**
    * Cria um request DTO para criar nova conversa
    */
-  toCreateRequest(customerId: string, departmentId?: string) {
+  toCreateRequest(customerId: string, departmentId?: string, priority?: number) {
     return {
       customerId,
       departmentId,
-      channel: 'WHATSAPP' as const
+      channel: 'WHATSAPP' as const,
+      priority: priority || 0
     }
   }
 
@@ -201,11 +209,13 @@ class ConversationAdapter {
     assignedUserId?: string
     status?: ChatStatus
     isPinned?: boolean
+    priority?: number
   }) {
     return {
       assignedUserId: data.assignedUserId,
       status: data.status ? this.mapStatusToBackend(data.status) : undefined,
-      isPinned: data.isPinned
+      isPinned: data.isPinned,
+      priority: data.priority
     }
   }
 

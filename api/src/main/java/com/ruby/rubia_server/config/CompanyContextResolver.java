@@ -25,9 +25,28 @@ public class CompanyContextResolver {
         }
 
         // Fallback to subdomain resolution
-        String host = request.getHeader("Host");
+        String host = request.getHeader("Origin");
+        if (host != null) {
+            // Extract host from Origin URL (http://rubia.localhost:3000 -> rubia.localhost:3000)
+            try {
+                java.net.URL url = new java.net.URL(host);
+                host = url.getHost();
+                if (url.getPort() != -1) {
+                    host = host + ":" + url.getPort();
+                }
+            } catch (Exception e) {
+                log.debug("Failed to parse Origin header: {}", host);
+                host = null;
+            }
+        }
+        
+        // Fallback to Host header if Origin not available
         if (host == null) {
-            log.warn("No Host header found in request");
+            host = request.getHeader("Host");
+        }
+        
+        if (host == null) {
+            log.warn("No Origin or Host header found in request");
             return Optional.empty();
         }
 
@@ -56,19 +75,19 @@ public class CompanyContextResolver {
         // localhost -> null (development)
         // rubia.com -> null (main domain)
         
-        if (host.equals("localhost") || host.equals("rubia.com") || host.equals("www.rubia.com")) {
-            return null;
-        }
+//        if (host.equals("localhost") || host.startsWith("localhost:") || host.equals("rubia.com") || host.equals("www.rubia.com")) {
+//            return null;
+//        }
+//
+//        // Handle rubia.localhost pattern
+//        if (host.equals("rubia.localhost") || host.startsWith("rubia.localhost:")) {
+//            return "rubia";
+//        }
 
         // Extract subdomain
         String[] parts = host.split("\\.");
-        if (parts.length >= 3) {
+        if (parts.length >= 1) {
             // company.rubia.com
-            return parts[0];
-        }
-
-        // If only one part and not localhost, treat as company slug for development
-        if (parts.length == 1 && !host.equals("localhost")) {
             return parts[0];
         }
 

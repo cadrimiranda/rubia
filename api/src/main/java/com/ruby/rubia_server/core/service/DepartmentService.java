@@ -24,14 +24,14 @@ public class DepartmentService {
     private final DepartmentRepository departmentRepository;
     private final CompanyRepository companyRepository;
     
-    public DepartmentDTO create(CreateDepartmentDTO createDTO) {
-        log.info("Creating department with name: {}", createDTO.getName());
+    public DepartmentDTO create(CreateDepartmentDTO createDTO, UUID companyId) {
+        log.info("Creating department with name: {} for company: {}", createDTO.getName(), companyId);
         
-        if (departmentRepository.existsByName(createDTO.getName())) {
+        if (departmentRepository.existsByNameAndCompanyId(createDTO.getName(), companyId)) {
             throw new IllegalArgumentException("Departamento com nome '" + createDTO.getName() + "' já existe");
         }
         
-        Company company = companyRepository.findById(createDTO.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
         
         Department department = Department.builder()
@@ -48,44 +48,44 @@ public class DepartmentService {
     }
     
     @Transactional(readOnly = true)
-    public DepartmentDTO findById(UUID id) {
-        log.debug("Finding department by id: {}", id);
+    public DepartmentDTO findById(UUID id, UUID companyId) {
+        log.debug("Finding department by id: {} for company: {}", id, companyId);
         
-        Department department = departmentRepository.findById(id)
+        Department department = departmentRepository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
         
         return toDTO(department);
     }
     
     @Transactional(readOnly = true)
-    public List<DepartmentDTO> findAll() {
-        log.debug("Finding all departments");
+    public List<DepartmentDTO> findAll(UUID companyId) {
+        log.debug("Finding all departments for company: {}", companyId);
         
-        return departmentRepository.findAllOrderedByName()
+        return departmentRepository.findAllByCompanyIdOrderedByName(companyId)
                 .stream()
                 .map(this::toDTO)
                 .toList();
     }
     
     @Transactional(readOnly = true)
-    public List<DepartmentDTO> findByAutoAssign() {
-        log.debug("Finding departments with auto assign enabled");
+    public List<DepartmentDTO> findByAutoAssign(UUID companyId) {
+        log.debug("Finding departments with auto assign enabled for company: {}", companyId);
         
-        return departmentRepository.findByAutoAssignTrue()
+        return departmentRepository.findByAutoAssignTrueAndCompanyId(companyId)
                 .stream()
                 .map(this::toDTO)
                 .toList();
     }
     
-    public DepartmentDTO update(UUID id, UpdateDepartmentDTO updateDTO) {
-        log.info("Updating department with id: {}", id);
+    public DepartmentDTO update(UUID id, UpdateDepartmentDTO updateDTO, UUID companyId) {
+        log.info("Updating department with id: {} for company: {}", id, companyId);
         
-        Department department = departmentRepository.findById(id)
+        Department department = departmentRepository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
         
         if (updateDTO.getName() != null) {
             if (!updateDTO.getName().equals(department.getName()) && 
-                departmentRepository.existsByName(updateDTO.getName())) {
+                departmentRepository.existsByNameAndCompanyId(updateDTO.getName(), companyId)) {
                 throw new IllegalArgumentException("Departamento com nome '" + updateDTO.getName() + "' já existe");
             }
             department.setName(updateDTO.getName());
@@ -105,14 +105,14 @@ public class DepartmentService {
         return toDTO(updated);
     }
     
-    public void delete(UUID id) {
-        log.info("Deleting department with id: {}", id);
+    public void delete(UUID id, UUID companyId) {
+        log.info("Deleting department with id: {} for company: {}", id, companyId);
         
-        if (!departmentRepository.existsById(id)) {
+        if (!departmentRepository.existsByIdAndCompanyId(id, companyId)) {
             throw new IllegalArgumentException("Departamento não encontrado");
         }
         
-        departmentRepository.deleteById(id);
+        departmentRepository.deleteByIdAndCompanyId(id, companyId);
         log.info("Department deleted successfully");
     }
     

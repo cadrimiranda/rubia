@@ -85,11 +85,11 @@ class CustomerServiceTest {
     
     @Test
     void create_ShouldCreateCustomer_WhenValidData() {
-        when(customerRepository.existsByPhone(anyString())).thenReturn(false);
-        when(customerRepository.existsByWhatsappId(anyString())).thenReturn(false);
+        when(customerRepository.existsByPhoneAndCompanyId(anyString(), any(UUID.class))).thenReturn(false);
+        when(customerRepository.existsByWhatsappIdAndCompanyId(anyString(), any(UUID.class))).thenReturn(false);
         when(customerRepository.save(any(Customer.class))).thenReturn(customer);
         
-        CustomerDTO result = customerService.create(createDTO);
+        CustomerDTO result = customerService.create(createDTO, companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getPhone()).isEqualTo("+5511999999001");
@@ -97,34 +97,34 @@ class CustomerServiceTest {
         assertThat(result.getWhatsappId()).isEqualTo("wa_001");
         assertThat(result.getIsBlocked()).isFalse();
         
-        verify(customerRepository).existsByPhone("+5511999999001");
-        verify(customerRepository).existsByWhatsappId("wa_001");
+        verify(customerRepository).existsByPhoneAndCompanyId("+5511999999001", companyId);
+        verify(customerRepository).existsByWhatsappIdAndCompanyId("wa_001", companyId);
         verify(customerRepository).save(any(Customer.class));
     }
     
     @Test
     void create_ShouldThrowException_WhenPhoneAlreadyExists() {
-        when(customerRepository.existsByPhone(anyString())).thenReturn(true);
+        when(customerRepository.existsByPhoneAndCompanyId(anyString(), any(UUID.class))).thenReturn(true);
         
-        assertThatThrownBy(() -> customerService.create(createDTO))
+        assertThatThrownBy(() -> customerService.create(createDTO, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("já existe");
         
-        verify(customerRepository).existsByPhone("+5511999999001");
+        verify(customerRepository).existsByPhoneAndCompanyId("+5511999999001", companyId);
         verify(customerRepository, never()).save(any(Customer.class));
     }
     
     @Test
     void create_ShouldThrowException_WhenWhatsappIdAlreadyExists() {
-        when(customerRepository.existsByPhone(anyString())).thenReturn(false);
-        when(customerRepository.existsByWhatsappId(anyString())).thenReturn(true);
+        when(customerRepository.existsByPhoneAndCompanyId(anyString(), any(UUID.class))).thenReturn(false);
+        when(customerRepository.existsByWhatsappIdAndCompanyId(anyString(), any(UUID.class))).thenReturn(true);
         
-        assertThatThrownBy(() -> customerService.create(createDTO))
+        assertThatThrownBy(() -> customerService.create(createDTO, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("já existe");
         
-        verify(customerRepository).existsByPhone("+5511999999001");
-        verify(customerRepository).existsByWhatsappId("wa_001");
+        verify(customerRepository).existsByPhoneAndCompanyId("+5511999999001", companyId);
+        verify(customerRepository).existsByWhatsappIdAndCompanyId("wa_001", companyId);
         verify(customerRepository, never()).save(any(Customer.class));
     }
     
@@ -132,7 +132,7 @@ class CustomerServiceTest {
     void findById_ShouldReturnCustomer_WhenExists() {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
         
-        CustomerDTO result = customerService.findById(customerId);
+        CustomerDTO result = customerService.findById(customerId, companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(customerId);
@@ -145,7 +145,7 @@ class CustomerServiceTest {
     void findById_ShouldThrowException_WhenNotExists() {
         when(customerRepository.findById(customerId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> customerService.findById(customerId))
+        assertThatThrownBy(() -> customerService.findById(customerId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrado");
         
@@ -154,64 +154,37 @@ class CustomerServiceTest {
     
     @Test
     void findByPhone_ShouldReturnCustomer_WhenExists() {
-        when(customerRepository.findByPhone("+5511999999001")).thenReturn(Optional.of(customer));
+        when(customerRepository.findByPhoneAndCompanyId("+5511999999001", companyId)).thenReturn(Optional.of(customer));
         
-        CustomerDTO result = customerService.findByPhone("+5511999999001");
+        CustomerDTO result = customerService.findByPhoneAndCompany("+5511999999001", companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getPhone()).isEqualTo("+5511999999001");
         
-        verify(customerRepository).findByPhone("+5511999999001");
+        verify(customerRepository).findByPhoneAndCompanyId("+5511999999001", companyId);
     }
     
     @Test
     void findAll_ShouldReturnAllActiveCustomers() {
-        when(customerRepository.findActiveCustomersOrderedByName()).thenReturn(List.of(customer));
+        when(customerRepository.findByCompanyId(companyId)).thenReturn(List.of(customer));
         
-        List<CustomerDTO> result = customerService.findAll();
+        List<CustomerDTO> result = customerService.findAllByCompany(companyId);
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("João Silva");
         
-        verify(customerRepository).findActiveCustomersOrderedByName();
+        verify(customerRepository).findByCompanyId(companyId);
     }
     
-    @Test
-    void findOrCreateByPhone_ShouldReturnExisting_WhenCustomerExists() {
-        when(customerRepository.findByPhone("+5511999999001")).thenReturn(Optional.of(customer));
-        
-        CustomerDTO result = customerService.findOrCreateByPhone("+5511999999001", "João Silva");
-        
-        assertThat(result).isNotNull();
-        assertThat(result.getPhone()).isEqualTo("+5511999999001");
-        
-        verify(customerRepository).findByPhone("+5511999999001");
-        verify(customerRepository, never()).save(any(Customer.class));
-    }
     
-    @Test
-    void findOrCreateByPhone_ShouldCreateNew_WhenCustomerNotExists() {
-        when(customerRepository.findByPhone("+5511999999001")).thenReturn(Optional.empty());
-        when(customerRepository.existsByPhone(anyString())).thenReturn(false);
-        when(customerRepository.save(any(Customer.class))).thenReturn(customer);
-        
-        CustomerDTO result = customerService.findOrCreateByPhone("+5511999999001", "João Silva");
-        
-        assertThat(result).isNotNull();
-        assertThat(result.getPhone()).isEqualTo("+5511999999001");
-        
-        verify(customerRepository).findByPhone("+5511999999001");
-        verify(customerRepository).existsByPhone("+5511999999001");
-        verify(customerRepository).save(any(Customer.class));
-    }
     
     @Test
     void update_ShouldUpdateCustomer_WhenValidData() {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
-        when(customerRepository.existsByWhatsappId(anyString())).thenReturn(false);
+        when(customerRepository.existsByWhatsappIdAndCompanyId(anyString(), any(UUID.class))).thenReturn(false);
         when(customerRepository.save(any(Customer.class))).thenReturn(customer);
         
-        CustomerDTO result = customerService.update(customerId, updateDTO);
+        CustomerDTO result = customerService.update(customerId, updateDTO, companyId);
         
         assertThat(result).isNotNull();
         
@@ -224,7 +197,7 @@ class CustomerServiceTest {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
         when(customerRepository.save(any(Customer.class))).thenReturn(customer);
         
-        CustomerDTO result = customerService.blockCustomer(customerId);
+        CustomerDTO result = customerService.blockCustomer(customerId, companyId);
         
         assertThat(result).isNotNull();
         
@@ -237,7 +210,7 @@ class CustomerServiceTest {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
         when(customerRepository.save(any(Customer.class))).thenReturn(customer);
         
-        CustomerDTO result = customerService.unblockCustomer(customerId);
+        CustomerDTO result = customerService.unblockCustomer(customerId, companyId);
         
         assertThat(result).isNotNull();
         
@@ -247,23 +220,23 @@ class CustomerServiceTest {
     
     @Test
     void delete_ShouldDeleteCustomer_WhenExists() {
-        when(customerRepository.existsById(customerId)).thenReturn(true);
+        when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
         
-        customerService.delete(customerId);
+        customerService.delete(customerId, companyId);
         
-        verify(customerRepository).existsById(customerId);
+        verify(customerRepository).findById(customerId);
         verify(customerRepository).deleteById(customerId);
     }
     
     @Test
     void delete_ShouldThrowException_WhenNotExists() {
-        when(customerRepository.existsById(customerId)).thenReturn(false);
+        when(customerRepository.findById(customerId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> customerService.delete(customerId))
+        assertThatThrownBy(() -> customerService.delete(customerId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrado");
         
-        verify(customerRepository).existsById(customerId);
+        verify(customerRepository).findById(customerId);
         verify(customerRepository, never()).deleteById(any());
     }
     

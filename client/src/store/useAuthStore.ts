@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { authService, type AuthUser } from '../auth/authService'
 import type { LoginRequest } from '../api/types'
+import { getCurrentCompanySlug, getCompanyFromSubdomain, buildCompanyUrl } from '../utils/company'
 
 interface AuthState {
   // Estado
@@ -13,6 +14,14 @@ interface AuthState {
   showLoginModal: boolean
   isLoggingIn: boolean
   isLoggingOut: boolean
+  
+  // Multi-tenant state
+  currentCompanySlug: string
+  companyInfo: {
+    slug: string
+    subdomain: string
+    isLocalDevelopment: boolean
+  } | null
 }
 
 interface AuthActions {
@@ -34,6 +43,11 @@ interface AuthActions {
   // Permissões
   hasPermission: (role: 'ADMIN' | 'SUPERVISOR' | 'AGENT') => boolean
   
+  // Multi-tenant
+  initializeCompanyContext: () => void
+  hasCompanyAccess: () => boolean
+  redirectToCompany: (companySlug: string) => void
+  
   // Utilitários
   initialize: () => void
 }
@@ -47,6 +61,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   showLoginModal: false,
   isLoggingIn: false,
   isLoggingOut: false,
+  
+  // Multi-tenant state inicial
+  currentCompanySlug: '',
+  companyInfo: null,
 
   // Login
   login: async (credentials: LoginRequest) => {
@@ -115,21 +133,27 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     }
   },
 
-  // Verificar autenticação
+  // Verificar autenticação com contexto da empresa
   checkAuth: () => {
     try {
       const isAuthenticated = authService.isAuthenticated()
       const user = authService.getCurrentUser()
+      const hasAccess = authService.hasCompanyAccess()
       
       set({
-        isAuthenticated,
-        user,
+        isAuthenticated: isAuthenticated && hasAccess,
+        user: hasAccess ? user : null,
         isLoading: false
       })
       
-      // Se não autenticado, mostrar modal de login
-      if (!isAuthenticated) {
+      // Se não autenticado ou sem acesso à empresa, mostrar modal de login
+      if (!isAuthenticated || !hasAccess) {
         set({ showLoginModal: true })
+        
+        // Se o usuário tem token mas não tem acesso à empresa atual, redirecionar
+        if (isAuthenticated && !hasAccess && user) {
+          get().redirectToCompany(user.companySlug)
+        }
       }
       
     } catch (error) {
@@ -192,10 +216,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     }
   },
 
-  // Definir status online
+  // Definir status online (temporariamente desabilitado)
   setOnlineStatus: async (isOnline: boolean) => {
     const state = get()
     if (!state.user) return
+
+    // Temporariamente desabilitado para evitar erros de CORS
+    console.log('Online status update skipped:', isOnline)
+    return
 
     try {
       await authService.updateOnlineStatus(isOnline)
@@ -233,11 +261,39 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     return authService.hasPermission(requiredRole)
   },
 
+  // Inicializar contexto da empresa
+  initializeCompanyContext: () => {
+    const companyInfo = getCompanyFromSubdomain()
+    const currentCompanySlug = getCurrentCompanySlug()
+    
+    set({
+      companyInfo,
+      currentCompanySlug
+    })
+  },
+
+  // Verificar se tem acesso à empresa atual
+  hasCompanyAccess: () => {
+    return authService.hasCompanyAccess()
+  },
+
+  // Redirecionar para empresa específica
+  redirectToCompany: (companySlug: string) => {
+    const currentPath = window.location.pathname + window.location.search
+    const companyUrl = buildCompanyUrl(companySlug, currentPath)
+    
+    // Redirecionar para a URL da empresa
+    window.location.href = companyUrl
+  },
+
   // Inicializar store
   initialize: () => {
     set({ isLoading: true })
     
-    // Verificar autenticação inicial
+    // Inicializar contexto da empresa primeiro
+    get().initializeCompanyContext()
+    
+    // Depois verificar autenticação
     get().checkAuth()
     
     // Configurar listeners para renovação automática de token
@@ -304,6 +360,20 @@ export const useHasPermission = (role: 'ADMIN' | 'SUPERVISOR' | 'AGENT') => {
 // Hook para dados do usuário atual
 export const useCurrentUser = () => {
   return useAuthStore(state => state.user)
+}
+
+// Hook para contexto da empresa
+export const useCompanyContext = () => {
+  return useAuthStore(state => ({
+    currentCompanySlug: state.currentCompanySlug,
+    companyInfo: state.companyInfo,
+    hasCompanyAccess: state.hasCompanyAccess
+  }))
+}
+
+// Hook para verificar acesso à empresa
+export const useHasCompanyAccess = () => {
+  return useAuthStore(state => state.hasCompanyAccess())
 }
 
 // Hook para estado de loading

@@ -82,127 +82,127 @@ class DepartmentServiceTest {
     
     @Test
     void create_ShouldCreateDepartment_WhenValidData() {
-        when(departmentRepository.existsByName(anyString())).thenReturn(false);
+        when(departmentRepository.existsByNameAndCompanyId(anyString(), any(UUID.class))).thenReturn(false);
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(departmentRepository.save(any(Department.class))).thenReturn(department);
         
-        DepartmentDTO result = departmentService.create(createDTO);
+        DepartmentDTO result = departmentService.create(createDTO, companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getName()).isEqualTo("Comercial");
         assertThat(result.getDescription()).isEqualTo("Departamento comercial");
         assertThat(result.getAutoAssign()).isTrue();
         
-        verify(departmentRepository).existsByName("Comercial");
+        verify(departmentRepository).existsByNameAndCompanyId("Comercial", companyId);
         verify(companyRepository).findById(companyId);
         verify(departmentRepository).save(any(Department.class));
     }
     
     @Test
     void create_ShouldThrowException_WhenNameAlreadyExists() {
-        when(departmentRepository.existsByName(anyString())).thenReturn(true);
+        when(departmentRepository.existsByNameAndCompanyId(anyString(), any(UUID.class))).thenReturn(true);
         
-        assertThatThrownBy(() -> departmentService.create(createDTO))
+        assertThatThrownBy(() -> departmentService.create(createDTO, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("já existe");
         
-        verify(departmentRepository).existsByName("Comercial");
+        verify(departmentRepository).existsByNameAndCompanyId("Comercial", companyId);
         verify(departmentRepository, never()).save(any(Department.class));
     }
     
     @Test
     void findById_ShouldReturnDepartment_WhenExists() {
-        when(departmentRepository.findById(departmentId)).thenReturn(Optional.of(department));
+        when(departmentRepository.findByIdAndCompanyId(departmentId, companyId)).thenReturn(Optional.of(department));
         
-        DepartmentDTO result = departmentService.findById(departmentId);
+        DepartmentDTO result = departmentService.findById(departmentId, companyId);
         
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(departmentId);
         assertThat(result.getName()).isEqualTo("Comercial");
         
-        verify(departmentRepository).findById(departmentId);
+        verify(departmentRepository).findByIdAndCompanyId(departmentId, companyId);
     }
     
     @Test
     void findById_ShouldThrowException_WhenNotExists() {
-        when(departmentRepository.findById(departmentId)).thenReturn(Optional.empty());
+        when(departmentRepository.findByIdAndCompanyId(departmentId, companyId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> departmentService.findById(departmentId))
+        assertThatThrownBy(() -> departmentService.findById(departmentId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrado");
         
-        verify(departmentRepository).findById(departmentId);
+        verify(departmentRepository).findByIdAndCompanyId(departmentId, companyId);
     }
     
     @Test
     void findAll_ShouldReturnAllDepartments() {
-        when(departmentRepository.findAllOrderedByName()).thenReturn(List.of(department));
+        when(departmentRepository.findAllByCompanyIdOrderedByName(companyId)).thenReturn(List.of(department));
         
-        List<DepartmentDTO> result = departmentService.findAll();
+        List<DepartmentDTO> result = departmentService.findAll(companyId);
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Comercial");
         
-        verify(departmentRepository).findAllOrderedByName();
+        verify(departmentRepository).findAllByCompanyIdOrderedByName(companyId);
     }
     
     @Test
     void findByAutoAssign_ShouldReturnFilteredDepartments() {
-        when(departmentRepository.findByAutoAssignTrue()).thenReturn(List.of(department));
+        when(departmentRepository.findByAutoAssignTrueAndCompanyId(companyId)).thenReturn(List.of(department));
         
-        List<DepartmentDTO> result = departmentService.findByAutoAssign();
+        List<DepartmentDTO> result = departmentService.findByAutoAssign(companyId);
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getAutoAssign()).isTrue();
         
-        verify(departmentRepository).findByAutoAssignTrue();
+        verify(departmentRepository).findByAutoAssignTrueAndCompanyId(companyId);
     }
     
     @Test
     void update_ShouldUpdateDepartment_WhenValidData() {
-        when(departmentRepository.findById(departmentId)).thenReturn(Optional.of(department));
-        when(departmentRepository.existsByName(anyString())).thenReturn(false);
+        when(departmentRepository.findByIdAndCompanyId(departmentId, companyId)).thenReturn(Optional.of(department));
+        when(departmentRepository.existsByNameAndCompanyId(anyString(), any(UUID.class))).thenReturn(false);
         when(departmentRepository.save(any(Department.class))).thenReturn(department);
         
-        DepartmentDTO result = departmentService.update(departmentId, updateDTO);
+        DepartmentDTO result = departmentService.update(departmentId, updateDTO, companyId);
         
         assertThat(result).isNotNull();
         
-        verify(departmentRepository).findById(departmentId);
+        verify(departmentRepository).findByIdAndCompanyId(departmentId, companyId);
         verify(departmentRepository).save(any(Department.class));
     }
     
     @Test
     void update_ShouldThrowException_WhenNotExists() {
-        when(departmentRepository.findById(departmentId)).thenReturn(Optional.empty());
+        when(departmentRepository.findByIdAndCompanyId(departmentId, companyId)).thenReturn(Optional.empty());
         
-        assertThatThrownBy(() -> departmentService.update(departmentId, updateDTO))
+        assertThatThrownBy(() -> departmentService.update(departmentId, updateDTO, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrado");
         
-        verify(departmentRepository).findById(departmentId);
+        verify(departmentRepository).findByIdAndCompanyId(departmentId, companyId);
         verify(departmentRepository, never()).save(any(Department.class));
     }
     
     @Test
     void delete_ShouldDeleteDepartment_WhenExists() {
-        when(departmentRepository.existsById(departmentId)).thenReturn(true);
+        when(departmentRepository.existsByIdAndCompanyId(departmentId, companyId)).thenReturn(true);
         
-        departmentService.delete(departmentId);
+        departmentService.delete(departmentId, companyId);
         
-        verify(departmentRepository).existsById(departmentId);
-        verify(departmentRepository).deleteById(departmentId);
+        verify(departmentRepository).existsByIdAndCompanyId(departmentId, companyId);
+        verify(departmentRepository).deleteByIdAndCompanyId(departmentId, companyId);
     }
     
     @Test
     void delete_ShouldThrowException_WhenNotExists() {
-        when(departmentRepository.existsById(departmentId)).thenReturn(false);
+        when(departmentRepository.existsByIdAndCompanyId(departmentId, companyId)).thenReturn(false);
         
-        assertThatThrownBy(() -> departmentService.delete(departmentId))
+        assertThatThrownBy(() -> departmentService.delete(departmentId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrado");
         
-        verify(departmentRepository).existsById(departmentId);
-        verify(departmentRepository, never()).deleteById(any());
+        verify(departmentRepository).existsByIdAndCompanyId(departmentId, companyId);
+        verify(departmentRepository, never()).deleteByIdAndCompanyId(any(), any());
     }
 }

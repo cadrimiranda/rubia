@@ -1,23 +1,25 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+import { getCurrentCompanySlug } from "../utils/company";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export interface ApiResponse<T> {
-  data: T
-  success: boolean
-  message?: string
+  data: T;
+  success: boolean;
+  message?: string;
 }
 
 export interface ApiError {
-  message: string
-  status: number
-  code?: string
+  message: string;
+  status: number;
+  code?: string;
 }
 
 class ApiClient {
-  private baseURL: string
-  private tokenRefreshPromise: Promise<string> | null = null
+  private baseURL: string;
+  private tokenRefreshPromise: Promise<string> | null = null;
 
   constructor(baseURL: string) {
-    this.baseURL = baseURL
+    this.baseURL = baseURL;
   }
 
   private async request<T>(
@@ -25,57 +27,70 @@ class ApiClient {
     options: RequestInit = {},
     skipAuth = false
   ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`
-    
+    const url = `${this.baseURL}${endpoint}`;
+
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
-    }
+    };
 
-    // Adicionar token de autorização se disponível e não for para pular auth
+    // Adicionar token de autorização e contexto da empresa se disponível e não for para pular auth
     if (!skipAuth) {
-      const token = this.getAuthToken()
+      const token = this.getAuthToken();
       if (token) {
         config.headers = {
           ...config.headers,
           Authorization: `Bearer ${token}`,
-        }
+        };
+      }
+
+      // Adicionar contexto da empresa para multi-tenant
+      const companySlug = getCurrentCompanySlug();
+      if (companySlug) {
+        config.headers = {
+          ...config.headers,
+          "X-Company-Slug": companySlug,
+        };
       }
     }
 
     try {
-      const response = await fetch(url, config)
+      const response = await fetch(url, config);
 
       // Interceptar erro 401 (não autorizado) para renovar token
-      if (response.status === 401 && !skipAuth && !endpoint.includes('/auth/')) {
+      if (
+        response.status === 401 &&
+        !skipAuth &&
+        !endpoint.includes("/auth/")
+      ) {
         try {
-          const newToken = await this.handleTokenRefresh()
-          
+          const newToken = await this.handleTokenRefresh();
+
           // Tentar novamente com o novo token
           config.headers = {
             ...config.headers,
             Authorization: `Bearer ${newToken}`,
-          }
-          
-          const retryResponse = await fetch(url, config)
+          };
+
+          const retryResponse = await fetch(url, config);
           if (retryResponse.ok) {
-            const contentType = retryResponse.headers.get('content-type')
-            if (contentType && contentType.includes('application/json')) {
-              return await retryResponse.json()
+            const contentType = retryResponse.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              return await retryResponse.json();
             }
-            return retryResponse.text() as unknown as T
+            return retryResponse.text() as unknown as T;
           }
         } catch (refreshError) {
-          console.warn('Falha ao renovar token:', refreshError)
-          this.handleAuthError()
+          console.warn("Falha ao renovar token:", refreshError);
+          this.handleAuthError();
           throw {
-            message: 'Sessão expirada. Faça login novamente.',
+            message: "Sessão expirada. Faça login novamente.",
             status: 401,
-            code: 'TOKEN_EXPIRED'
-          } as ApiError
+            code: "TOKEN_EXPIRED",
+          } as ApiError;
         }
       }
 
@@ -83,138 +98,142 @@ class ApiClient {
         const error: ApiError = {
           message: `HTTP ${response.status}: ${response.statusText}`,
           status: response.status,
-        }
+        };
 
         // Tentar extrair mensagem de erro do body
         try {
-          const errorData = await response.json()
-          error.message = errorData.message || error.message
-          error.code = errorData.code
+          const errorData = await response.json();
+          error.message = errorData.message || error.message;
+          error.code = errorData.code;
         } catch {
           // Manter mensagem padrão se não conseguir parsear JSON
         }
 
         // Se for erro 403, tratar como falta de permissão
         if (response.status === 403) {
-          error.message = 'Você não tem permissão para realizar esta ação'
-          error.code = 'INSUFFICIENT_PERMISSIONS'
+          error.message = "Você não tem permissão para realizar esta ação";
+          error.code = "INSUFFICIENT_PERMISSIONS";
         }
 
-        throw error
+        throw error;
       }
 
-      const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json()
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
       }
 
-      return response.text() as unknown as T
+      return response.text() as unknown as T;
     } catch (error) {
-      if (error instanceof Error && error.name === 'TypeError') {
+      if (error instanceof Error && error.name === "TypeError") {
         throw {
-          message: 'Erro de conexão com o servidor',
+          message: "Erro de conexão com o servidor",
           status: 0,
-          code: 'NETWORK_ERROR'
-        } as ApiError
+          code: "NETWORK_ERROR",
+        } as ApiError;
       }
-      throw error
+      throw error;
     }
   }
 
   private getAuthToken(): string | null {
-    return localStorage.getItem('auth_token')
+    return localStorage.getItem("auth_token");
   }
 
   private async handleTokenRefresh(): Promise<string> {
     // Evitar múltiplas tentativas de refresh simultâneas
     if (this.tokenRefreshPromise) {
-      return this.tokenRefreshPromise
+      return this.tokenRefreshPromise;
     }
 
-    this.tokenRefreshPromise = this.performTokenRefresh()
-    
+    this.tokenRefreshPromise = this.performTokenRefresh();
+
     try {
-      const newToken = await this.tokenRefreshPromise
-      return newToken
+      const newToken = await this.tokenRefreshPromise;
+      return newToken;
     } finally {
-      this.tokenRefreshPromise = null
+      this.tokenRefreshPromise = null;
     }
   }
 
   private async performTokenRefresh(): Promise<string> {
-    const refreshToken = localStorage.getItem('refresh_token')
+    const refreshToken = localStorage.getItem("refresh_token");
     if (!refreshToken) {
-      throw new Error('Não há refresh token disponível')
+      throw new Error("Não há refresh token disponível");
     }
 
     // Fazer chamada de refresh sem auth para evitar loop
     const response = await this.request<{ token: string; expiresIn: number }>(
-      '/api/auth/refresh',
+      "/api/auth/refresh",
       {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken })
+        method: "POST",
+        body: JSON.stringify({ refreshToken }),
       },
       true // skipAuth = true
-    )
+    );
 
     // Salvar novo token
-    localStorage.setItem('auth_token', response.token)
-    localStorage.setItem('token_expires_at', (Date.now() + (response.expiresIn * 1000)).toString())
+    localStorage.setItem("auth_token", response.token);
+    localStorage.setItem(
+      "token_expires_at",
+      (Date.now() + response.expiresIn * 1000).toString()
+    );
 
-    return response.token
+    return response.token;
   }
 
   private handleAuthError(): void {
-    // Limpar dados de auth
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('auth_user')
-    localStorage.removeItem('token_expires_at')
+    // Limpar dados de auth incluindo company context
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("token_expires_at");
+    localStorage.removeItem("auth_company");
 
     // Notificar store de auth (se disponível)
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:logout'))
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("auth:logout"));
     }
   }
 
   async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-    const url = new URL(`${this.baseURL}${endpoint}`)
+    const url = new URL(`${this.baseURL}${endpoint}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value)
-      })
+        url.searchParams.append(key, value);
+      });
     }
 
-    return this.request<T>(url.pathname + url.search)
+    return this.request<T>(url.pathname + url.search);
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: data ? JSON.stringify(data) : undefined,
-    })
+    });
   }
 
   async put<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'PUT',
+      method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
-    })
+    });
   }
 
   async patch<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'PATCH',
+      method: "PATCH",
       body: data ? JSON.stringify(data) : undefined,
-    })
+    });
   }
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'DELETE',
-    })
+      method: "DELETE",
+    });
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL)
-export default apiClient
+export const apiClient = new ApiClient(API_BASE_URL);
+export default apiClient;

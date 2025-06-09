@@ -4,6 +4,7 @@ import com.ruby.rubia_server.core.dto.CreateDepartmentDTO;
 import com.ruby.rubia_server.core.dto.DepartmentDTO;
 import com.ruby.rubia_server.core.dto.UpdateDepartmentDTO;
 import com.ruby.rubia_server.core.service.DepartmentService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,13 +22,15 @@ import java.util.UUID;
 public class DepartmentController {
     
     private final DepartmentService departmentService;
+    private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
     public ResponseEntity<DepartmentDTO> create(@Valid @RequestBody CreateDepartmentDTO createDTO) {
         log.info("Creating department: {}", createDTO.getName());
         
         try {
-            DepartmentDTO created = departmentService.create(createDTO);
+            UUID companyId = companyContextUtil.getCurrentCompanyId();
+            DepartmentDTO created = departmentService.create(createDTO, companyId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             log.warn("Error creating department: {}", e.getMessage());
@@ -40,7 +43,8 @@ public class DepartmentController {
         log.debug("Finding department by id: {}", id);
         
         try {
-            DepartmentDTO department = departmentService.findById(id);
+            UUID companyId = companyContextUtil.getCurrentCompanyId();
+            DepartmentDTO department = departmentService.findById(id, companyId);
             return ResponseEntity.ok(department);
         } catch (IllegalArgumentException e) {
             log.warn("Department not found: {}", id);
@@ -53,9 +57,10 @@ public class DepartmentController {
             @RequestParam(required = false, defaultValue = "false") boolean autoAssignOnly) {
         log.debug("Finding all departments, autoAssignOnly: {}", autoAssignOnly);
         
+        UUID companyId = companyContextUtil.getCurrentCompanyId();
         List<DepartmentDTO> departments = autoAssignOnly 
-            ? departmentService.findByAutoAssign()
-            : departmentService.findAll();
+            ? departmentService.findByAutoAssign(companyId)
+            : departmentService.findAll(companyId);
             
         return ResponseEntity.ok(departments);
     }
@@ -66,7 +71,8 @@ public class DepartmentController {
         log.info("Updating department: {}", id);
         
         try {
-            DepartmentDTO updated = departmentService.update(id, updateDTO);
+            UUID companyId = companyContextUtil.getCurrentCompanyId();
+            DepartmentDTO updated = departmentService.update(id, updateDTO, companyId);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             log.warn("Error updating department: {}", e.getMessage());
@@ -82,7 +88,8 @@ public class DepartmentController {
         log.info("Deleting department: {}", id);
         
         try {
-            departmentService.delete(id);
+            UUID companyId = companyContextUtil.getCurrentCompanyId();
+            departmentService.delete(id, companyId);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             log.warn("Error deleting department: {}", e.getMessage());

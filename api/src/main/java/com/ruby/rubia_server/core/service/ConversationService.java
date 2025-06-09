@@ -35,22 +35,35 @@ public class ConversationService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     
-    public ConversationDTO create(CreateConversationDTO createDTO) {
-        log.info("Creating conversation for customer: {}", createDTO.getCustomerId());
+    public ConversationDTO create(CreateConversationDTO createDTO, UUID companyId) {
+        log.info("Creating conversation for customer: {} in company: {}", createDTO.getCustomerId(), companyId);
         
         Customer customer = customerRepository.findById(createDTO.getCustomerId())
                 .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+        
+        // Validate customer belongs to company
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Cliente não pertence a esta empresa");
+        }
         
         User assignedUser = null;
         if (createDTO.getAssignedUserId() != null) {
             assignedUser = userRepository.findById(createDTO.getAssignedUserId())
                     .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+            // Validate user belongs to company
+            if (!assignedUser.getCompany().getId().equals(companyId)) {
+                throw new IllegalArgumentException("Usuário não pertence a esta empresa");
+            }
         }
         
         Department department = null;
         if (createDTO.getDepartmentId() != null) {
             department = departmentRepository.findById(createDTO.getDepartmentId())
                     .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
+            // Validate department belongs to company
+            if (!department.getCompany().getId().equals(companyId)) {
+                throw new IllegalArgumentException("Departamento não pertence a esta empresa");
+            }
         }
         
         Conversation conversation = Conversation.builder()
@@ -70,81 +83,51 @@ public class ConversationService {
     }
     
     @Transactional(readOnly = true)
-    public ConversationDTO findById(UUID id) {
-        log.debug("Finding conversation by id: {}", id);
+    public ConversationDTO findById(UUID id, UUID companyId) {
+        log.debug("Finding conversation by id: {} for company: {}", id, companyId);
         
         Conversation conversation = conversationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
         
+        // Validate conversation belongs to company
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
+        }
+        
         return toDTO(conversation);
     }
     
-    @Transactional(readOnly = true)
-    public List<ConversationDTO> findByStatus(ConversationStatus status) {
-        log.debug("Finding conversations by status: {}", status);
-        
-        return conversationRepository.findByStatusOrderedByPriorityAndUpdatedAt(status)
-                .stream()
-                .map(this::toDTO)
-                .toList();
-    }
     
-    @Transactional(readOnly = true)
-    public Page<ConversationDTO> findByStatusWithPagination(ConversationStatus status, Pageable pageable) {
-        log.debug("Finding conversations by status with pagination: {}", status);
-        
-        return conversationRepository.findByStatusOrderedByPriorityAndUpdatedAt(status, pageable)
-                .map(this::toDTO);
-    }
     
-    @Transactional(readOnly = true)
-    public List<ConversationDTO> findByCustomer(UUID customerId) {
-        log.debug("Finding conversations by customer: {}", customerId);
-        
-        return conversationRepository.findConversationsByCustomerOrderedByUpdatedAt(customerId)
-                .stream()
-                .map(this::toDTO)
-                .toList();
-    }
     
-    @Transactional(readOnly = true)
-    public List<ConversationDTO> findByAssignedUser(UUID userId) {
-        log.debug("Finding conversations by assigned user: {}", userId);
-        
-        return conversationRepository.findByAssignedUserId(userId)
-                .stream()
-                .map(this::toDTO)
-                .toList();
-    }
     
-    @Transactional(readOnly = true)
-    public List<ConversationDTO> findUnassigned() {
-        log.debug("Finding unassigned conversations");
-        
-        return conversationRepository.findUnassignedEntranceConversations()
-                .stream()
-                .map(this::toDTO)
-                .toList();
-    }
     
     @Transactional(readOnly = true)
     public List<ConversationSummaryDTO> findSummariesByStatus(ConversationStatus status) {
         log.debug("Finding conversation summaries by status: {}", status);
         
-        return conversationRepository.findByStatusOrderedByPriorityAndUpdatedAt(status)
-                .stream()
-                .map(this::toSummaryDTO)
-                .toList();
+        // This method should not exist in a multi-tenant system
+        throw new UnsupportedOperationException("Use findSummariesByStatusAndCompany instead");
     }
     
-    public ConversationDTO assignToUser(UUID conversationId, UUID userId) {
-        log.info("Assigning conversation {} to user {}", conversationId, userId);
+    public ConversationDTO assignToUser(UUID conversationId, UUID userId, UUID companyId) {
+        log.info("Assigning conversation {} to user {} in company {}", conversationId, userId, companyId);
         
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
         
+        // Validate conversation belongs to company
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
+        }
+        
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        
+        // Validate user belongs to company
+        if (!user.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Usuário não pertence a esta empresa");
+        }
         
         conversation.setAssignedUser(user);
         conversation.setStatus(ConversationStatus.ESPERANDO);
@@ -155,11 +138,16 @@ public class ConversationService {
         return toDTO(updated);
     }
     
-    public ConversationDTO changeStatus(UUID conversationId, ConversationStatus newStatus) {
-        log.info("Changing conversation {} status to {}", conversationId, newStatus);
+    public ConversationDTO changeStatus(UUID conversationId, ConversationStatus newStatus, UUID companyId) {
+        log.info("Changing conversation {} status to {} in company {}", conversationId, newStatus, companyId);
         
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
+        
+        // Validate conversation belongs to company
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
+        }
         
         ConversationStatus oldStatus = conversation.getStatus();
         conversation.setStatus(newStatus);
@@ -176,11 +164,16 @@ public class ConversationService {
         return toDTO(updated);
     }
     
-    public ConversationDTO pinConversation(UUID conversationId) {
-        log.info("Toggling pin status for conversation: {}", conversationId);
+    public ConversationDTO pinConversation(UUID conversationId, UUID companyId) {
+        log.info("Toggling pin status for conversation: {} in company: {}", conversationId, companyId);
         
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
+        
+        // Validate conversation belongs to company
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
+        }
         
         conversation.setIsPinned(!conversation.getIsPinned());
         
@@ -190,21 +183,34 @@ public class ConversationService {
         return toDTO(updated);
     }
     
-    public ConversationDTO update(UUID id, UpdateConversationDTO updateDTO) {
-        log.info("Updating conversation with id: {}", id);
+    public ConversationDTO update(UUID id, UpdateConversationDTO updateDTO, UUID companyId) {
+        log.info("Updating conversation with id: {} for company: {}", id, companyId);
         
         Conversation conversation = conversationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
         
+        // Validate conversation belongs to company
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
+        }
+        
         if (updateDTO.getAssignedUserId() != null) {
             User user = userRepository.findById(updateDTO.getAssignedUserId())
                     .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+            // Validate user belongs to company
+            if (!user.getCompany().getId().equals(companyId)) {
+                throw new IllegalArgumentException("Usuário não pertence a esta empresa");
+            }
             conversation.setAssignedUser(user);
         }
         
         if (updateDTO.getDepartmentId() != null) {
             Department department = departmentRepository.findById(updateDTO.getDepartmentId())
                     .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
+            // Validate department belongs to company
+            if (!department.getCompany().getId().equals(companyId)) {
+                throw new IllegalArgumentException("Departamento não pertence a esta empresa");
+            }
             conversation.setDepartment(department);
         }
         
@@ -237,30 +243,80 @@ public class ConversationService {
         return toDTO(updated);
     }
     
-    public void delete(UUID id) {
-        log.info("Deleting conversation with id: {}", id);
+    public void delete(UUID id, UUID companyId) {
+        log.info("Deleting conversation with id: {} for company: {}", id, companyId);
         
-        if (!conversationRepository.existsById(id)) {
-            throw new IllegalArgumentException("Conversa não encontrada");
+        Conversation conversation = conversationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
+        
+        // Validate conversation belongs to company
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
         }
         
         conversationRepository.deleteById(id);
         log.info("Conversation deleted successfully");
     }
     
+    
+    // Company-scoped methods
     @Transactional(readOnly = true)
-    public long countByStatus(ConversationStatus status) {
-        return conversationRepository.countByStatus(status);
+    public List<ConversationDTO> findByStatusAndCompany(ConversationStatus status, UUID companyId) {
+        log.debug("Finding conversations by status: {} for company: {}", status, companyId);
+        
+        return conversationRepository.findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(status, companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
     
     @Transactional(readOnly = true)
-    public long countActiveByUser(UUID userId) {
-        return conversationRepository.countActiveConversationsByUser(userId);
+    public Page<ConversationDTO> findByStatusAndCompanyWithPagination(ConversationStatus status, UUID companyId, Pageable pageable) {
+        log.debug("Finding conversations by status: {} for company: {} with pagination", status, companyId);
+        
+        return conversationRepository.findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(status, companyId, pageable)
+                .map(this::toDTO);
     }
     
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> findByCustomerAndCompany(UUID customerId, UUID companyId) {
+        log.debug("Finding conversations by customer: {} for company: {}", customerId, companyId);
+        
+        return conversationRepository.findByCustomerIdAndCompanyId(customerId, companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> findByAssignedUserAndCompany(UUID userId, UUID companyId) {
+        log.debug("Finding conversations by assigned user: {} for company: {}", userId, companyId);
+        
+        return conversationRepository.findByAssignedUserIdAndCompanyId(userId, companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> findUnassignedByCompany(UUID companyId) {
+        log.debug("Finding unassigned conversations for company: {}", companyId);
+        
+        return conversationRepository.findUnassignedEntranceConversationsByCompany(companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public long countByStatusAndCompany(ConversationStatus status, UUID companyId) {
+        return conversationRepository.countByStatusAndCompany(status, companyId);
+    }
+
     private ConversationDTO toDTO(Conversation conversation) {
         return ConversationDTO.builder()
                 .id(conversation.getId())
+                .companyId(conversation.getCompany() != null ? conversation.getCompany().getId() : null)
                 .customerId(conversation.getCustomer().getId())
                 .customerName(conversation.getCustomer().getName())
                 .customerPhone(conversation.getCustomer().getPhone())

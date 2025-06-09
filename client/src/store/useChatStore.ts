@@ -166,7 +166,8 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
         20
       )
       
-      const newChats = conversationAdapter.toChatArray(response.content)
+      
+      const newChats = conversationAdapter.toChatArray(response?.content || [])
       
       set({
         chats: page === 0 ? newChats : [...state.chats, ...newChats],
@@ -584,13 +585,19 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
     const state = get()
     const { chats, currentStatus, searchQuery } = state
     
+    // Adicionar verificação de segurança
+    if (!Array.isArray(chats)) {
+      console.warn('chats is not an array:', chats)
+      return []
+    }
+    
     let filtered = chats.filter(chat => chat.status === currentStatus)
     
     if (searchQuery.trim()) {
       filtered = filtered.filter(chat => 
-        chat.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        chat.contact.phone?.includes(searchQuery) ||
-        chat.lastMessage?.content.toLowerCase().includes(searchQuery.toLowerCase())
+        chat.contact?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        chat.contact?.phone?.includes(searchQuery) ||
+        (chat.lastMessage?.content && chat.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
     

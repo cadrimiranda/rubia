@@ -13,7 +13,13 @@ class MessageAdapter {
       senderId: this.mapSenderId(dto),
       messageType: this.mapMessageType(dto.messageType),
       status: this.mapStatus(dto.status),
-      isFromUser: this.isFromUser(dto.senderType)
+      isFromUser: this.isFromUser(dto.senderType),
+      mediaUrl: dto.mediaUrl,
+      externalMessageId: dto.externalMessageId,
+      isAiGenerated: dto.isAiGenerated || false,
+      aiConfidence: dto.aiConfidence ? Number(dto.aiConfidence) : undefined,
+      deliveredAt: dto.deliveredAt ? new Date(dto.deliveredAt) : undefined,
+      readAt: dto.readAt ? new Date(dto.readAt) : undefined
     }
   }
 
@@ -111,18 +117,19 @@ class MessageAdapter {
   /**
    * Cria um request DTO para enviar nova mensagem
    */
-  toCreateRequest(content: string, messageType?: 'text' | 'image' | 'file' | 'audio', mediaUrl?: string) {
+  toCreateRequest(content: string, messageType?: 'text' | 'image' | 'file' | 'audio', mediaUrl?: string, isAiGenerated?: boolean) {
     return {
       content,
       messageType: messageType ? this.mapMessageTypeToBackend(messageType) : 'TEXT',
-      mediaUrl
+      mediaUrl,
+      isAiGenerated: isAiGenerated || false
     }
   }
 
   /**
    * Cria uma mensagem temporária para otimistic updates
    */
-  createTempMessage(content: string, messageType: 'text' | 'image' | 'file' | 'audio' = 'text'): Message {
+  createTempMessage(content: string, messageType: 'text' | 'image' | 'file' | 'audio' = 'text', mediaUrl?: string): Message {
     return {
       id: `temp-${Date.now()}-${Math.random()}`,
       content,
@@ -130,7 +137,9 @@ class MessageAdapter {
       senderId: 'agent', // Assumimos que é sempre do agente
       messageType,
       status: 'sending',
-      isFromUser: true
+      isFromUser: true,
+      mediaUrl,
+      isAiGenerated: false
     }
   }
 
@@ -142,7 +151,13 @@ class MessageAdapter {
       ...existingMessage,
       content: dto.content,
       status: this.mapStatus(dto.status),
-      timestamp: new Date(dto.createdAt)
+      timestamp: new Date(dto.createdAt),
+      mediaUrl: dto.mediaUrl,
+      externalMessageId: dto.externalMessageId,
+      isAiGenerated: dto.isAiGenerated || false,
+      aiConfidence: dto.aiConfidence ? Number(dto.aiConfidence) : undefined,
+      deliveredAt: dto.deliveredAt ? new Date(dto.deliveredAt) : undefined,
+      readAt: dto.readAt ? new Date(dto.readAt) : undefined
     }
   }
 

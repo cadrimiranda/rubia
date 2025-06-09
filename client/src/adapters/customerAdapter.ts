@@ -12,7 +12,9 @@ class CustomerAdapter {
       avatar: dto.profileUrl || this.generateAvatarUrl(dto.name || dto.phone),
       isOnline: false, // Sempre false para customers (eles não têm status online)
       lastSeen: dto.updatedAt ? new Date(dto.updatedAt) : undefined,
-      phone: dto.phone
+      phone: dto.phone,
+      whatsappId: dto.whatsappId,
+      isBlocked: dto.isBlocked || false
     }
   }
 
@@ -88,13 +90,16 @@ class CustomerAdapter {
   toUpdateRequest(data: {
     name?: string
     profileUrl?: string
+    isBlocked?: boolean
   }): {
     name?: string
     profileUrl?: string
+    isBlocked?: boolean
   } {
     return {
       name: data.name?.trim(),
-      profileUrl: data.profileUrl
+      profileUrl: data.profileUrl,
+      isBlocked: data.isBlocked
     }
   }
 
@@ -158,6 +163,8 @@ class CustomerAdapter {
       name: dto.name || this.formatPhoneAsName(dto.phone),
       avatar: dto.profileUrl || existingUser.avatar,
       phone: dto.phone,
+      whatsappId: dto.whatsappId,
+      isBlocked: dto.isBlocked || false,
       lastSeen: dto.updatedAt ? new Date(dto.updatedAt) : existingUser.lastSeen
     }
   }
@@ -183,9 +190,7 @@ class CustomerAdapter {
    * Filtra customers ativos (não bloqueados)
    */
   filterActive(customers: User[]): User[] {
-    // Como o User do frontend não tem isBlocked, assumimos que todos são ativos
-    // Esta informação viria do DTO original se necessário
-    return customers
+    return customers.filter(customer => !customer.isBlocked)
   }
 
   /**
@@ -233,7 +238,9 @@ class CustomerAdapter {
       name: 'Cliente Desconhecido',
       avatar: this.generateAvatarUrl('Cliente Desconhecido'),
       isOnline: false,
-      phone: ''
+      phone: '',
+      whatsappId: undefined,
+      isBlocked: false
     }
   }
 }

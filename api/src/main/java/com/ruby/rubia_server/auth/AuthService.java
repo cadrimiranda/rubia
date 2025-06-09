@@ -7,9 +7,9 @@ import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -19,6 +19,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -34,8 +35,9 @@ public class AuthService {
             
             // Resolve company from subdomain
             Optional<Company> companyOpt = companyContextResolver.resolveCompany(httpRequest);
+            log.debug("Company resolved: {}", companyOpt.map(Company::getSlug).orElse("none"));
             if (companyOpt.isEmpty()) {
-                throw new RuntimeException("Company not found. Please check the subdomain.");
+                throw new com.ruby.rubia_server.auth.AuthenticationException("Company not found. Please check the subdomain.");
             }
             
             Company company = companyOpt.get();
@@ -43,7 +45,7 @@ public class AuthService {
             // Find user by email and company
             Optional<User> userOpt = userRepository.findByEmailAndCompanyId(request.getEmail(), company.getId());
             if (userOpt.isEmpty()) {
-                throw new RuntimeException("User not found for this company");
+                throw new com.ruby.rubia_server.auth.AuthenticationException("User not found for this company");
             }
             
             User user = userOpt.get();
@@ -64,7 +66,7 @@ public class AuthService {
             );
 
             return AuthResponse.builder()
-                .accessToken(jwtToken)
+                .token(jwtToken)
                 .user(UserInfo.builder()
                     .id(user.getId())
                     .name(user.getName())
@@ -74,10 +76,13 @@ public class AuthService {
                     .companyName(company.getName())
                     .companySlug(company.getSlug())
                     .build())
+                .expiresIn(3600)
+                .companyId(company.getId().toString())
+                .companySlug(company.getSlug())
                 .build();
                 
-        } catch (AuthenticationException e) {
-            throw new RuntimeException("Invalid credentials");
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            throw new com.ruby.rubia_server.auth.AuthenticationException("Invalid credentials");
         }
     }
 
@@ -86,7 +91,7 @@ public class AuthService {
         
         if (userEmail != null) {
             User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new com.ruby.rubia_server.auth.AuthenticationException("User not found"));
             
             if (jwtService.isTokenValid(request.getRefreshToken(), user.getEmail())) {
                 String jwtToken = jwtService.generateToken(
@@ -96,7 +101,7 @@ public class AuthService {
                 );
                 
                 return AuthResponse.builder()
-                    .accessToken(jwtToken)
+                    .token(jwtToken)
                     .user(UserInfo.builder()
                         .id(user.getId())
                         .name(user.getName())
@@ -106,11 +111,14 @@ public class AuthService {
                         .companyName(user.getCompany().getName())
                         .companySlug(user.getCompany().getSlug())
                         .build())
+                    .expiresIn(3600)
+                    .companyId(user.getCompany().getId().toString())
+                    .companySlug(user.getCompany().getSlug())
                     .build();
             }
         }
         
-        throw new RuntimeException("Invalid refresh token");
+        throw new com.ruby.rubia_server.auth.AuthenticationException("Invalid refresh token");
     }
 
     private HttpServletRequest getCurrentHttpRequest() {

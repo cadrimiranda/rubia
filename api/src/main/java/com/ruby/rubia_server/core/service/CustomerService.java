@@ -21,15 +21,15 @@ public class CustomerService {
     
     private final CustomerRepository customerRepository;
     
-    public CustomerDTO create(CreateCustomerDTO createDTO) {
-        log.info("Creating customer with phone: {}", createDTO.getPhone());
+    public CustomerDTO create(CreateCustomerDTO createDTO, UUID companyId) {
+        log.info("Creating customer with phone: {} for company: {}", createDTO.getPhone(), companyId);
         
-        if (customerRepository.existsByPhone(createDTO.getPhone())) {
-            throw new IllegalArgumentException("Cliente com telefone '" + createDTO.getPhone() + "' já existe");
+        if (customerRepository.existsByPhoneAndCompanyId(createDTO.getPhone(), companyId)) {
+            throw new IllegalArgumentException("Cliente com telefone '" + createDTO.getPhone() + "' já existe nesta empresa");
         }
         
-        if (createDTO.getWhatsappId() != null && customerRepository.existsByWhatsappId(createDTO.getWhatsappId())) {
-            throw new IllegalArgumentException("Cliente com WhatsApp ID '" + createDTO.getWhatsappId() + "' já existe");
+        if (createDTO.getWhatsappId() != null && customerRepository.existsByWhatsappIdAndCompanyId(createDTO.getWhatsappId(), companyId)) {
+            throw new IllegalArgumentException("Cliente com WhatsApp ID '" + createDTO.getWhatsappId() + "' já existe nesta empresa");
         }
         
         Customer customer = Customer.builder()
@@ -47,96 +47,35 @@ public class CustomerService {
     }
     
     @Transactional(readOnly = true)
-    public CustomerDTO findById(UUID id) {
-        log.debug("Finding customer by id: {}", id);
+    public CustomerDTO findById(UUID id, UUID companyId) {
+        log.debug("Finding customer by id: {} for company: {}", id, companyId);
         
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
         
-        return toDTO(customer);
-    }
-    
-    @Transactional(readOnly = true)
-    public CustomerDTO findByPhone(String phone) {
-        log.debug("Finding customer by phone: {}", phone);
-        
-        Customer customer = customerRepository.findByPhone(phone)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
-        
-        return toDTO(customer);
-    }
-    
-    @Transactional(readOnly = true)
-    public CustomerDTO findByWhatsappId(String whatsappId) {
-        log.debug("Finding customer by WhatsApp ID: {}", whatsappId);
-        
-        Customer customer = customerRepository.findByWhatsappId(whatsappId)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
-        
-        return toDTO(customer);
-    }
-    
-    @Transactional(readOnly = true)
-    public List<CustomerDTO> findAll() {
-        log.debug("Finding all customers");
-        
-        return customerRepository.findActiveCustomersOrderedByName()
-                .stream()
-                .map(this::toDTO)
-                .toList();
-    }
-    
-    @Transactional(readOnly = true)
-    public List<CustomerDTO> findBlocked() {
-        log.debug("Finding blocked customers");
-        
-        return customerRepository.findByIsBlockedTrue()
-                .stream()
-                .map(this::toDTO)
-                .toList();
-    }
-    
-    @Transactional(readOnly = true)
-    public List<CustomerDTO> searchByNameOrPhone(String searchTerm) {
-        log.debug("Searching customers by name or phone: {}", searchTerm);
-        
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return findAll();
+        // Validate customer belongs to company
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Cliente não pertence a esta empresa");
         }
         
-        return customerRepository.searchByNameOrPhone(searchTerm.trim())
-                .stream()
-                .map(this::toDTO)
-                .toList();
+        return toDTO(customer);
     }
     
-    public CustomerDTO findOrCreateByPhone(String phone, String name) {
-        log.info("Finding or creating customer by phone: {}", phone);
-        
-        try {
-            return findByPhone(phone);
-        } catch (IllegalArgumentException e) {
-            log.info("Customer not found, creating new one");
-            
-            CreateCustomerDTO createDTO = CreateCustomerDTO.builder()
-                    .phone(phone)
-                    .name(name)
-                    .build();
-            
-            return create(createDTO);
-        }
-    }
-    
-    public CustomerDTO update(UUID id, UpdateCustomerDTO updateDTO) {
-        log.info("Updating customer with id: {}", id);
+    public CustomerDTO update(UUID id, UpdateCustomerDTO updateDTO, UUID companyId) {
+        log.info("Updating customer with id: {} for company: {}", id, companyId);
         
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+        
+        // Validate customer belongs to company
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Cliente não pertence a esta empresa");
+        }
         
         if (updateDTO.getPhone() != null) {
             if (!updateDTO.getPhone().equals(customer.getPhone()) && 
-                customerRepository.existsByPhone(updateDTO.getPhone())) {
-                throw new IllegalArgumentException("Cliente com telefone '" + updateDTO.getPhone() + "' já existe");
+                customerRepository.existsByPhoneAndCompanyId(updateDTO.getPhone(), companyId)) {
+                throw new IllegalArgumentException("Cliente com telefone '" + updateDTO.getPhone() + "' já existe nesta empresa");
             }
             customer.setPhone(updateDTO.getPhone());
         }
@@ -147,8 +86,8 @@ public class CustomerService {
         
         if (updateDTO.getWhatsappId() != null) {
             if (!updateDTO.getWhatsappId().equals(customer.getWhatsappId()) && 
-                customerRepository.existsByWhatsappId(updateDTO.getWhatsappId())) {
-                throw new IllegalArgumentException("Cliente com WhatsApp ID '" + updateDTO.getWhatsappId() + "' já existe");
+                customerRepository.existsByWhatsappIdAndCompanyId(updateDTO.getWhatsappId(), companyId)) {
+                throw new IllegalArgumentException("Cliente com WhatsApp ID '" + updateDTO.getWhatsappId() + "' já existe nesta empresa");
             }
             customer.setWhatsappId(updateDTO.getWhatsappId());
         }
@@ -167,11 +106,16 @@ public class CustomerService {
         return toDTO(updated);
     }
     
-    public CustomerDTO blockCustomer(UUID id) {
-        log.info("Blocking customer with id: {}", id);
+    public CustomerDTO blockCustomer(UUID id, UUID companyId) {
+        log.info("Blocking customer with id: {} for company: {}", id, companyId);
         
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+        
+        // Validate customer belongs to company
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Cliente não pertence a esta empresa");
+        }
         
         customer.setIsBlocked(true);
         Customer updated = customerRepository.save(customer);
@@ -180,11 +124,16 @@ public class CustomerService {
         return toDTO(updated);
     }
     
-    public CustomerDTO unblockCustomer(UUID id) {
-        log.info("Unblocking customer with id: {}", id);
+    public CustomerDTO unblockCustomer(UUID id, UUID companyId) {
+        log.info("Unblocking customer with id: {} for company: {}", id, companyId);
         
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+        
+        // Validate customer belongs to company
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Cliente não pertence a esta empresa");
+        }
         
         customer.setIsBlocked(false);
         Customer updated = customerRepository.save(customer);
@@ -193,11 +142,15 @@ public class CustomerService {
         return toDTO(updated);
     }
     
-    public void delete(UUID id) {
-        log.info("Deleting customer with id: {}", id);
+    public void delete(UUID id, UUID companyId) {
+        log.info("Deleting customer with id: {} for company: {}", id, companyId);
         
-        if (!customerRepository.existsById(id)) {
-            throw new IllegalArgumentException("Cliente não encontrado");
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+        
+        // Validate customer belongs to company
+        if (!customer.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Cliente não pertence a esta empresa");
         }
         
         customerRepository.deleteById(id);
@@ -228,9 +181,56 @@ public class CustomerService {
         return phone; // Return as is if format is unexpected
     }
     
+    // Company-scoped methods
+    @Transactional(readOnly = true)
+    public List<CustomerDTO> findAllByCompany(UUID companyId) {
+        log.debug("Finding all customers for company: {}", companyId);
+        
+        return customerRepository.findByCompanyId(companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public CustomerDTO findByPhoneAndCompany(String phone, UUID companyId) {
+        log.debug("Finding customer by phone: {} for company: {}", phone, companyId);
+        
+        Customer customer = customerRepository.findByPhoneAndCompanyId(phone, companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado nesta empresa"));
+        
+        return toDTO(customer);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<CustomerDTO> findActiveByCompany(UUID companyId) {
+        log.debug("Finding active customers for company: {}", companyId);
+        
+        return customerRepository.findByIsBlockedFalseAndCompanyId(companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public List<CustomerDTO> searchByNameOrPhoneAndCompany(String searchTerm, UUID companyId) {
+        log.debug("Searching customers by term: {} for company: {}", searchTerm, companyId);
+        
+        return customerRepository.searchByNameOrPhoneAndCompany(searchTerm, companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public long countActiveByCompany(UUID companyId) {
+        return customerRepository.countActiveCustomersByCompany(companyId);
+    }
+
     private CustomerDTO toDTO(Customer customer) {
         return CustomerDTO.builder()
                 .id(customer.getId())
+                .companyId(customer.getCompany() != null ? customer.getCompany().getId() : null)
                 .phone(customer.getPhone())
                 .name(customer.getName())
                 .whatsappId(customer.getWhatsappId())

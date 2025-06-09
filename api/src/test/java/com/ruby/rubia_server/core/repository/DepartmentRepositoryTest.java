@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.repository;
 
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Department;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,18 +25,33 @@ class DepartmentRepositoryTest {
     
     private Department department1;
     private Department department2;
+    private Company company;
+    private UUID companyId;
     
     @BeforeEach
     void setUp() {
+        companyId = UUID.randomUUID();
+        
+        company = Company.builder()
+                .id(companyId)
+                .name("Test Company")
+                .slug("test-company")
+                .isActive(true)
+                .build();
+        
+        entityManager.persistAndFlush(company);
+        
         department1 = Department.builder()
                 .name("Comercial")
                 .description("Departamento comercial")
+                .company(company)
                 .autoAssign(true)
                 .build();
         
         department2 = Department.builder()
                 .name("Suporte")
                 .description("Departamento de suporte")
+                .company(company)
                 .autoAssign(false)
                 .build();
         
@@ -44,7 +61,7 @@ class DepartmentRepositoryTest {
     
     @Test
     void findByName_ShouldReturnDepartment_WhenExists() {
-        Optional<Department> result = departmentRepository.findByName("Comercial");
+        Optional<Department> result = departmentRepository.findByNameAndCompanyId("Comercial", companyId);
         
         assertThat(result).isPresent();
         assertThat(result.get().getName()).isEqualTo("Comercial");
@@ -53,14 +70,14 @@ class DepartmentRepositoryTest {
     
     @Test
     void findByName_ShouldReturnEmpty_WhenNotExists() {
-        Optional<Department> result = departmentRepository.findByName("Inexistente");
+        Optional<Department> result = departmentRepository.findByNameAndCompanyId("Inexistente", companyId);
         
         assertThat(result).isEmpty();
     }
     
     @Test
     void findByAutoAssignTrue_ShouldReturnFilteredDepartments() {
-        List<Department> result = departmentRepository.findByAutoAssignTrue();
+        List<Department> result = departmentRepository.findByAutoAssignTrueAndCompanyId(companyId);
         
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Comercial");
@@ -69,7 +86,7 @@ class DepartmentRepositoryTest {
     
     @Test
     void findAllOrderedByName_ShouldReturnOrderedList() {
-        List<Department> result = departmentRepository.findAllOrderedByName();
+        List<Department> result = departmentRepository.findAllByCompanyIdOrderedByName(companyId);
         
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getName()).isEqualTo("Comercial");
@@ -78,14 +95,14 @@ class DepartmentRepositoryTest {
     
     @Test
     void existsByName_ShouldReturnTrue_WhenExists() {
-        boolean result = departmentRepository.existsByName("Comercial");
+        boolean result = departmentRepository.existsByNameAndCompanyId("Comercial", companyId);
         
         assertThat(result).isTrue();
     }
     
     @Test
     void existsByName_ShouldReturnFalse_WhenNotExists() {
-        boolean result = departmentRepository.existsByName("Inexistente");
+        boolean result = departmentRepository.existsByNameAndCompanyId("Inexistente", companyId);
         
         assertThat(result).isFalse();
     }

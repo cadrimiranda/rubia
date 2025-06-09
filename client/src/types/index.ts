@@ -11,6 +11,8 @@ export interface User {
   isOnline: boolean
   lastSeen?: Date
   phone?: string
+  whatsappId?: string
+  isBlocked?: boolean
 }
 
 export interface Tag {
@@ -28,6 +30,12 @@ export interface Message {
   messageType: 'text' | 'image' | 'file' | 'audio'
   status: MessageStatus
   isFromUser: boolean
+  mediaUrl?: string
+  externalMessageId?: string
+  isAiGenerated?: boolean
+  aiConfidence?: number
+  deliveredAt?: Date
+  readAt?: Date
 }
 
 export interface Chat {
@@ -40,6 +48,9 @@ export interface Chat {
   status: ChatStatus
   assignedAgent?: string
   tags: Tag[]
+  priority?: number
+  channel?: string
+  closedAt?: Date
   createdAt: Date
   updatedAt: Date
 }

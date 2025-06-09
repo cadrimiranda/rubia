@@ -6,6 +6,7 @@ import com.ruby.rubia_server.core.dto.CreateConversationDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationDTO;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.service.ConversationService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +27,15 @@ import java.util.UUID;
 public class ConversationController {
     
     private final ConversationService conversationService;
+    private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
     public ResponseEntity<ConversationDTO> create(@Valid @RequestBody CreateConversationDTO createDTO) {
         log.info("Creating conversation for customer: {}", createDTO.getCustomerId());
         
         try {
-            ConversationDTO created = conversationService.create(createDTO);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO created = conversationService.create(createDTO, currentCompanyId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             log.warn("Error creating conversation: {}", e.getMessage());
@@ -45,7 +48,8 @@ public class ConversationController {
         log.debug("Finding conversation by id: {}", id);
         
         try {
-            ConversationDTO conversation = conversationService.findById(id);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO conversation = conversationService.findById(id, currentCompanyId);
             return ResponseEntity.ok(conversation);
         } catch (IllegalArgumentException e) {
             log.warn("Conversation not found: {}", id);
@@ -54,11 +58,13 @@ public class ConversationController {
     }
     
     @GetMapping
-    public ResponseEntity<List<ConversationDTO>> findByStatus(
-            @RequestParam ConversationStatus status) {
-        log.debug("Finding conversations by status: {}", status);
+    public ResponseEntity<Page<ConversationDTO>> findByStatus(
+            @RequestParam ConversationStatus status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        log.debug("Finding conversations by status: {} with pageable: {}", status, pageable);
         
-        List<ConversationDTO> conversations = conversationService.findByStatus(status);
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        Page<ConversationDTO> conversations = conversationService.findByStatusAndCompanyWithPagination(status, currentCompanyId, pageable);
         return ResponseEntity.ok(conversations);
     }
     
@@ -68,7 +74,8 @@ public class ConversationController {
             @PageableDefault(size = 20) Pageable pageable) {
         log.debug("Finding conversations by status with pagination: {}", status);
         
-        Page<ConversationDTO> conversations = conversationService.findByStatusWithPagination(status, pageable);
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        Page<ConversationDTO> conversations = conversationService.findByStatusAndCompanyWithPagination(status, currentCompanyId, pageable);
         return ResponseEntity.ok(conversations);
     }
     
@@ -77,15 +84,16 @@ public class ConversationController {
             @RequestParam ConversationStatus status) {
         log.debug("Finding conversation summaries by status: {}", status);
         
-        List<ConversationSummaryDTO> summaries = conversationService.findSummariesByStatus(status);
-        return ResponseEntity.ok(summaries);
+        // This endpoint is not implemented for multi-tenant - use /api/conversations instead
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
     
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<List<ConversationDTO>> findByCustomer(@PathVariable UUID customerId) {
         log.debug("Finding conversations by customer: {}", customerId);
         
-        List<ConversationDTO> conversations = conversationService.findByCustomer(customerId);
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        List<ConversationDTO> conversations = conversationService.findByCustomerAndCompany(customerId, currentCompanyId);
         return ResponseEntity.ok(conversations);
     }
     
@@ -93,7 +101,8 @@ public class ConversationController {
     public ResponseEntity<List<ConversationDTO>> findByAssignedUser(@PathVariable UUID userId) {
         log.debug("Finding conversations by assigned user: {}", userId);
         
-        List<ConversationDTO> conversations = conversationService.findByAssignedUser(userId);
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        List<ConversationDTO> conversations = conversationService.findByAssignedUserAndCompany(userId, currentCompanyId);
         return ResponseEntity.ok(conversations);
     }
     
@@ -101,7 +110,8 @@ public class ConversationController {
     public ResponseEntity<List<ConversationDTO>> findUnassigned() {
         log.debug("Finding unassigned conversations");
         
-        List<ConversationDTO> conversations = conversationService.findUnassigned();
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        List<ConversationDTO> conversations = conversationService.findUnassignedByCompany(currentCompanyId);
         return ResponseEntity.ok(conversations);
     }
     
@@ -111,7 +121,8 @@ public class ConversationController {
         log.info("Updating conversation: {}", id);
         
         try {
-            ConversationDTO updated = conversationService.update(id, updateDTO);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO updated = conversationService.update(id, updateDTO, currentCompanyId);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             log.warn("Error updating conversation: {}", e.getMessage());
@@ -128,7 +139,8 @@ public class ConversationController {
         log.info("Assigning conversation {} to user {}", conversationId, userId);
         
         try {
-            ConversationDTO assigned = conversationService.assignToUser(conversationId, userId);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO assigned = conversationService.assignToUser(conversationId, userId, currentCompanyId);
             return ResponseEntity.ok(assigned);
         } catch (IllegalArgumentException e) {
             log.warn("Error assigning conversation: {}", e.getMessage());
@@ -142,7 +154,8 @@ public class ConversationController {
         log.info("Changing conversation {} status to {}", conversationId, status);
         
         try {
-            ConversationDTO updated = conversationService.changeStatus(conversationId, status);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO updated = conversationService.changeStatus(conversationId, status, currentCompanyId);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             log.warn("Error changing conversation status: {}", e.getMessage());
@@ -155,7 +168,8 @@ public class ConversationController {
         log.info("Toggling pin status for conversation: {}", conversationId);
         
         try {
-            ConversationDTO pinned = conversationService.pinConversation(conversationId);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO pinned = conversationService.pinConversation(conversationId, currentCompanyId);
             return ResponseEntity.ok(pinned);
         } catch (IllegalArgumentException e) {
             log.warn("Error pinning conversation: {}", e.getMessage());
@@ -167,7 +181,8 @@ public class ConversationController {
     public ResponseEntity<Long> countByStatus(@RequestParam ConversationStatus status) {
         log.debug("Counting conversations by status: {}", status);
         
-        long count = conversationService.countByStatus(status);
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        long count = conversationService.countByStatusAndCompany(status, currentCompanyId);
         return ResponseEntity.ok(count);
     }
     
@@ -175,8 +190,8 @@ public class ConversationController {
     public ResponseEntity<Long> countActiveByUser(@PathVariable UUID userId) {
         log.debug("Counting active conversations by user: {}", userId);
         
-        long count = conversationService.countActiveByUser(userId);
-        return ResponseEntity.ok(count);
+        // This endpoint is not implemented for multi-tenant
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
     
     @DeleteMapping("/{id}")
@@ -184,7 +199,8 @@ public class ConversationController {
         log.info("Deleting conversation: {}", id);
         
         try {
-            conversationService.delete(id);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            conversationService.delete(id, currentCompanyId);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             log.warn("Error deleting conversation: {}", e.getMessage());

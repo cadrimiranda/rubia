@@ -5,6 +5,7 @@ import com.ruby.rubia_server.core.dto.UpdateUserDTO;
 import com.ruby.rubia_server.core.dto.UserDTO;
 import com.ruby.rubia_server.core.dto.UserLoginDTO;
 import com.ruby.rubia_server.core.service.UserService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +23,17 @@ import java.util.UUID;
 public class UserController {
     
     private final UserService userService;
+    private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
     public ResponseEntity<UserDTO> create(@Valid @RequestBody CreateUserDTO createDTO) {
         log.info("Creating user: {}", createDTO.getEmail());
         
         try {
+            // Ensure company context matches
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            createDTO.setCompanyId(currentCompanyId);
+            
             UserDTO created = userService.create(createDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
@@ -42,9 +48,14 @@ public class UserController {
         
         try {
             UserDTO user = userService.findById(id);
+            // Validate company access
+            companyContextUtil.ensureCompanyAccess(user.getCompanyId());
             return ResponseEntity.ok(user);
         } catch (IllegalArgumentException e) {
             log.warn("User not found: {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            log.warn("Access denied for user: {}", id);
             return ResponseEntity.notFound().build();
         }
     }
@@ -54,7 +65,8 @@ public class UserController {
         log.debug("Finding user by email: {}", email);
         
         try {
-            UserDTO user = userService.findByEmail(email);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            UserDTO user = userService.findByEmailAndCompany(email, currentCompanyId);
             return ResponseEntity.ok(user);
         } catch (IllegalArgumentException e) {
             log.warn("User not found: {}", email);
@@ -67,9 +79,11 @@ public class UserController {
             @RequestParam(required = false) UUID departmentId) {
         log.debug("Finding users, departmentId: {}", departmentId);
         
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        
         List<UserDTO> users = departmentId != null 
-            ? userService.findByDepartment(departmentId)
-            : userService.findAll();
+            ? userService.findByDepartmentAndCompany(departmentId, currentCompanyId)
+            : userService.findAllByCompany(currentCompanyId);
             
         return ResponseEntity.ok(users);
     }
@@ -79,9 +93,11 @@ public class UserController {
             @RequestParam(required = false) UUID departmentId) {
         log.debug("Finding available agents, departmentId: {}", departmentId);
         
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        
         List<UserDTO> agents = departmentId != null
-            ? userService.findAvailableAgentsByDepartment(departmentId)
-            : userService.findAvailableAgents();
+            ? userService.findAvailableAgentsByDepartmentAndCompany(departmentId, currentCompanyId)
+            : userService.findAvailableAgentsByCompany(currentCompanyId);
             
         return ResponseEntity.ok(agents);
     }
@@ -92,6 +108,10 @@ public class UserController {
         log.info("Updating user: {}", id);
         
         try {
+            // First check if user exists and belongs to current company
+            UserDTO existingUser = userService.findById(id);
+            companyContextUtil.ensureCompanyAccess(existingUser.getCompanyId());
+            
             UserDTO updated = userService.update(id, updateDTO);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
@@ -100,6 +120,9 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
             throw e;
+        } catch (SecurityException e) {
+            log.warn("Access denied for user update: {}", id);
+            return ResponseEntity.notFound().build();
         }
     }
     
@@ -135,7 +158,8 @@ public class UserController {
     public ResponseEntity<Boolean> login(@Valid @RequestBody UserLoginDTO loginDTO) {
         log.info("Login attempt for email: {}", loginDTO.getEmail());
         
-        boolean isValid = userService.validateLogin(loginDTO);
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        boolean isValid = userService.validateLoginByCompany(loginDTO, currentCompanyId);
         
         if (isValid) {
             log.info("Login successful for email: {}", loginDTO.getEmail());
@@ -151,10 +175,17 @@ public class UserController {
         log.info("Deleting user: {}", id);
         
         try {
+            // First check if user exists and belongs to current company
+            UserDTO existingUser = userService.findById(id);
+            companyContextUtil.ensureCompanyAccess(existingUser.getCompanyId());
+            
             userService.delete(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             log.warn("Error deleting user: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            log.warn("Access denied for user deletion: {}", id);
             return ResponseEntity.notFound().build();
         }
     }

@@ -1,5 +1,6 @@
 import { apiClient } from '../api/client'
 import type { LoginRequest, LoginResponse, UserDTO } from '../api/types'
+import { getCurrentCompanySlug, getCompanyFromSubdomain } from '../utils/company'
 
 export interface AuthTokens {
   accessToken: string
@@ -18,6 +19,8 @@ export interface AuthUser {
   }
   avatarUrl?: string
   isOnline: boolean
+  companyId: string
+  companySlug: string
 }
 
 class AuthService {
@@ -25,13 +28,23 @@ class AuthService {
   private readonly REFRESH_TOKEN_KEY = 'refresh_token'
   private readonly USER_KEY = 'auth_user'
   private readonly EXPIRES_AT_KEY = 'token_expires_at'
+  private readonly COMPANY_KEY = 'auth_company'
 
   /**
-   * Realiza login com email e senha
+   * Realiza login com email e senha com contexto da empresa
    */
   async login(credentials: LoginRequest): Promise<AuthUser> {
     try {
-      const response = await apiClient.post<LoginResponse>('/api/auth/login', credentials)
+      // Obter contexto da empresa atual
+      const companyInfo = getCompanyFromSubdomain()
+      
+      // Incluir company slug nas credenciais
+      const loginData = {
+        ...credentials,
+        companySlug: companyInfo.slug
+      }
+      
+      const response = await apiClient.post<LoginResponse>('/api/auth/login', loginData)
       
       // Salvar tokens
       this.setTokens({
@@ -39,9 +52,10 @@ class AuthService {
         expiresAt: Date.now() + (response.expiresIn * 1000)
       })
 
-      // Converter UserDTO para AuthUser
-      const user = this.mapUserDtoToAuthUser(response.user)
+      // Converter UserDTO para AuthUser com company context
+      const user = this.mapUserDtoToAuthUser(response.user, response.companyId, response.companySlug)
       this.setUser(user)
+      this.setCompanyContext(response.companyId, response.companySlug)
 
       return user
     } catch (error) {
@@ -69,19 +83,26 @@ class AuthService {
   }
 
   /**
-   * Verifica se o usuário está autenticado
+   * Verifica se o usuário está autenticado e no contexto correto da empresa
    */
   isAuthenticated(): boolean {
     const token = this.getAccessToken()
     const expiresAt = this.getTokenExpiresAt()
+    const user = this.getCurrentUser()
+    const currentCompanySlug = getCurrentCompanySlug()
     
-    if (!token || !expiresAt) {
+    if (!token || !expiresAt || !user) {
       return false
     }
 
     // Verificar se o token ainda é válido (com margem de 5 minutos)
     const fiveMinutes = 5 * 60 * 1000
-    return Date.now() < (expiresAt - fiveMinutes)
+    const isTokenValid = Date.now() < (expiresAt - fiveMinutes)
+    
+    // Verificar se está na empresa correta
+    const isCorrectCompany = user.companySlug === currentCompanySlug
+    
+    return isTokenValid && isCorrectCompany
   }
 
   /**
@@ -233,9 +254,10 @@ class AuthService {
     localStorage.removeItem(this.REFRESH_TOKEN_KEY)
     localStorage.removeItem(this.USER_KEY)
     localStorage.removeItem(this.EXPIRES_AT_KEY)
+    localStorage.removeItem(this.COMPANY_KEY)
   }
 
-  private mapUserDtoToAuthUser(dto: UserDTO): AuthUser {
+  private mapUserDtoToAuthUser(dto: UserDTO, companyId: string, companySlug: string): AuthUser {
     return {
       id: dto.id,
       name: dto.name,
@@ -246,8 +268,42 @@ class AuthService {
         name: dto.department.name
       } : undefined,
       avatarUrl: dto.avatarUrl,
-      isOnline: dto.isOnline
+      isOnline: dto.isOnline,
+      companyId,
+      companySlug
     }
+  }
+
+  /**
+   * Salva contexto da empresa
+   */
+  private setCompanyContext(companyId: string, companySlug: string): void {
+    const companyData = { companyId, companySlug }
+    localStorage.setItem(this.COMPANY_KEY, JSON.stringify(companyData))
+  }
+
+  /**
+   * Obtém contexto da empresa
+   */
+  getCompanyContext(): { companyId: string; companySlug: string } | null {
+    try {
+      const companyData = localStorage.getItem(this.COMPANY_KEY)
+      return companyData ? JSON.parse(companyData) : null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Verifica se o usuário tem acesso à empresa atual
+   */
+  hasCompanyAccess(): boolean {
+    const user = this.getCurrentUser()
+    const currentCompanySlug = getCurrentCompanySlug()
+    
+    if (!user) return false
+    
+    return user.companySlug === currentCompanySlug
   }
 
   /**
@@ -261,10 +317,10 @@ class AuthService {
       }
     }, 60000) // Verificar a cada minuto
 
-    // Atualizar status online no início
-    if (this.isAuthenticated()) {
-      this.updateOnlineStatus(true).catch(console.error)
-    }
+    // Atualizar status online no início (temporariamente desabilitado)
+    // if (this.isAuthenticated()) {
+    //   this.updateOnlineStatus(true).catch(console.error)
+    // }
 
     // Cleanup quando a página for fechada
     window.addEventListener('beforeunload', () => {

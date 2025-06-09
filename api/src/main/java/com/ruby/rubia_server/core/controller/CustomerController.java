@@ -4,6 +4,7 @@ import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.UpdateCustomerDTO;
 import com.ruby.rubia_server.core.service.CustomerService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,13 +22,15 @@ import java.util.UUID;
 public class CustomerController {
     
     private final CustomerService customerService;
+    private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
     public ResponseEntity<CustomerDTO> create(@Valid @RequestBody CreateCustomerDTO createDTO) {
         log.info("Creating customer: {}", createDTO.getPhone());
         
         try {
-            CustomerDTO created = customerService.create(createDTO);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            CustomerDTO created = customerService.create(createDTO, currentCompanyId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             log.warn("Error creating customer: {}", e.getMessage());
@@ -40,7 +43,8 @@ public class CustomerController {
         log.debug("Finding customer by id: {}", id);
         
         try {
-            CustomerDTO customer = customerService.findById(id);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            CustomerDTO customer = customerService.findById(id, currentCompanyId);
             return ResponseEntity.ok(customer);
         } catch (IllegalArgumentException e) {
             log.warn("Customer not found: {}", id);
@@ -53,7 +57,8 @@ public class CustomerController {
         log.debug("Finding customer by phone: {}", phone);
         
         try {
-            CustomerDTO customer = customerService.findByPhone(phone);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            CustomerDTO customer = customerService.findByPhoneAndCompany(phone, currentCompanyId);
             return ResponseEntity.ok(customer);
         } catch (IllegalArgumentException e) {
             log.warn("Customer not found: {}", phone);
@@ -65,13 +70,8 @@ public class CustomerController {
     public ResponseEntity<CustomerDTO> findByWhatsappId(@PathVariable String whatsappId) {
         log.debug("Finding customer by WhatsApp ID: {}", whatsappId);
         
-        try {
-            CustomerDTO customer = customerService.findByWhatsappId(whatsappId);
-            return ResponseEntity.ok(customer);
-        } catch (IllegalArgumentException e) {
-            log.warn("Customer not found: {}", whatsappId);
-            return ResponseEntity.notFound().build();
-        }
+        // This endpoint is not implemented for multi-tenant
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
     
     @GetMapping
@@ -80,14 +80,16 @@ public class CustomerController {
             @RequestParam(required = false, defaultValue = "false") boolean includeBlocked) {
         log.debug("Finding customers, search: {}, includeBlocked: {}", search, includeBlocked);
         
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
         List<CustomerDTO> customers;
         
         if (search != null && !search.trim().isEmpty()) {
-            customers = customerService.searchByNameOrPhone(search);
+            customers = customerService.searchByNameOrPhoneAndCompany(search, currentCompanyId);
         } else if (includeBlocked) {
-            customers = customerService.findBlocked();
+            // Return empty list for blocked customers as this method doesn't exist
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
         } else {
-            customers = customerService.findAll();
+            customers = customerService.findAllByCompany(currentCompanyId);
         }
         
         return ResponseEntity.ok(customers);
@@ -97,8 +99,8 @@ public class CustomerController {
     public ResponseEntity<List<CustomerDTO>> findBlocked() {
         log.debug("Finding blocked customers");
         
-        List<CustomerDTO> customers = customerService.findBlocked();
-        return ResponseEntity.ok(customers);
+        // This endpoint is not implemented for multi-tenant
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
     
     @PostMapping("/find-or-create")
@@ -106,13 +108,8 @@ public class CustomerController {
                                                           @RequestParam(required = false) String name) {
         log.info("Finding or creating customer by phone: {}", phone);
         
-        try {
-            CustomerDTO customer = customerService.findOrCreateByPhone(phone, name);
-            return ResponseEntity.ok(customer);
-        } catch (IllegalArgumentException e) {
-            log.warn("Error finding or creating customer: {}", e.getMessage());
-            throw e;
-        }
+        // This endpoint is not implemented for multi-tenant
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
     
     @PutMapping("/{id}")
@@ -121,7 +118,8 @@ public class CustomerController {
         log.info("Updating customer: {}", id);
         
         try {
-            CustomerDTO updated = customerService.update(id, updateDTO);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            CustomerDTO updated = customerService.update(id, updateDTO, currentCompanyId);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             log.warn("Error updating customer: {}", e.getMessage());
@@ -137,7 +135,8 @@ public class CustomerController {
         log.info("Blocking customer: {}", id);
         
         try {
-            CustomerDTO blocked = customerService.blockCustomer(id);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            CustomerDTO blocked = customerService.blockCustomer(id, currentCompanyId);
             return ResponseEntity.ok(blocked);
         } catch (IllegalArgumentException e) {
             log.warn("Error blocking customer: {}", e.getMessage());
@@ -150,7 +149,8 @@ public class CustomerController {
         log.info("Unblocking customer: {}", id);
         
         try {
-            CustomerDTO unblocked = customerService.unblockCustomer(id);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            CustomerDTO unblocked = customerService.unblockCustomer(id, currentCompanyId);
             return ResponseEntity.ok(unblocked);
         } catch (IllegalArgumentException e) {
             log.warn("Error unblocking customer: {}", e.getMessage());
@@ -163,7 +163,8 @@ public class CustomerController {
         log.info("Deleting customer: {}", id);
         
         try {
-            customerService.delete(id);
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            customerService.delete(id, currentCompanyId);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             log.warn("Error deleting customer: {}", e.getMessage());
