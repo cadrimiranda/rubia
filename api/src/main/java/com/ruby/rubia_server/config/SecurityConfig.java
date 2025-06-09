@@ -55,7 +55,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // Allowed origins - use setAllowedOrigins for exact matches
-        configuration.setAllowedOrigins(Arrays.asList("http://rubia.localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOrigins(Arrays.asList("http://rubia.localhost:3000", "http://localhost:3000", "http://localhost:5173"));
         
         // Allowed methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

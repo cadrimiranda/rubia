@@ -1,10 +1,11 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { MessageCircle, Plus, Loader2 } from "lucide-react";
 import SearchBar from "../SearchBar";
 import TopTabsSwitcher from "../TopTabsSwitcher";
 import ChatListItem from "../ChatListItem";
 import ComponentErrorBoundary from "../ComponentErrorBoundary";
 import { ChatListSkeleton } from "../skeletons";
+import NewConversationModal from "../NewConversationModal";
 import { useChatStore } from "../../store/useChatStore";
 
 const Sidebar = () => {
@@ -12,6 +13,7 @@ const Sidebar = () => {
   const filteredChats = getFilteredChats();
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
 
   // Load more conversations when scrolling to bottom
   const loadMore = useCallback(() => {
@@ -44,7 +46,10 @@ const Sidebar = () => {
       <div className="px-4 py-4 ">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-semibold text-gray-900">Conversas</h1>
-          <button className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-200">
+          <button 
+            className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-200"
+            onClick={() => setIsNewConversationModalOpen(true)}
+          >
             <Plus size={18} />
           </button>
         </div>
@@ -94,6 +99,12 @@ const Sidebar = () => {
           </div>
         )}
       </div>
+
+      {/* New Conversation Modal */}
+      <NewConversationModal
+        open={isNewConversationModalOpen}
+        onClose={() => setIsNewConversationModalOpen(false)}
+      />
     </div>
   );
 };
