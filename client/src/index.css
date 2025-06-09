@@ -32,18 +32,32 @@ button:focus-visible {
 }
 
 /* Ant Design Input styles */
-.ant-input, .ant-textarea {
+.ant-input, .ant-textarea, .ant-input-affix-wrapper {
   border-radius: 8px !important;
   border: 1px solid #e5e7eb !important;
+  box-shadow: none !important;
 }
 
-.ant-input:focus, .ant-textarea:focus {
-  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2) !important;
-  border-color: #E11D48 !important;
+.ant-input:focus, .ant-textarea:focus, .ant-input-affix-wrapper:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  border-color: #3B82F6 !important;
+  outline: none !important;
 }
 
-.ant-input-focused, .ant-textarea-focused {
-  border-color: #E11D48 !important;
+.ant-input-focused, .ant-textarea-focused, .ant-input-affix-wrapper-focused {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Remove any additional borders from input wrappers */
+.ant-input-affix-wrapper-focused .ant-input {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.ant-input-affix-wrapper .ant-input {
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Ant Design Avatar styles */

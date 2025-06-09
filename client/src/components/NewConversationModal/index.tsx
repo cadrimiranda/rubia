@@ -37,15 +37,16 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
       if (searchQuery.trim()) {
         // Buscar por telefone ou nome
         const results = await customerApi.search(searchQuery.trim())
-        setCustomers(results)
+        setCustomers(results || [])
       } else {
         // Carregar customers recentes
         const results = await customerApi.getRecent(20)
-        setCustomers(results)
+        setCustomers(results || [])
       }
     } catch (error) {
       console.error('Erro ao buscar customers:', error)
       message.error('Erro ao buscar contatos')
+      setCustomers([]) // Garantir que customers seja sempre um array
     } finally {
       setLoading(false)
     }
@@ -116,6 +117,9 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
     onClose()
   }
 
+  // Garantir que customers seja sempre um array
+  const safeCustomers = customers || []
+
   return (
     <Modal
       title="Nova Conversa"
@@ -137,7 +141,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
         />
 
         {/* Create new customer option */}
-        {searchQuery.trim() && isPhoneNumber(searchQuery) && customers.length === 0 && !loading && (
+        {searchQuery.trim() && isPhoneNumber(searchQuery) && safeCustomers.length === 0 && !loading && (
           <div className="border rounded-lg p-3 bg-blue-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -168,7 +172,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             <div className="flex items-center justify-center py-8">
               <Spin tip="Buscando contatos..." />
             </div>
-          ) : customers.length === 0 ? (
+          ) : safeCustomers.length === 0 ? (
             searchQuery.trim() ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -182,7 +186,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             )
           ) : (
             <List
-              dataSource={customers}
+              dataSource={safeCustomers}
               renderItem={(customer) => (
                 <List.Item
                   className="hover:bg-gray-50 cursor-pointer rounded-lg px-3 transition-colors"
