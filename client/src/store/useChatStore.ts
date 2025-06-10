@@ -4,7 +4,7 @@ import type { ConversationStatus } from '../api/types'
 import { conversationApi, messageApi, customerApi } from '../api'
 import { conversationAdapter, messageAdapter } from '../adapters'
 import { MessageValidator } from '../utils/validation'
-import { mockChats } from '../mocks/data'
+// import { mockDonors } from '../mocks/data'
 
 interface ChatStoreState {
   // Estado principal
@@ -183,15 +183,13 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       console.log('Carregando dados mock como fallback para status:', targetStatus)
       
       // Fallback para dados mock durante desenvolvimento
-      const mockChatsFiltered = mockChats.filter(chat => chat.status === targetStatus)
-      console.log('Mock chats filtrados:', mockChatsFiltered.length, 'de', mockChats.length, 'total')
-      console.log('Mock chats encontrados:', mockChatsFiltered.map(c => c.contact.name))
+      console.log('Usando dados mock como fallback')
       
       set({
-        chats: page === 0 ? mockChatsFiltered : [...state.chats, ...mockChatsFiltered],
+        chats: page === 0 ? [] : state.chats,
         currentPage: page,
         hasMore: false,
-        totalChats: mockChatsFiltered.length,
+        totalChats: 0,
         isLoading: false,
         error: null
       })

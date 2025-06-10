@@ -1,7 +1,7 @@
 import React from "react";
 import type { ReactNode } from "react";
-import { useAuth } from "../AuthContext";
-import LoginPage from "../../pages/LoginPage";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "../../store/useAuthStore";
 import { Loader } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -13,7 +13,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRole,
 }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, hasPermission } = useAuthStore();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -27,10 +28,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  if (requiredRole && !hasPermission(requiredRole)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">

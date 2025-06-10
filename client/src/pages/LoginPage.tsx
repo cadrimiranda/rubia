@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Heart, Mail, Lock, Eye, EyeOff, Loader } from "lucide-react";
+import { useAuthStore } from "../store/useAuthStore";
+import { useNavigate } from "react-router-dom";
 
 interface LoginFormData {
   email: string;
@@ -14,8 +16,10 @@ const LoginScreen: React.FC = () => {
     rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<LoginFormData>>({});
+  
+  const { login, isLoggingIn, error: authError } = useAuthStore();
+  const navigate = useNavigate();
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginFormData> = {};
@@ -41,15 +45,17 @@ const LoginScreen: React.FC = () => {
 
     if (!validateForm()) return;
 
-    setIsLoading(true);
-
-    // Simulação de autenticação
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    setIsLoading(false);
-
-    // Aqui seria feita a integração com a API de autenticação
-    console.log("Login attempt:", formData);
+    try {
+      await login({
+        email: formData.email,
+        password: formData.password
+      });
+      
+      // Login bem-sucedido, redirecionar para a página principal
+      navigate("/");
+    } catch (error) {
+      console.error("Erro no login:", error);
+    }
   };
 
   const handleInputChange = (
@@ -197,10 +203,10 @@ const LoginScreen: React.FC = () => {
             <div>
               <button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={isLoggingIn}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
               >
-                {isLoading ? (
+                {isLoggingIn ? (
                   <div className="flex items-center">
                     <Loader className="w-4 h-4 mr-2 animate-spin" />
                     Entrando...
@@ -210,6 +216,12 @@ const LoginScreen: React.FC = () => {
                 )}
               </button>
             </div>
+            
+            {authError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{authError}</p>
+              </div>
+            )}
           </div>
         </div>
 
