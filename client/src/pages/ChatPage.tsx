@@ -91,30 +91,30 @@ const ChatPage = () => {
 
   return (
     <ChatDataProvider>
-      <div className="h-screen w-full flex flex-col bg-gradient-to-br from-rose-50 to-rose-100">
-        {/* User Header */}
-        <UserHeader />
+      <div className="h-screen w-full flex bg-gradient-to-br from-rose-50 to-rose-100">
+        {/* Sidebar - Full height on the left */}
+        <div
+          className={`${
+            isMobile && activeChat ? "hidden" : "block"
+          } w-full md:w-80 lg:w-96 xl:w-80 flex-shrink-0 h-full`}
+        >
+          <Sidebar />
+        </div>
 
-        {/* Offline Banner */}
-        <OfflineBanner />
+        {/* Main Content Area - Right side */}
+        <div
+          className={`${
+            isMobile && !activeChat ? "hidden" : "flex-1"
+          } min-w-0 flex flex-col h-full`}
+        >
+          {/* User Header - Only in main area */}
+          <UserHeader />
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar - Hidden on mobile when chat is active */}
-          <div
-            className={`${
-              isMobile && activeChat ? "hidden" : "block"
-            } w-full md:w-80 lg:w-96 xl:w-80 flex-shrink-0`}
-          >
-            <Sidebar />
-          </div>
+          {/* Offline Banner */}
+          <OfflineBanner />
 
-          {/* Chat Area - Full width on mobile when active */}
-          <div
-            className={`${
-              isMobile && !activeChat ? "hidden" : "flex-1"
-            } min-w-0 flex`}
-          >
+          {/* Chat Area */}
+          <div className="flex-1 overflow-hidden">
             {renderChatArea()}
           </div>
         </div>

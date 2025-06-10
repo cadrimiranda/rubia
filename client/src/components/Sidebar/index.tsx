@@ -49,7 +49,7 @@ const Sidebar = () => {
   }, [loadMore]);
 
   return (
-    <div className="h-full bg-white border-gray-200 flex flex-col shadow-sm">
+    <div className="h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm">
       {/* Header */}
 
       <div className="px-4 py-4 ">
