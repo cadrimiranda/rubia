@@ -1,19 +1,21 @@
-import { User, X } from "lucide-react";
-import type { User as TUser } from "../../types";
-import {
-  calculateAge,
-  formatWeight,
-  formatHeight,
-  calculateBMI,
-  getBMICategory,
-} from "../../utils/format";
+import React from "react";
+import { X, User } from "lucide-react";
+import type { Donor } from "../../types/types";
+import { calculateAge } from "../../utils";
 
-type TDonorModal = {
-  handleClose: () => void;
-  donor: TUser;
-};
+interface DonorInfoModalProps {
+  show: boolean;
+  donor: Donor | null;
+  onClose: () => void;
+}
 
-const DonorModal = ({ handleClose, donor }: TDonorModal) => {
+export const DonorInfoModal: React.FC<DonorInfoModalProps> = ({
+  show,
+  donor,
+  onClose,
+}) => {
+  if (!show || !donor) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-96 max-h-96 flex flex-col">
@@ -22,7 +24,7 @@ const DonorModal = ({ handleClose, donor }: TDonorModal) => {
             Informações do Doador
           </h2>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
             <X className="w-5 h-5" />
@@ -48,30 +50,17 @@ const DonorModal = ({ handleClose, donor }: TDonorModal) => {
             <div>
               <span className="text-gray-500">Idade:</span>
               <p className="font-medium text-gray-800">
-                {donor.birthDate ? calculateAge(donor.birthDate) : "-"} anos
+                {calculateAge(donor.birthDate)} anos
               </p>
             </div>
             <div>
               <span className="text-gray-500">Peso:</span>
-              <p className="font-medium text-gray-800">
-                {donor.weight ? formatWeight(donor.weight) : "-"}
-              </p>
+              <p className="font-medium text-gray-800">{donor.weight} kg</p>
             </div>
             <div>
               <span className="text-gray-500">Altura:</span>
-              <p className="font-medium text-gray-800">
-                {donor.height ? formatHeight(donor.height) : "-"}
-              </p>
+              <p className="font-medium text-gray-800">{donor.height} cm</p>
             </div>
-            {donor.weight && donor.height && (
-              <div>
-                <span className="text-gray-500">IMC:</span>
-                <p className="font-medium text-gray-800">
-                  {calculateBMI(donor.weight, donor.height)} (
-                  {getBMICategory(calculateBMI(donor.weight, donor.height))})
-                </p>
-              </div>
-            )}
             <div className="col-span-2">
               <span className="text-gray-500">Total de doações:</span>
               <p className="font-medium text-gray-800">
@@ -99,5 +88,3 @@ const DonorModal = ({ handleClose, donor }: TDonorModal) => {
     </div>
   );
 };
-
-export { DonorModal };

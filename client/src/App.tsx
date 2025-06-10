@@ -1,19 +1,18 @@
-import ChatPage from './pages/ChatPage'
-import ProtectedRoute from './components/ProtectedRoute'
-import ErrorBoundary from './components/ErrorBoundary'
-import { ToastProvider } from './components/notifications/ToastProvider'
-import 'antd/dist/reset.css'
+import ChatPage from "./pages/ChatPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { AuthProvider } from "./components/AuthContext";
 
 function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
+      <AuthProvider>
         <ProtectedRoute requiredRole="AGENT">
           <ChatPage />
         </ProtectedRoute>
-      </ToastProvider>
+      </AuthProvider>
     </ErrorBoundary>
-  )
+  );
 }
 
-export default App
+export default App;
