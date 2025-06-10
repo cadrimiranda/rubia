@@ -42,7 +42,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto space-y-3">
+      <div className="space-y-3">
         {messages.map((message) => (
           <Message key={message.id} message={message} />
         ))}

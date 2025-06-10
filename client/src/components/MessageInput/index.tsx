@@ -36,7 +36,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       />
 
       {attachments.length > 0 && (
-        <div className="max-w-4xl mx-auto mb-3">
+        <div className="mb-3">
           <div className="flex flex-wrap gap-2">
             {attachments.map((attachment) => (
               <FileAttachment
@@ -51,7 +51,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto flex gap-3">
+      <div className="flex gap-3">
         <button
           onClick={() => fileInputRef.current?.click()}
           className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-lg transition-colors self-end"

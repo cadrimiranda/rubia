@@ -8,9 +8,9 @@ interface MessageProps {
 
 export const Message: React.FC<MessageProps> = ({ message }) => {
   return (
-    <div className={`flex ${message.isAI ? "justify-start" : "justify-end"}`}>
+    <div className={`flex ${message.isAI ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+        className={`max-w-[50%] px-4 py-2 rounded-2xl ${
           message.isAI
             ? "bg-white text-gray-800 shadow-sm"
             : "bg-blue-500 text-white"
