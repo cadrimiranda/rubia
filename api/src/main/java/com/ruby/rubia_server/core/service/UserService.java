@@ -56,6 +56,10 @@ public class UserService {
                 .department(department)
                 .role(createDTO.getRole())
                 .avatarUrl(createDTO.getAvatarUrl())
+                .birthDate(createDTO.getBirthDate())
+                .weight(createDTO.getWeight())
+                .height(createDTO.getHeight())
+                .address(createDTO.getAddress())
                 .isOnline(false)
                 .build();
         
@@ -161,6 +165,22 @@ public class UserService {
             user.setAvatarUrl(updateDTO.getAvatarUrl());
         }
         
+        if (updateDTO.getBirthDate() != null) {
+            user.setBirthDate(updateDTO.getBirthDate());
+        }
+        
+        if (updateDTO.getWeight() != null) {
+            user.setWeight(updateDTO.getWeight());
+        }
+        
+        if (updateDTO.getHeight() != null) {
+            user.setHeight(updateDTO.getHeight());
+        }
+        
+        if (updateDTO.getAddress() != null) {
+            user.setAddress(updateDTO.getAddress());
+        }
+        
         User updated = userRepository.save(user);
         log.info("User updated successfully");
         
@@ -237,6 +257,10 @@ public class UserService {
                 .avatarUrl(user.getAvatarUrl())
                 .isOnline(user.getIsOnline())
                 .lastSeen(user.getLastSeen())
+                .birthDate(user.getBirthDate())
+                .weight(user.getWeight())
+                .height(user.getHeight())
+                .address(user.getAddress())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

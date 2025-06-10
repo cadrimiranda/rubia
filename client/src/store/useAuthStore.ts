@@ -229,12 +229,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       await authService.updateOnlineStatus(isOnline)
       
       // Atualizar estado local
-      set({
-        user: {
-          ...state.user,
-          isOnline
-        }
-      })
+      if (state.user) {
+        set({
+          user: {
+            ...state.user as AuthUser,
+            isOnline
+          }
+        })
+      }
       
     } catch (error) {
       console.error('Erro ao atualizar status online:', error)

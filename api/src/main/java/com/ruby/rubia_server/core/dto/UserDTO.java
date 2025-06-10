@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -25,6 +26,10 @@ public class UserDTO {
     private String avatarUrl;
     private Boolean isOnline;
     private LocalDateTime lastSeen;
+    private LocalDate birthDate;
+    private Double weight;
+    private Double height;
+    private String address;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -1,19 +1,31 @@
-import ChatPage from './pages/ChatPage'
-import ProtectedRoute from './components/ProtectedRoute'
-import ErrorBoundary from './components/ErrorBoundary'
-import { ToastProvider } from './components/notifications/ToastProvider'
-import 'antd/dist/reset.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import ChatPage from "./pages/ChatPage";
+import LoginPage from "./pages/LoginPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { AuthProvider } from "./components/AuthContext";
 
 function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <ProtectedRoute requiredRole="AGENT">
-          <ChatPage />
-        </ProtectedRoute>
-      </ToastProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute requiredRole="AGENT">
+                  <ChatPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ErrorBoundary>
-  )
+  );
 }
 
-export default App
+export default App;

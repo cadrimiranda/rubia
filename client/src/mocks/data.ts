@@ -1,148 +1,130 @@
-import type { Chat, Message, Tag, User } from '../types'
+import type { Donor, Message } from "../types/types";
 
-export const mockTags: Tag[] = [
-  { id: '1', name: 'Fabiana', color: '#10B981', type: 'comercial' },
-  { id: '2', name: 'João', color: '#3B82F6', type: 'suporte' },
-  { id: '3', name: 'Maria', color: '#8B5CF6', type: 'vendas' },
-  { id: '4', name: 'Lucas', color: '#F59E0B', type: 'comercial' }
-]
-
-export const mockUsers: User[] = [
+export const mockDonors: Donor[] = [
   {
-    id: '1',
-    name: 'Lilia - AT Santa Casa',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b172-9e1f?w=150&h=150&fit=crop&crop=face',
-    isOnline: true,
-    phone: '+55 11 99999-0001'
+    id: "1",
+    name: "Maria Silva",
+    lastMessage: "Obrigada pela lembrança! Posso doar na próxima semana.",
+    timestamp: "14:30",
+    unread: 1,
+    status: "online",
+    bloodType: "O+",
+    phone: "(11) 99999-9999",
+    email: "maria.silva@email.com",
+    lastDonation: "12/03/2025",
+    totalDonations: 8,
+    address: "Rua das Flores, 123 - São Paulo, SP",
+    birthDate: "15/08/1985",
+    weight: 65,
+    height: 165,
   },
   {
-    id: '2',
-    name: 'Kelly Rocha - BIOCOR',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    isOnline: false,
-    lastSeen: new Date(Date.now() - 1000 * 60 * 30),
-    phone: '+55 11 99999-0002'
+    id: "2",
+    name: "João Santos",
+    lastMessage: "Preciso reagendar minha doação.",
+    timestamp: "13:45",
+    unread: 0,
+    status: "offline",
+    bloodType: "A-",
+    phone: "(11) 88888-8888",
+    email: "joao.santos@email.com",
+    lastDonation: "08/02/2025",
+    totalDonations: 15,
+    address: "Av. Paulista, 456 - São Paulo, SP",
+    birthDate: "22/03/1990",
+    weight: 75,
+    height: 178,
   },
   {
-    id: '3',
-    name: 'Evandro Thiesen - Clínica LeVitá',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    isOnline: true,
-    phone: '+55 11 99999-0003'
+    id: "3",
+    name: "Ana Costa",
+    lastMessage: "Qual o horário disponível para amanhã?",
+    timestamp: "12:20",
+    unread: 2,
+    status: "offline",
+    bloodType: "B+",
+    phone: "(11) 77777-7777",
+    email: "ana.costa@email.com",
+    lastDonation: "15/01/2025",
+    totalDonations: 3,
+    address: "Rua Augusta, 789 - São Paulo, SP",
+    birthDate: "10/12/1992",
+    weight: 58,
+    height: 160,
   },
   {
-    id: '4',
-    name: 'Maria Luiza - BIOCOR',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    isOnline: false,
-    lastSeen: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    phone: '+55 11 99999-0004'
+    id: "4",
+    name: "Carlos Oliveira",
+    lastMessage: "",
+    timestamp: "",
+    unread: 0,
+    status: "online",
+    bloodType: "AB+",
+    phone: "(11) 66666-6666",
+    email: "carlos.oliveira@email.com",
+    lastDonation: "20/12/2024",
+    totalDonations: 12,
+    address: "Rua da Consolação, 321 - São Paulo, SP",
+    birthDate: "05/07/1988",
+    weight: 80,
+    height: 182,
   },
   {
-    id: '5',
-    name: 'Allan Bruno',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
-    isOnline: true,
-    phone: '+55 11 99999-0005'
-  }
-]
+    id: "5",
+    name: "Patricia Lima",
+    lastMessage: "",
+    timestamp: "",
+    unread: 0,
+    status: "offline",
+    bloodType: "O-",
+    phone: "(11) 55555-5555",
+    email: "patricia.lima@email.com",
+    lastDonation: "10/11/2024",
+    totalDonations: 6,
+    address: "Alameda Santos, 654 - São Paulo, SP",
+    birthDate: "18/01/1987",
+    weight: 62,
+    height: 170,
+  },
+];
 
-const createMessage = (id: string, content: string, isFromUser: boolean, minutesAgo: number): Message => ({
-  id,
-  content,
-  timestamp: new Date(Date.now() - minutesAgo * 60 * 1000),
-  senderId: isFromUser ? 'user' : 'agent',
-  messageType: 'text',
-  status: 'read',
-  isFromUser
-})
-
-export const mockChats: Chat[] = [
+export const mockMessages: Message[] = [
   {
-    id: '1',
-    contact: mockUsers[0],
-    messages: [
-      createMessage('1', 'Olá! Gostaria de saber mais sobre os serviços da Santa Casa.', true, 120),
-      createMessage('2', 'Olá Lilia! Claro, posso te ajudar. Que tipo de serviço você procura?', false, 118),
-      createMessage('3', 'Agradeço a disponibilidade e atenção', true, 5)
+    id: "1",
+    senderId: "1",
+    content: "Olá! Gostaria de agendar uma doação de sangue.",
+    timestamp: "14:25",
+    isAI: false,
+  },
+  {
+    id: "2",
+    senderId: "ai",
+    content:
+      "Olá Maria! Fico feliz em ajudá-la. Temos horários disponíveis esta semana. Qual seria o melhor dia para você?",
+    timestamp: "14:26",
+    isAI: true,
+  },
+  {
+    id: "3",
+    senderId: "1",
+    content: "Segue meu exame médico recente para análise.",
+    timestamp: "14:28",
+    isAI: false,
+    attachments: [
+      {
+        id: "att1",
+        name: "exame_sangue_2025.pdf",
+        size: 245760,
+        type: "application/pdf",
+        url: "#",
+      },
     ],
-    status: 'entrada',
-    assignedAgent: 'Fabiana',
-    tags: [mockTags[0]],
-    unreadCount: 1,
-    isPinned: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 120),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 5)
   },
   {
-    id: '2',
-    contact: mockUsers[1],
-    messages: [
-      createMessage('4', 'Pode me ligar agora se quiser. Não consegui olhar o vídeo de ontem', true, 45),
-      createMessage('5', 'Claro! Vou te ligar em instantes. Sobre qual vídeo você está falando?', false, 43)
-    ],
-    status: 'entrada',
-    assignedAgent: 'Fabiana',
-    tags: [mockTags[0]],
-    unreadCount: 0,
-    isPinned: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 43)
+    id: "4",
+    senderId: "1",
+    content: "Obrigada pela lembrança! Posso doar na próxima semana.",
+    timestamp: "14:30",
+    isAI: false,
   },
-  {
-    id: '3',
-    contact: mockUsers[2],
-    messages: [
-      createMessage('6', 'Vamos agendar uma demonstração?', true, 180),
-      createMessage('7', 'Perfeito! Qual o melhor horário para você?', false, 175),
-      createMessage('8', 'Podemos dar continuidade à aquisição de um novo sistema', true, 25)
-    ],
-    status: 'esperando',
-    assignedAgent: 'Fabiana',
-    tags: [mockTags[0]],
-    unreadCount: 0,
-    isPinned: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 180),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 25)
-  },
-  {
-    id: '4',
-    contact: mockUsers[3],
-    messages: [
-      createMessage('9', 'Pode sim', true, 90),
-      createMessage('10', 'Ótimo! Te ligo em alguns minutos.', false, 88)
-    ],
-    status: 'esperando',
-    assignedAgent: 'Fabiana',
-    tags: [mockTags[0]],
-    unreadCount: 0,
-    isPinned: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 100),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 88)
-  },
-  {
-    id: '5',
-    contact: mockUsers[4],
-    messages: [
-      createMessage('11', 'conseguiu olhar o vídeo de ontem?', true, 720),
-      createMessage('12', 'Sim! Muito interessante, vamos conversar mais sobre isso.', false, 715)
-    ],
-    status: 'finalizados',
-    assignedAgent: 'Fabiana',
-    tags: [mockTags[0]],
-    unreadCount: 0,
-    isPinned: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 730),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 715)
-  }
-]
-
-mockChats.forEach(chat => {
-  if (chat.messages.length > 0) {
-    chat.lastMessage = chat.messages[chat.messages.length - 1]
-  }
-})
-
-export const initializeMockData = () => {
-  return mockChats
-}
+];

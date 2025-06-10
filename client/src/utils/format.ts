@@ -103,3 +103,36 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
   return text.substring(0, maxLength) + '...'
 }
+
+export function calculateAge(birthDate: string): number {
+  const today = new Date()
+  const birth = new Date(birthDate.split('/').reverse().join('-'))
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  
+  return age
+}
+
+export function formatWeight(weight: number): string {
+  return `${weight} kg`
+}
+
+export function formatHeight(height: number): string {
+  return `${height} cm`
+}
+
+export function calculateBMI(weight: number, height: number): number {
+  const heightInMeters = height / 100
+  return Math.round((weight / (heightInMeters * heightInMeters)) * 10) / 10
+}
+
+export function getBMICategory(bmi: number): string {
+  if (bmi < 18.5) return 'Abaixo do peso'
+  if (bmi < 25) return 'Peso normal'
+  if (bmi < 30) return 'Sobrepeso'
+  return 'Obesidade'
+}
