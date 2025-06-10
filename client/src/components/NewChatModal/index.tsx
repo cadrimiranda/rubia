@@ -1,7 +1,10 @@
 import React, { useState } from "react";
-import { Search, X, User, Circle, Plus, UserPlus } from "lucide-react";
+import { Search, X, User, Circle, Plus, UserPlus, Loader } from "lucide-react";
 import type { Donor } from "../../types/types";
 import { getStatusColor } from "../../utils";
+import { customerApi } from "../../api/services/customerApi";
+import { conversationApi } from "../../api/services/conversationApi";
+import { customerAdapter } from "../../adapters/customerAdapter";
 
 interface NewContactData {
   name: string;
@@ -32,19 +35,105 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     name: "",
     phone: "",
   });
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleNewContactSubmit = (e: React.FormEvent) => {
+  const handleNewContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newContactData.name.trim() && newContactData.phone.trim()) {
-      onNewContactCreate(newContactData);
+    if (!newContactData.name.trim() || !newContactData.phone.trim()) {
+      return;
+    }
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      // Validar formato do telefone
+      if (!customerAdapter.validateBrazilianPhone(newContactData.phone)) {
+        throw new Error("Formato de telefone inválido. Use o formato brasileiro (11) 99999-9999");
+      }
+
+      // Verificar se já existe um cliente com este telefone
+      const normalizedPhone = customerAdapter.normalizePhone(newContactData.phone);
+      const existingCustomer = await customerApi.findByPhone(normalizedPhone);
+      
+      if (existingCustomer) {
+        // Se já existe, usar o cliente existente
+        const user = customerAdapter.toUser(existingCustomer);
+        const donor: Donor = {
+          ...user,
+          phone: user.phone || normalizedPhone,
+          lastMessage: "",
+          timestamp: "",
+          unread: 0,
+          status: "offline" as const,
+          bloodType: "O+", // Valor padrão, será atualizado pelo backend
+          email: "",
+          lastDonation: "",
+          totalDonations: 0,
+          address: "",
+          birthDate: "",
+          weight: 0,
+          height: 0,
+        };
+        onDonorSelect(donor);
+      } else {
+        // Criar novo cliente
+        const createRequest = customerAdapter.toCreateRequest(
+          newContactData.phone,
+          newContactData.name
+        );
+        
+        const newCustomer = await customerApi.create(createRequest);
+        
+        // Criar nova conversa para este cliente
+        await conversationApi.create({
+          customerId: newCustomer.id,
+          channel: 'WEB'
+        });
+
+        // Converter para Donor e notificar componente pai
+        const user = customerAdapter.toUser(newCustomer);
+        const donor: Donor = {
+          ...user,
+          phone: user.phone || customerAdapter.normalizePhone(newContactData.phone),
+          lastMessage: "",
+          timestamp: "",
+          unread: 0,
+          status: "offline" as const,
+          bloodType: "O+", // Valor padrão
+          email: "",
+          lastDonation: "",
+          totalDonations: 0,
+          address: "",
+          birthDate: "",
+          weight: 0,
+          height: 0,
+        };
+        onDonorSelect(donor);
+
+        // Chamar callback original para compatibilidade
+        onNewContactCreate(newContactData);
+      }
+
+      // Resetar formulário e fechar modal
       setNewContactData({ name: "", phone: "" });
       setActiveTab("existing");
+      onClose();
+
+    } catch (error) {
+      console.error("Erro ao criar contato:", error);
+      setError(error instanceof Error ? error.message : "Erro ao criar contato");
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const resetForm = () => {
     setNewContactData({ name: "", phone: "" });
     setActiveTab("existing");
+    setError(null);
+    setIsCreating(false);
   };
 
   const handleClose = () => {
@@ -183,23 +272,41 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                 />
               </div>
 
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setActiveTab("existing")}
-                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={isCreating}
+                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={
-                    !newContactData.name.trim() || !newContactData.phone.trim()
+                    !newContactData.name.trim() || 
+                    !newContactData.phone.trim() || 
+                    isCreating
                   }
                   className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  <Plus className="w-4 h-4 inline mr-2" />
-                  Criar Contato
+                  {isCreating ? (
+                    <>
+                      <Loader className="w-4 h-4 inline mr-2 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 inline mr-2" />
+                      Criar Contato
+                    </>
+                  )}
                 </button>
               </div>
             </form>
