@@ -9,11 +9,19 @@ import NewConversationModal from "../NewConversationModal";
 import { useChatStore } from "../../store/useChatStore";
 
 const Sidebar = () => {
-  const { getFilteredChats, loadConversations, currentStatus, currentPage, hasMore, isLoading } = useChatStore();
+  const {
+    getFilteredChats,
+    loadConversations,
+    currentStatus,
+    currentPage,
+    hasMore,
+    isLoading,
+  } = useChatStore();
   const filteredChats = getFilteredChats();
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
-  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] =
+    useState(false);
 
   // Load more conversations when scrolling to bottom
   const loadMore = useCallback(() => {
@@ -41,15 +49,18 @@ const Sidebar = () => {
   }, [loadMore]);
 
   return (
-    <div className="h-full bg-white border-r border-gray-200 flex flex-col shadow-sm rounded-r-[32px]">
+    <div className="h-full bg-white border-gray-200 flex flex-col shadow-sm">
       {/* Header */}
+
       <div className="px-4 py-4 ">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <Heart className="text-red-500" fill="currentColor" size={24} />
-            <h1 className="text-lg font-semibold text-gray-900">Centro de Sangue</h1>
+            <h1 className="text-lg font-semibold text-gray-900">
+              Centro de Sangue
+            </h1>
           </div>
-          <button 
+          <button
             className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all duration-200"
             onClick={() => setIsNewConversationModalOpen(true)}
           >
@@ -83,18 +94,26 @@ const Sidebar = () => {
         ) : (
           <div>
             {filteredChats.map((chat) => (
-              <ComponentErrorBoundary key={chat.id} componentName="ChatListItem">
+              <ComponentErrorBoundary
+                key={chat.id}
+                componentName="ChatListItem"
+              >
                 <ChatListItem chat={chat} />
               </ComponentErrorBoundary>
             ))}
-            
+
             {/* Loading indicator for infinite scroll */}
             {hasMore && (
-              <div ref={loadingRef} className="flex items-center justify-center py-4">
+              <div
+                ref={loadingRef}
+                className="flex items-center justify-center py-4"
+              >
                 {isLoading && (
                   <div className="flex items-center space-x-2 text-gray-500">
                     <Loader2 size={16} className="animate-spin" />
-                    <span className="text-sm">Carregando mais conversas...</span>
+                    <span className="text-sm">
+                      Carregando mais conversas...
+                    </span>
                   </div>
                 )}
               </div>
