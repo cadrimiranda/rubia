@@ -169,6 +169,13 @@ rubia/
 - **Sistema de fixação** de conversas importantes
 - **Cache inteligente** de mensagens por conversa
 
+### 🆕 **Sistema de Criação de Contatos**
+- **Criação diferida de conversas**: Novos contatos aparecem no sidebar apenas após primeira mensagem
+- **Modal inteligente** com abas para contatos existentes e criação de novos
+- **Validação de telefone brasileiro** automática
+- **Detecção de contatos duplicados** por telefone
+- **Interface otimizada** para centro de doação de sangue
+
 ### 🔄 **Integrações**
 - **Adapter pattern** para transformação de dados
 - **Validação de dados** com classes específicas
@@ -221,10 +228,23 @@ Esta documentação inclui:
 - 🗄️ **Gerenciamento de Estado** com Zustand
 - 🧩 **Componentes** e estrutura
 - 🔐 **Sistema de Autenticação** JWT
+- 🆕 **Sistema de Criação de Contatos** e conversas diferidas
 - 🎨 **UX/UI Enhancements** e loading states
 - 🔄 **APIs e Adaptadores** com padrões
 - 🚀 **Build e Deploy** otimizado
 - 🔧 **Troubleshooting** e debug
+
+### 🌟 Funcionalidades Recentes
+
+#### Criação Inteligente de Conversas
+O sistema agora implementa um fluxo mais intuitivo onde:
+
+1. **Novos contatos** são criados mas **não aparecem imediatamente** no sidebar
+2. **Conversas são criadas dinamicamente** quando a primeira mensagem é enviada  
+3. **Interface limpa** mostra apenas conversas com interação real
+4. **Modal otimizado** separa contatos existentes de criação de novos
+
+Isso resulta em melhor UX e performance, evitando poluição da interface com contatos sem conversas reais.
 
 ## 🔧 Troubleshooting Rápido
 

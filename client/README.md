@@ -568,86 +568,128 @@ const useTypingUsers = (conversationId: string) => {
 
 ### Estrutura de Componentes
 
-#### ChatPage (Página Principal)
+#### BloodCenterChat (Página Principal)
 ```typescript
-// pages/ChatPage.tsx
-const ChatPage = () => {
-  const { activeChat, setActiveChat } = useChatStore()
-  const [isMobile, setIsMobile] = useState(false)
+// components/BloodCenterChat.tsx
+const BloodCenterChat = () => {
+  const [donors, setDonors] = useState<Donor[]>([])
+  const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null)
+  const [allContacts, setAllContacts] = useState<Donor[]>([])
+  
+  // Carrega conversas existentes
+  const loadConversations = useCallback(async () => {
+    const [entradaResponse, esperandoResponse, finalizadosResponse] = await Promise.all([
+      conversationApi.getByStatus('ENTRADA', 0, 50),
+      conversationApi.getByStatus('ESPERANDO', 0, 50),
+      conversationApi.getByStatus('FINALIZADOS', 0, 50)
+    ])
+    
+    const allConversations = [
+      ...entradaResponse.content,
+      ...esperandoResponse.content,
+      ...finalizadosResponse.content
+    ]
+    
+    const donorsFromConversations = allConversations.map(convertConversationToDonor)
+    setDonors(donorsFromConversations)
+  }, [])
+  
+  // Carrega todos os contatos (para modal de nova conversa)
+  const loadAllContacts = useCallback(async () => {
+    const customersResponse = await customerApi.getAll({ size: 200 })
+    const customers = Array.isArray(customersResponse) ? customersResponse : customersResponse.content
+    const donorsFromCustomers = customers.map(convertCustomerToDonor)
+    setAllContacts(donorsFromCustomers)
+  }, [])
   
   return (
-    <ChatDataProvider>
-      <div className="h-screen flex flex-col">
-        <UserHeader />
-        <OfflineBanner />
-        
-        <div className="flex-1 flex">
-          {/* Sidebar - responsivo */}
-          <div className={isMobile && activeChat ? "hidden" : "block"}>
-            <Sidebar />
-          </div>
-          
-          {/* Chat Area */}
-          <div className={isMobile && !activeChat ? "hidden" : "flex-1"}>
-            {activeChat ? (
-              <div className="flex flex-col">
-                <ChatHeader chat={activeChat} />
-                
-                <div className="flex-1 overflow-y-auto">
-                  {activeChat.messages.map(message => (
-                    <ChatMessage key={message.id} message={message} />
-                  ))}
-                  <TypingIndicator conversationId={activeChat.id} />
-                </div>
-                
-                <ChatInput />
-              </div>
-            ) : (
-              <WelcomeScreen />
-            )}
-          </div>
-        </div>
+    <div className="flex h-screen bg-white">
+      <DonorSidebar
+        donors={donors}
+        selectedDonor={selectedDonor}
+        onDonorSelect={setSelectedDonor}
+        onNewChat={() => setShowNewChatModal(true)}
+      />
+      
+      <div className="flex-1 flex flex-col">
+        {selectedDonor ? (
+          <>
+            <ChatHeader donor={selectedDonor} />
+            <MessageList messages={messages} />
+            <ChatInput 
+              onSendMessage={handleSendMessage}
+              disabled={!selectedDonor}
+            />
+          </>
+        ) : (
+          <WelcomeScreen />
+        )}
       </div>
-    </ChatDataProvider>
+      
+      <NewChatModal
+        show={showNewChatModal}
+        availableDonors={allContacts}
+        onClose={() => setShowNewChatModal(false)}
+        onDonorSelect={handleDonorSelect}
+        onNewContactCreate={handleNewContactCreate}
+      />
+    </div>
   )
 }
 ```
 
-#### Sidebar (Lista de Conversas)
+#### DonorSidebar (Lista de Doadores/Conversas)
 ```typescript
-// components/Sidebar/index.tsx
-const Sidebar = () => {
-  const { chats, currentStatus, loadConversations, hasMore } = useChatStore()
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  
-  // Infinite scroll
-  const { ref: lastChatRef } = useIntersectionObserver({
-    threshold: 0.1,
-    onIntersect: async () => {
-      if (hasMore && !isLoadingMore) {
-        setIsLoadingMore(true)
-        await loadConversations(currentStatus, currentPage + 1)
-        setIsLoadingMore(false)
-      }
-    }
-  })
+// components/DonorSidebar/index.tsx
+const DonorSidebar = ({ donors, selectedDonor, onDonorSelect, onNewChat }) => {
+  // Filtra apenas doadores com conversas ativas
+  const activeDonors = donors.filter((d) => d.lastMessage || d.hasActiveConversation)
+  const filteredDonors = activeDonors.filter((donor) =>
+    donor.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
   
   return (
-    <div className="flex flex-col h-full">
-      <SearchBar />
-      <TopTabsSwitcher />
-      
-      <div className="flex-1 overflow-y-auto">
-        {chats.map((chat, index) => (
-          <div
-            key={chat.id}
-            ref={index === chats.length - 1 ? lastChatRef : undefined}
+    <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center gap-3 mb-4">
+          <Heart className="text-red-500 text-2xl" fill="currentColor" />
+          <h1 className="text-lg font-semibold text-gray-800">Centro de Sangue</h1>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Buscar conversas..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <button
+            onClick={onNewChat}
+            className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
           >
-            <ChatListItem chat={chat} />
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2">
+        {filteredDonors.map((donor) => (
+          <div
+            key={donor.id}
+            onClick={() => onDonorSelect(donor)}
+            className={`p-3 mb-1 rounded-lg cursor-pointer transition-all ${
+              selectedDonor?.id === donor.id
+                ? "bg-blue-50 border border-blue-200"
+                : "hover:bg-gray-100"
+            }`}
+          >
+            {/* Donor card content */}
           </div>
         ))}
-        
-        {isLoadingMore && <ChatListSkeleton />}
       </div>
     </div>
   )
@@ -1023,6 +1065,117 @@ export class PhoneValidator {
 - **Keyboard Navigation**: Navegação completa via teclado
 - **High Contrast**: Suporte a temas de alto contraste
 - **Focus Management**: Gerenciamento adequado de foco
+
+## 🆕 Sistema de Criação de Contatos e Conversas
+
+### Fluxo de Criação Diferida
+A aplicação implementa um sistema inteligente onde **novos contatos aparecem no sidebar apenas após a primeira mensagem ser enviada**:
+
+#### Fluxo Completo
+```typescript
+// 1. Usuário cria novo contato no NewChatModal
+const handleNewContactSubmit = async () => {
+  // Apenas cria o customer, NÃO cria conversa
+  const newCustomer = await customerApi.create(createRequest)
+  
+  // Marca como sem conversa ativa
+  const donor: Donor = {
+    ...customerData,
+    hasActiveConversation: false,
+    lastMessage: "" // Vazio = não aparece no sidebar
+  }
+  
+  // Adiciona à lista geral mas não ao sidebar
+  onNewContactCreate({ donor })
+  onDonorSelect(donor) // Abre chat
+}
+
+// 2. Usuário envia primeira mensagem
+const handleSendMessage = async () => {
+  const isFirstMessage = !selectedDonor.hasActiveConversation && !selectedDonor.lastMessage
+  
+  if (isFirstMessage) {
+    // Agora sim cria a conversa
+    await conversationApi.create({
+      customerId: selectedDonor.id,
+      channel: 'WEB'
+    })
+    
+    // Atualiza o donor para aparecer no sidebar
+    const updatedDonor = {
+      ...selectedDonor,
+      hasActiveConversation: true,
+      lastMessage: messageInput,
+      timestamp: getCurrentTimestamp()
+    }
+    
+    // Atualiza estado - donor aparece no DonorSidebar
+    setDonors(prev => prev.map(d => 
+      d.id === selectedDonor.id ? updatedDonor : d
+    ))
+  }
+  
+  // Envia a mensagem normalmente
+  // ...
+}
+```
+
+### NewChatModal - Modal de Criação
+```typescript
+// components/NewChatModal/index.tsx
+const NewChatModal = ({ availableDonors, onNewContactCreate, onDonorSelect }) => {
+  const [activeTab, setActiveTab] = useState<"existing" | "new">("existing")
+  
+  return (
+    <div className="modal">
+      {/* Tabs: Doadores Existentes | Novo Contato */}
+      <div className="tabs">
+        <button onClick={() => setActiveTab("existing")}>
+          Doadores Existentes
+        </button>
+        <button onClick={() => setActiveTab("new")}>
+          Novo Contato
+        </button>
+      </div>
+      
+      {activeTab === "existing" ? (
+        // Lista todos os contatos (com e sem conversas)
+        <ContactList contacts={availableDonors} onSelect={onDonorSelect} />
+      ) : (
+        // Formulário para criar novo contato
+        <ContactForm onSubmit={handleNewContactSubmit} />
+      )}
+    </div>
+  )
+}
+```
+
+### Diferenciação de Estados
+```typescript
+// types/types.ts
+interface Donor {
+  id: string
+  name: string
+  phone: string
+  lastMessage: string
+  hasActiveConversation?: boolean // Nova propriedade
+  // ... outros campos
+}
+
+// DonorSidebar filtra por conversas ativas
+const activeDonors = donors.filter(d => 
+  d.lastMessage || d.hasActiveConversation
+)
+
+// NewChatModal mostra TODOS os contatos
+const allContacts = customers.map(convertCustomerToDonor)
+```
+
+### Vantagens desta Abordagem
+- **UX Intuitiva**: Sidebar limpo, mostra apenas conversas realmente iniciadas
+- **Performance**: Não cria conversas desnecessárias no banco
+- **Flexibilidade**: Permite ter contatos "preparados" sem poluir interface
+- **Consistência**: Alinha com fluxo natural de comunicação
 
 ## 🔄 APIs e Adaptadores
 
