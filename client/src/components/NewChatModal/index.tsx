@@ -3,7 +3,6 @@ import { Search, X, User, Circle, Plus, UserPlus, Loader } from "lucide-react";
 import type { Donor } from "../../types/types";
 import { getStatusColor } from "../../utils";
 import { customerApi } from "../../api/services/customerApi";
-import { conversationApi } from "../../api/services/conversationApi";
 import { customerAdapter } from "../../adapters/customerAdapter";
 
 interface NewContactData {
@@ -20,6 +19,7 @@ interface NewChatModalProps {
   onSearchChange: (term: string) => void;
   onDonorSelect: (donor: Donor) => void;
   onNewContactCreate: (contactData: NewContactData) => void;
+  isLoadingContacts?: boolean;
 }
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({
@@ -30,6 +30,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
   onSearchChange,
   onDonorSelect,
   onNewContactCreate,
+  isLoadingContacts = false,
 }) => {
   const [activeTab, setActiveTab] = useState<"existing" | "new">("existing");
   const [newContactData, setNewContactData] = useState<NewContactData>({
@@ -76,6 +77,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           birthDate: "",
           weight: 0,
           height: 0,
+          hasActiveConversation: false, // Assumir que não tem conversa ativa ainda
         };
         
         // Adicionar à lista de doadores se não estiver presente
@@ -96,18 +98,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
         
         const newCustomer = await customerApi.create(createRequest);
         
-        // Criar nova conversa para este cliente
-        await conversationApi.create({
-          customerId: newCustomer.id,
-          channel: 'WEB'
-        });
+        // Não criar conversa aqui - será criada quando a primeira mensagem for enviada
 
         // Converter para Donor e notificar componente pai
         const user = customerAdapter.toUser(newCustomer);
         const donor: Donor = {
           ...user,
           phone: user.phone || customerAdapter.normalizePhone(newContactData.phone),
-          lastMessage: "",
+          lastMessage: "", // Vazio pois ainda não há conversa
           timestamp: "",
           unread: 0,
           status: "offline" as const,
@@ -119,6 +117,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           birthDate: "",
           weight: 0,
           height: 0,
+          hasActiveConversation: false, // Marcar que não tem conversa ativa ainda
         };
         
         // Primeiro adicionar à lista de doadores via callback
@@ -161,7 +160,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-96 max-h-96 flex flex-col">
+      <div className="bg-white rounded-lg w-[500px] max-h-[600px] flex flex-col">
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-medium text-gray-800">Nova Conversa</h2>
           <button
@@ -215,36 +214,54 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-4">
-              {availableDonors.map((donor) => (
-                <div
-                  key={donor.id}
-                  onClick={() => onDonorSelect(donor)}
-                  className="p-3 mb-1 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
+              {isLoadingContacts ? (
+                <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                  <Loader className="w-6 h-6 animate-spin mb-2" />
+                  <span className="text-sm">Carregando contatos...</span>
+                </div>
+              ) : availableDonors.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                  <User className="w-6 h-6 mb-2" />
+                  <span className="text-sm">
+                    {searchTerm 
+                      ? "Nenhum contato encontrado para sua busca" 
+                      : "Nenhum contato disponível"
+                    }
+                  </span>
+                </div>
+              ) : (
+                availableDonors.map((donor) => (
+                  <div
+                    key={donor.id}
+                    onClick={() => onDonorSelect(donor)}
+                    className="p-3 mb-1 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-white" />
+                        </div>
+                        <Circle
+                          className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 ${getStatusColor(
+                            donor.status
+                          )} bg-white rounded-full`}
+                          fill="currentColor"
+                        />
                       </div>
-                      <Circle
-                        className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 ${getStatusColor(
-                          donor.status
-                        )} bg-white rounded-full`}
-                        fill="currentColor"
-                      />
-                    </div>
 
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800 text-sm">
-                        {donor.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {donor.bloodType} • Última doação: {donor.lastDonation}
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800 text-sm">
+                          {donor.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {donor.phone && `${donor.phone} • `}
+                          {donor.bloodType} • Última doação: {donor.lastDonation}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </>
         ) : (

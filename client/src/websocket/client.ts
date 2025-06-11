@@ -243,7 +243,7 @@ class WebSocketClient {
     
     this.eventHandlers.onReconnecting?.()
 
-    this.reconnectTimeout = setTimeout(async () => {
+    this.reconnectTimeout = window.setTimeout(async () => {
       try {
         await this.connect()
         this.eventHandlers.onReconnected?.()
@@ -258,7 +258,7 @@ class WebSocketClient {
     this.stopHeartbeat()
     
     // Enviar ping a cada 30 segundos
-    this.heartbeatInterval = setInterval(() => {
+    this.heartbeatInterval = window.setInterval(() => {
       if (this.isConnected()) {
         this.send('PING', { timestamp: new Date().toISOString() })
       }
