@@ -9,6 +9,7 @@ import { customerAdapter } from "../../adapters/customerAdapter";
 interface NewContactData {
   name: string;
   phone: string;
+  donor?: Donor;
 }
 
 interface NewChatModalProps {
@@ -69,13 +70,22 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           status: "offline" as const,
           bloodType: "O+", // Valor padrão, será atualizado pelo backend
           email: "",
-          lastDonation: "",
+          lastDonation: "Sem registro",
           totalDonations: 0,
           address: "",
           birthDate: "",
           weight: 0,
           height: 0,
         };
+        
+        // Adicionar à lista de doadores se não estiver presente
+        onNewContactCreate({
+          name: newContactData.name,
+          phone: newContactData.phone,
+          donor: donor
+        });
+        
+        // Selecionar o donor
         onDonorSelect(donor);
       } else {
         // Criar novo cliente
@@ -103,17 +113,23 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           status: "offline" as const,
           bloodType: "O+", // Valor padrão
           email: "",
-          lastDonation: "",
+          lastDonation: "Sem registro",
           totalDonations: 0,
           address: "",
           birthDate: "",
           weight: 0,
           height: 0,
         };
+        
+        // Primeiro adicionar à lista de doadores via callback
+        onNewContactCreate({
+          name: newContactData.name,
+          phone: newContactData.phone,
+          donor: donor // Passar o donor criado para ser adicionado à lista
+        });
+        
+        // Depois selecionar o donor
         onDonorSelect(donor);
-
-        // Chamar callback original para compatibilidade
-        onNewContactCreate(newContactData);
       }
 
       // Resetar formulário e fechar modal

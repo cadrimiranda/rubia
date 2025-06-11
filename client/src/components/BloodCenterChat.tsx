@@ -14,6 +14,7 @@ import { mockDonors, mockMessages } from "../mocks/data";
 interface NewContactData {
   name: string;
   phone: string;
+  donor?: Donor;
 }
 
 export const BloodCenterChat: React.FC = () => {
@@ -62,6 +63,13 @@ export const BloodCenterChat: React.FC = () => {
   };
 
   const handleNewContactCreate = (contactData: NewContactData) => {
+    // Se o donor foi criado via API, usar ele diretamente
+    if (contactData.donor) {
+      setDonors((prev) => [...prev, contactData.donor!]);
+      return; // handleDonorSelect já foi chamado no NewChatModal
+    }
+    
+    // Fallback para criação local (compatibilidade)
     const newDonor = createDonorFromContact(contactData);
     setDonors((prev) => [...prev, newDonor]);
     handleDonorSelect(newDonor);
