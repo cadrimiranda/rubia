@@ -23,6 +23,43 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
+        log.error("IllegalStateException: {}", ex.getMessage(), ex);
+        
+        String message = ex.getMessage();
+        HttpStatus status = HttpStatus.FORBIDDEN; // 403
+        
+        if (message != null && message.contains("No company context")) {
+            return ResponseEntity.status(status)
+                    .body(Map.of(
+                        "error", "INSUFFICIENT_PERMISSIONS",
+                        "message", "Você não tem permissão para realizar esta ação",
+                        "code", "INSUFFICIENT_PERMISSIONS",
+                        "status", String.valueOf(status.value())
+                    ));
+        }
+        
+        return ResponseEntity.status(status)
+                .body(Map.of(
+                    "error", "Forbidden",
+                    "message", message != null ? message : "Access denied",
+                    "status", String.valueOf(status.value())
+                ));
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<Map<String, String>> handleSecurityException(SecurityException ex) {
+        log.error("SecurityException: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                    "error", "INSUFFICIENT_PERMISSIONS",
+                    "message", "Você não tem permissão para realizar esta ação",
+                    "code", "INSUFFICIENT_PERMISSIONS",
+                    "status", "403"
+                ));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
         log.error("Runtime exception: {}", ex.getMessage(), ex);

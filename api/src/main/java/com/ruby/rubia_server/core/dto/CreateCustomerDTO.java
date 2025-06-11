@@ -29,8 +29,7 @@ public class CreateCustomerDTO {
     
     private String profileUrl;
     
-    @NotNull(message = "ID da empresa é obrigatório")
-    private UUID companyId;
+    // CompanyId é obtido do contexto JWT, não enviado pelo frontend
     
     @Builder.Default
     private Boolean isBlocked = false;

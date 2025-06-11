@@ -19,8 +19,9 @@ public class CreateConversationDTO {
     @NotNull(message = "ID do cliente é obrigatório")
     private UUID customerId;
     
-    @NotNull(message = "ID da empresa é obrigatório")
-    private UUID companyId;
+    // CompanyId é obtido do contexto JWT, não enviado pelo frontend
+    // @NotNull(message = "ID da empresa é obrigatório")
+    // private UUID companyId;
     
     private UUID assignedUserId;
     

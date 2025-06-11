@@ -4,7 +4,9 @@ import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.UpdateCustomerDTO;
 import com.ruby.rubia_server.core.entity.Customer;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.repository.CustomerRepository;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,9 +22,14 @@ import java.util.UUID;
 public class CustomerService {
     
     private final CustomerRepository customerRepository;
+    private final CompanyRepository companyRepository;
     
     public CustomerDTO create(CreateCustomerDTO createDTO, UUID companyId) {
         log.info("Creating customer with phone: {} for company: {}", createDTO.getPhone(), companyId);
+        
+        // Buscar a empresa
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
         
         if (customerRepository.existsByPhoneAndCompanyId(createDTO.getPhone(), companyId)) {
             throw new IllegalArgumentException("Cliente com telefone '" + createDTO.getPhone() + "' já existe nesta empresa");
@@ -37,7 +44,8 @@ public class CustomerService {
                 .name(createDTO.getName())
                 .whatsappId(createDTO.getWhatsappId())
                 .profileUrl(createDTO.getProfileUrl())
-                .isBlocked(createDTO.getIsBlocked())
+                .isBlocked(createDTO.getIsBlocked() != null ? createDTO.getIsBlocked() : false)
+                .company(company) // DEFINIR A COMPANY!
                 .build();
         
         Customer saved = customerRepository.save(customer);
