@@ -84,8 +84,8 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         error: null
       })
       
-      // Inicializar status online
-      await authService.updateOnlineStatus(true)
+      // Inicializar status online - temporariamente desabilitado devido a erro 403
+      // await authService.updateOnlineStatus(true)
       
     } catch (error) {
       console.error('Erro no login:', error)

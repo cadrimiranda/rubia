@@ -15,6 +15,7 @@ export interface Donor {
   birthDate: string;
   weight: number;
   height: number;
+  hasActiveConversation?: boolean;
 }
 
 export interface FileAttachment {

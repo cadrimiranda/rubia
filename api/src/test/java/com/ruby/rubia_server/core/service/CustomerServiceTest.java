@@ -73,7 +73,7 @@ class CustomerServiceTest {
                 .name("João Silva")
                 .whatsappId("wa_001")
                 .profileUrl("profile.jpg")
-                .companyId(companyId)
+                // companyId é obtido do contexto, não passado no DTO
                 .isBlocked(false)
                 .build();
         

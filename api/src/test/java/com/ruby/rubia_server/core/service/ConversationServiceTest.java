@@ -120,7 +120,7 @@ class ConversationServiceTest {
         
         createDTO = CreateConversationDTO.builder()
                 .customerId(customerId)
-                .companyId(companyId)
+                // companyId é obtido do contexto, não passado no DTO
                 .assignedUserId(userId)
                 .departmentId(departmentId)
                 .status(ConversationStatus.ENTRADA)
@@ -141,6 +141,7 @@ class ConversationServiceTest {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(departmentRepository.findById(departmentId)).thenReturn(Optional.of(department));
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         
         ConversationDTO result = conversationService.create(createDTO, companyId);
@@ -154,6 +155,7 @@ class ConversationServiceTest {
         verify(customerRepository).findById(customerId);
         verify(userRepository).findById(userId);
         verify(departmentRepository).findById(departmentId);
+        verify(companyRepository).findById(companyId);
         verify(conversationRepository).save(any(Conversation.class));
     }
     
@@ -172,6 +174,7 @@ class ConversationServiceTest {
     @Test
     void create_ShouldThrowException_WhenUserNotFound() {
         when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
         
         assertThatThrownBy(() -> conversationService.create(createDTO, companyId))
@@ -179,6 +182,7 @@ class ConversationServiceTest {
                 .hasMessageContaining("Usuário não encontrado");
         
         verify(customerRepository).findById(customerId);
+        verify(companyRepository).findById(companyId);
         verify(userRepository).findById(userId);
         verify(conversationRepository, never()).save(any(Conversation.class));
     }
@@ -276,23 +280,23 @@ class ConversationServiceTest {
     
     @Test
     void delete_ShouldDeleteConversation_WhenExists() {
-        when(conversationRepository.existsById(conversationId)).thenReturn(true);
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         
         conversationService.delete(conversationId, companyId);
         
-        verify(conversationRepository).existsById(conversationId);
+        verify(conversationRepository).findById(conversationId);
         verify(conversationRepository).deleteById(conversationId);
     }
     
     @Test
     void delete_ShouldThrowException_WhenNotExists() {
-        when(conversationRepository.existsById(conversationId)).thenReturn(false);
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.empty());
         
         assertThatThrownBy(() -> conversationService.delete(conversationId, companyId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("não encontrada");
         
-        verify(conversationRepository).existsById(conversationId);
+        verify(conversationRepository).findById(conversationId);
         verify(conversationRepository, never()).deleteById(any());
     }
     

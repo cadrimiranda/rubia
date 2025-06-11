@@ -4,11 +4,13 @@ import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.ConversationSummaryDTO;
 import com.ruby.rubia_server.core.dto.CreateConversationDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationDTO;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.CustomerRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
@@ -34,6 +36,7 @@ public class ConversationService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
+    private final CompanyRepository companyRepository;
     
     public ConversationDTO create(CreateConversationDTO createDTO, UUID companyId) {
         log.info("Creating conversation for customer: {} in company: {}", createDTO.getCustomerId(), companyId);
@@ -45,6 +48,9 @@ public class ConversationService {
         if (!customer.getCompany().getId().equals(companyId)) {
             throw new IllegalArgumentException("Cliente não pertence a esta empresa");
         }
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
         
         User assignedUser = null;
         if (createDTO.getAssignedUserId() != null) {
@@ -70,6 +76,7 @@ public class ConversationService {
                 .customer(customer)
                 .assignedUser(assignedUser)
                 .department(department)
+                .company(company)
                 .status(createDTO.getStatus())
                 .channel(createDTO.getChannel())
                 .priority(createDTO.getPriority())
