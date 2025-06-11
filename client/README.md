@@ -51,30 +51,83 @@ src/
 │   ├── conversationAdapter.ts
 │   ├── customerAdapter.ts
 │   ├── messageAdapter.ts
-│   └── tagAdapter.ts
+│   └── index.ts       # Barrel export
 ├── api/               # Configuração e serviços de API
 │   ├── client.ts      # Cliente HTTP configurado
 │   ├── services/      # Serviços específicos por entidade
-│   └── types.ts       # Tipos da API
+│   │   ├── conversationApi.ts
+│   │   ├── customerApi.ts
+│   │   ├── departmentApi.ts
+│   │   ├── messageApi.ts
+│   │   └── userApi.ts
+│   ├── types.ts       # Tipos da API
+│   └── index.ts       # Barrel export
 ├── auth/              # Sistema de autenticação
 │   └── authService.ts # Serviço de autenticação JWT
-├── components/        # Componentes React
-│   ├── skeletons/     # Loading states
-│   ├── notifications/ # Sistema de notificações
-│   ├── ChatInput/     # Input de mensagem
-│   ├── ChatMessage/   # Componente de mensagem
-│   └── ...
+├── components/        # Componentes React organizados por funcionalidade
+│   ├── AuthContext/   # Contexto de autenticação
+│   │   └── index.tsx
+│   ├── BloodCenterChat.tsx # Componente principal do chat para centro de sangue
+│   ├── ChatHeader/    # Cabeçalho do chat com informações do doador
+│   │   └── index.tsx
+│   ├── ContextMenu/   # Menu de contexto com ações
+│   │   └── index.tsx
+│   ├── DonorInfoModal/ # Modal com informações detalhadas do doador
+│   │   └── index.tsx
+│   ├── DonorSidebar/  # Sidebar com lista de doadores/conversas
+│   │   └── index.tsx
+│   ├── ErrorBoundary/ # Error boundary para tratamento de erros
+│   │   └── index.tsx
+│   ├── FileAttachment/ # Componente para anexos de arquivo
+│   │   └── index.tsx
+│   ├── Message/       # Componente individual de mensagem
+│   │   └── index.tsx
+│   ├── MessageInput/  # Input de mensagem com botões de ação
+│   │   └── index.tsx
+│   ├── MessageList/   # Lista de mensagens da conversa
+│   │   └── index.tsx
+│   ├── NewChatModal/  # Modal para nova conversa/contato com abas
+│   │   └── index.tsx
+│   └── ProtectedRoute/ # Componente de rota protegida por autenticação
+│       └── index.tsx
 ├── hooks/             # Custom hooks
+│   └── useChatData.ts # Hook para dados do chat e notificações
 ├── pages/             # Páginas da aplicação
+│   ├── ChatPage.tsx   # Página principal do chat
+│   └── LoginPage.tsx  # Página de login
 ├── store/             # Gerenciamento de estado (Zustand)
+│   ├── useAuthStore.ts # Store de autenticação
+│   └── useChatStore.ts # Store do chat
 ├── types/             # Tipos TypeScript globais
+│   ├── index.ts       # Tipos principais (Chat, User, Message, etc.)
+│   └── types.ts       # Tipos específicos (Donor, FileAttachment, etc.)
 ├── utils/             # Utilitários e validações
+│   ├── company.ts     # Utilitários da empresa
+│   ├── format.ts      # Formatação de dados
+│   ├── validation.ts  # Validações
+│   └── index.ts       # Funções utilitárias gerais
 ├── websocket/         # Sistema WebSocket
 │   ├── client.ts      # Cliente WebSocket
 │   ├── eventHandlers.ts # Handlers de eventos
 │   └── index.ts       # Manager principal
 └── mocks/             # Dados de desenvolvimento
+    └── data.ts        # Dados mock
 ```
+
+### 🔄 Migração de Componentes (feat/ui_improvements)
+
+A estrutura atual reflete a refatoração completa dos componentes para uma interface otimizada de **centro de doação de sangue**:
+
+#### Componentes Principais Atuais
+- **BloodCenterChat.tsx**: Componente raiz que substitui o antigo ChatPage
+- **DonorSidebar/**: Sidebar especializada para doadores (substitui Sidebar genérico)
+- **NewChatModal/**: Modal inteligente com abas para criação de contatos
+- **DonorInfoModal/**: Modal com informações médicas dos doadores
+
+#### Componentes de Mensagem
+- **MessageList/**: Lista otimizada de mensagens
+- **MessageInput/**: Input com funcionalidades específicas para centro médico
+- **Message/**: Componente individual de mensagem com contexto médico
 
 ## 🏗 Arquitetura
 
