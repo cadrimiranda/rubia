@@ -1,10 +1,12 @@
 import type { Donor, Message } from "../types/types";
+import type { ChatStatus } from "../types/index";
 
-export const mockDonors: Donor[] = [
+// Conversas Ativas (cliente respondeu mas Agente/Usuario não respondeu ainda)
+export const mockActiveDonors: Donor[] = [
   {
-    id: "1",
+    id: "ativo_1",
     name: "Maria Silva",
-    lastMessage: "Obrigada pela lembrança! Posso doar na próxima semana.",
+    lastMessage: "Olá! Gostaria de agendar uma doação para esta semana. Tenho disponibilidade na terça e quarta à tarde.",
     timestamp: "14:30",
     unread: 1,
     status: "online",
@@ -17,16 +19,19 @@ export const mockDonors: Donor[] = [
     birthDate: "15/08/1985",
     weight: 65,
     height: 165,
+    hasActiveConversation: true,
+    campaignId: "camp_1",
+    campaigns: ["camp_1", "camp_3"],
   },
   {
-    id: "2",
+    id: "ativo_2", 
     name: "João Santos",
-    lastMessage: "Preciso reagendar minha doação.",
+    lastMessage: "Oi Sofia! Preciso reagendar minha doação porque surgiu um compromisso. Você pode me ajudar?",
     timestamp: "13:45",
-    unread: 0,
-    status: "offline",
+    unread: 1,
+    status: "online",
     bloodType: "A-",
-    phone: "(11) 88888-8888",
+    phone: "(11) 88888-8888", 
     email: "joao.santos@email.com",
     lastDonation: "08/02/2025",
     totalDonations: 15,
@@ -34,33 +39,93 @@ export const mockDonors: Donor[] = [
     birthDate: "22/03/1990",
     weight: 75,
     height: 178,
+    hasActiveConversation: true,
   },
   {
-    id: "3",
+    id: "ativo_3",
     name: "Ana Costa",
-    lastMessage: "Qual o horário disponível para amanhã?",
+    lastMessage: "Bom dia! Vi sua mensagem sobre a campanha especial. Quais são os horários disponíveis para amanhã?",
     timestamp: "12:20",
     unread: 2,
     status: "offline",
     bloodType: "B+",
     phone: "(11) 77777-7777",
-    email: "ana.costa@email.com",
+    email: "ana.costa@email.com", 
     lastDonation: "15/01/2025",
     totalDonations: 3,
     address: "Rua Augusta, 789 - São Paulo, SP",
     birthDate: "10/12/1992",
     weight: 58,
     height: 160,
+    hasActiveConversation: true,
   },
   {
-    id: "4",
-    name: "Carlos Oliveira",
-    lastMessage: "",
-    timestamp: "",
-    unread: 0,
+    id: "ativo_4",
+    name: "Roberto Mendes",
+    lastMessage: "Olá! É a primeira vez que vou doar sangue. Preciso fazer algum exame antes? Estou um pouco nervoso rs",
+    timestamp: "11:15",
+    unread: 1,
     status: "online",
-    bloodType: "AB+",
+    bloodType: "AB-",
     phone: "(11) 66666-6666",
+    email: "roberto.mendes@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua Oscar Freire, 100 - São Paulo, SP", 
+    birthDate: "12/09/1995",
+    weight: 70,
+    height: 175,
+    hasActiveConversation: true,
+  },
+  {
+    id: "ativo_5",
+    name: "Fernanda Reis",
+    lastMessage: "Oi! Recebi sua mensagem sobre doação. Posso levar minha irmã junto? Ela também quer começar a doar.",
+    timestamp: "10:45",
+    unread: 1,
+    status: "online",
+    bloodType: "O-",
+    phone: "(11) 55555-5555",
+    email: "fernanda.reis@email.com",
+    lastDonation: "05/04/2025",
+    totalDonations: 4,
+    address: "Alameda Jaú, 200 - São Paulo, SP",
+    birthDate: "28/02/1993",
+    weight: 55,
+    height: 162,
+    hasActiveConversation: true,
+  },
+  {
+    id: "ativo_6",
+    name: "Lucas Pereira",
+    lastMessage: "Olá! Fiquei sabendo da campanha no trabalho. Nunca doei mas quero muito começar! Como funciona?",
+    timestamp: "09:30",
+    unread: 1,
+    status: "offline",
+    bloodType: "A+",
+    phone: "(11) 44444-4444",
+    email: "lucas.pereira@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua Haddock Lobo, 300 - São Paulo, SP",
+    birthDate: "18/11/1989",
+    weight: 82,
+    height: 180,
+    hasActiveConversation: true,
+  }
+];
+
+// Conversas Aguardando (Agente/Usuario mandou mensagem mas cliente não respondeu ainda)
+export const mockWaitingDonors: Donor[] = [
+  {
+    id: "aguardando_1",
+    name: "Carlos Oliveira", 
+    lastMessage: "Perfeito! Agendei sua doação para quarta-feira às 14h. Confirma presença?",
+    timestamp: "16:20", 
+    unread: 0,
+    status: "offline",
+    bloodType: "AB+",
+    phone: "(11) 33333-3333",
     email: "carlos.oliveira@email.com",
     lastDonation: "20/12/2024",
     totalDonations: 12,
@@ -68,16 +133,17 @@ export const mockDonors: Donor[] = [
     birthDate: "05/07/1988",
     weight: 80,
     height: 182,
+    hasActiveConversation: true,
   },
   {
-    id: "5",
+    id: "aguardando_2",
     name: "Patricia Lima",
-    lastMessage: "",
-    timestamp: "",
+    lastMessage: "Oi Patricia! Que bom te ver de volta. Temos horários livres na sexta pela manhã. Te interesse?",
+    timestamp: "15:10",
     unread: 0,
-    status: "offline",
+    status: "offline", 
     bloodType: "O-",
-    phone: "(11) 55555-5555",
+    phone: "(11) 22222-2222",
     email: "patricia.lima@email.com",
     lastDonation: "10/11/2024",
     totalDonations: 6,
@@ -85,8 +151,732 @@ export const mockDonors: Donor[] = [
     birthDate: "18/01/1987",
     weight: 62,
     height: 170,
+    hasActiveConversation: true,
   },
+  {
+    id: "aguardando_3",
+    name: "Eduardo Silva",
+    lastMessage: "Olá Eduardo! Estamos com uma urgência para tipo B+. Você pode nos ajudar esta semana?",
+    timestamp: "14:45",
+    unread: 0,
+    status: "online",
+    bloodType: "B+",
+    phone: "(11) 11111-1111", 
+    email: "eduardo.silva@email.com",
+    lastDonation: "18/03/2025",
+    totalDonations: 22,
+    address: "Rua Bela Cintra, 555 - São Paulo, SP",
+    birthDate: "14/06/1982",
+    weight: 78,
+    height: 176,
+    hasActiveConversation: true,
+  },
+  {
+    id: "aguardando_4",
+    name: "Juliana Costa",
+    lastMessage: "Oi Juliana! Obrigada pelo interesse. Para primeira doação precisa de jejum de 4h. Tudo certo?",
+    timestamp: "13:30",
+    unread: 0,
+    status: "offline",
+    bloodType: "A-",
+    phone: "(11) 99887-7665",
+    email: "juliana.costa@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua Pamplona, 777 - São Paulo, SP", 
+    birthDate: "25/04/1996",
+    weight: 60,
+    height: 168,
+    hasActiveConversation: true,
+  },
+  {
+    id: "aguardando_5",
+    name: "Marcos Antonio",
+    lastMessage: "Oi Marcos! Que legal você e sua esposa quererem doar juntos! Posso agendar vocês no mesmo horário na segunda às 10h?",
+    timestamp: "12:15",
+    unread: 0,
+    status: "offline",
+    bloodType: "O+",
+    phone: "(11) 88776-6554",
+    email: "marcos.antonio@email.com",
+    lastDonation: "22/02/2025",
+    totalDonations: 9,
+    address: "Av. Rebouças, 888 - São Paulo, SP",
+    birthDate: "30/08/1985",
+    weight: 85,
+    height: 183,
+    hasActiveConversation: true,
+  },
+  {
+    id: "aguardando_6",
+    name: "Camila Rodrigues",
+    lastMessage: "Oi Camila! Vi que você tem interesse em ser doadora regular. Te enviei as informações sobre nosso programa de fidelidade!",
+    timestamp: "11:00",
+    unread: 0,
+    status: "online",
+    bloodType: "AB-",
+    phone: "(11) 77665-5443",
+    email: "camila.rodrigues@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua João Cachoeira, 999 - São Paulo, SP",
+    birthDate: "07/12/1991",
+    weight: 57,
+    height: 164,
+    hasActiveConversation: true,
+  }
 ];
+
+// Conversas Inativas (clientes que responderam negativamente e não querem mais contato)
+export const mockInactiveDonors: Donor[] = [
+  {
+    id: "inativo_1",
+    name: "Ricardo Gomes",
+    lastMessage: "Não tenho interesse em doar sangue. Por favor, removam meu contato da lista.",
+    timestamp: "17:45",
+    unread: 0,
+    status: "offline",
+    bloodType: "A+",
+    phone: "(11) 99111-2233",
+    email: "ricardo.gomes@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua Frei Caneca, 111 - São Paulo, SP",
+    birthDate: "16/03/1987",
+    weight: 73,
+    height: 174,
+    hasActiveConversation: true,
+  },
+  {
+    id: "inativo_2", 
+    name: "Beatriz Santos",
+    lastMessage: "Obrigada mas não posso doar por motivos de saúde. Peço para não me contactarem mais.",
+    timestamp: "16:30",
+    unread: 0,
+    status: "offline",
+    bloodType: "O+",
+    phone: "(11) 88222-3344",
+    email: "beatriz.santos@email.com",
+    lastDonation: "10/01/2024",
+    totalDonations: 2,
+    address: "Av. Ibirapuera, 222 - São Paulo, SP",
+    birthDate: "02/09/1990",
+    weight: 68,
+    height: 167,
+    hasActiveConversation: true,
+  },
+  {
+    id: "inativo_3",
+    name: "Diego Almeida",
+    lastMessage: "Não me interessei pela doação. Favor parar de me enviar mensagens.",
+    timestamp: "15:20",
+    unread: 0,
+    status: "offline",
+    bloodType: "B-",
+    phone: "(11) 77333-4455", 
+    email: "diego.almeida@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua Estados Unidos, 333 - São Paulo, SP",
+    birthDate: "11/07/1994",
+    weight: 75,
+    height: 179,
+    hasActiveConversation: true,
+  },
+  {
+    id: "inativo_4",
+    name: "Stephanie Oliveira",
+    lastMessage: "Estou grávida e não posso doar no momento. Não entrem em contato pelos próximos meses.",
+    timestamp: "14:10",
+    unread: 0,
+    status: "offline",
+    bloodType: "AB+",
+    phone: "(11) 66444-5566",
+    email: "stephanie.oliveira@email.com",
+    lastDonation: "05/10/2024",
+    totalDonations: 5,
+    address: "Rua Joaquim Floriano, 444 - São Paulo, SP",
+    birthDate: "23/05/1992",
+    weight: 61,
+    height: 165,
+    hasActiveConversation: true,
+  },
+  {
+    id: "inativo_5",
+    name: "Alexandre Costa", 
+    lastMessage: "Não vou doar. Tenho medo de agulha e não quero mais mensagens sobre isso.",
+    timestamp: "13:00",
+    unread: 0,
+    status: "offline",
+    bloodType: "O-",
+    phone: "(11) 55555-6677",
+    email: "alexandre.costa@email.com",
+    lastDonation: "Nunca doou", 
+    totalDonations: 0,
+    address: "Alameda Campinas, 555 - São Paulo, SP",
+    birthDate: "08/12/1986",
+    weight: 80,
+    height: 181,
+    hasActiveConversation: true,
+  },
+  {
+    id: "inativo_6",
+    name: "Larissa Ferreira",
+    lastMessage: "Não tenho tempo para doação e também não tenho interesse. Obrigada.",
+    timestamp: "12:30", 
+    unread: 0,
+    status: "offline",
+    bloodType: "A-",
+    phone: "(11) 44666-7788",
+    email: "larissa.ferreira@email.com",
+    lastDonation: "Nunca doou",
+    totalDonations: 0,
+    address: "Rua Cardeal Arcoverde, 666 - São Paulo, SP",
+    birthDate: "19/01/1995",
+    weight: 54,
+    height: 161,
+    hasActiveConversation: true,
+  }
+];
+
+// Função para obter donors por status
+export const getDonorsByStatus = (status: ChatStatus): Donor[] => {
+  switch (status) {
+    case 'ativos':
+      return mockActiveDonors;
+    case 'aguardando':
+      return mockWaitingDonors;
+    case 'inativo':
+      return mockInactiveDonors;
+    default:
+      return [];
+  }
+};
+
+// Todos os donors (para compatibilidade)
+export const mockDonors: Donor[] = [
+  ...mockActiveDonors,
+  ...mockWaitingDonors,
+  ...mockInactiveDonors
+];
+
+// Conversas detalhadas por doador
+export const getMessagesForDonor = (donorId: string): Message[] => {
+  const messageMap: Record<string, Message[]> = {
+    // Conversas Ativas (cliente respondeu mas Agente/Usuario não respondeu ainda)
+    "ativo_1": [
+      {
+        id: "msg_1_1",
+        senderId: "ai",
+        content: "Olá Maria! 😊 Sou a Sofia, assistente do Centro de Sangue. Que tal fazer a diferença na vida de alguém hoje? Você gostaria de saber mais sobre doação?",
+        timestamp: "14:20",
+        isAI: true,
+      },
+      {
+        id: "msg_1_2", 
+        senderId: "ativo_1",
+        content: "Oi Sofia! Que interessante! Nunca doei sangue antes. Como funciona?",
+        timestamp: "14:25",
+        isAI: false,
+      },
+      {
+        id: "msg_1_3",
+        senderId: "ai",
+        content: "Que ótimo! É muito simples e seguro. Primeiro fazemos uma triagem, depois a coleta leva apenas 10-15 minutos. Você tem alguma pergunta específica?",
+        timestamp: "14:26",
+        isAI: true,
+      },
+      {
+        id: "msg_1_4",
+        senderId: "ativo_1", 
+        content: "Gostaria de agendar uma doação para esta semana. Tenho disponibilidade na terça e quarta à tarde. Preciso fazer jejum?",
+        timestamp: "14:30",
+        isAI: false,
+      }
+    ],
+    "ativo_2": [
+      {
+        id: "msg_2_1",
+        senderId: "ai",
+        content: "Oi João! Obrigada por ser um doador! Sua última doação foi incrível. Já pode doar novamente? Vamos agendar?",
+        timestamp: "13:40",
+        isAI: true,
+      },
+      {
+        id: "msg_2_2",
+        senderId: "ativo_2",
+        content: "Oi Sofia! Claro, sempre disposto a ajudar! Quando seria possível?",
+        timestamp: "13:42",
+        isAI: false,
+      },
+      {
+        id: "msg_2_3",
+        senderId: "ai", 
+        content: "Perfeito! Temos vagas amanhã às 15h ou na sexta às 10h. Qual prefere?",
+        timestamp: "13:43",
+        isAI: true,
+      },
+      {
+        id: "msg_2_4",
+        senderId: "ativo_2",
+        content: "Prefiro sexta às 10h! Mas preciso reagendar se surgir algum compromisso. Você pode me ajudar com isso?",
+        timestamp: "13:45",
+        isAI: false,
+      }
+    ],
+    "ativo_3": [
+      {
+        id: "msg_3_1",
+        senderId: "ai",
+        content: "Olá Ana! Estamos com uma campanha especial este mês. Venha doar e ganhe um brinde especial como agradecimento!",
+        timestamp: "12:15",
+        isAI: true,
+      },
+      {
+        id: "msg_3_2",
+        senderId: "ativo_3",
+        content: "Oi! Que legal essa campanha! Que tipo de brinde vocês estão dando?",
+        timestamp: "12:18",
+        isAI: false,
+      },
+      {
+        id: "msg_3_3",
+        senderId: "ai",
+        content: "É uma ecobag personalizada e um kit de primeiros socorros! Além disso, você salva vidas 💝 Quer agendar?",
+        timestamp: "12:19",
+        isAI: true,
+      },
+      {
+        id: "msg_3_4",
+        senderId: "ativo_3",
+        content: "Adorei! Quais são os horários disponíveis para amanhã? Prefiro pela manhã se possível.",
+        timestamp: "12:20",
+        isAI: false,
+      }
+    ],
+    "ativo_4": [
+      {
+        id: "msg_4_1",
+        senderId: "ai",
+        content: "Olá! Vejo que você ainda não é doador. Que tal conhecer mais sobre esse ato de amor? Posso tirar suas dúvidas!",
+        timestamp: "11:10",
+        isAI: true,
+      },
+      {
+        id: "msg_4_2",
+        senderId: "ativo_4",
+        content: "Oi! É a primeira vez que vou doar sangue. Estou um pouco nervoso rs. Dói muito?",
+        timestamp: "11:15",
+        isAI: false,
+      },
+      {
+        id: "msg_4_3",
+        senderId: "ai",
+        content: "Entendo sua preocupação! É normal ficar nervoso na primeira vez. A agulha é bem fininha, é só uma picadinha rápida 😊",
+        timestamp: "11:16",
+        isAI: true,
+      },
+      {
+        id: "msg_4_4",
+        senderId: "ativo_4",
+        content: "Nossa, que alívio! Preciso fazer algum exame antes? E quanto tempo demora todo o processo?",
+        timestamp: "11:20",
+        isAI: false,
+      }
+    ],
+    "ativo_5": [
+      {
+        id: "msg_5_1",
+        senderId: "ai",
+        content: "Olá Fernanda! Que tal convidar um amigo para doar junto com você? Doação em dupla é ainda mais especial! 👫",
+        timestamp: "10:40",
+        isAI: true,
+      },
+      {
+        id: "msg_5_2",
+        senderId: "ativo_5",
+        content: "Oi Sofia! Que ideia legal! Adoraria levar minha irmã junto! Ela também tem vontade de doar.",
+        timestamp: "10:42",
+        isAI: false,
+      },
+      {
+        id: "msg_5_3",
+        senderId: "ai",
+        content: "Que maravilha que vocês duas querem doar juntas! Posso agendar no mesmo horário perfeitamente.",
+        timestamp: "10:43",
+        isAI: true,
+      },
+      {
+        id: "msg_5_4",
+        senderId: "ativo_5",
+        content: "Perfeito! Preferimos um horário pela manhã, de preferência no sábado. Vocês atendem aos sábados?",
+        timestamp: "10:45",
+        isAI: false,
+      }
+    ],
+    "ativo_6": [
+      {
+        id: "msg_6_1",
+        senderId: "ai",
+        content: "Olá Lucas! Você sabia que uma única doação pode salvar até 4 vidas? Que tal ser um herói hoje? Te conto mais detalhes!",
+        timestamp: "09:25",
+        isAI: true,
+      },
+      {
+        id: "msg_6_2",
+        senderId: "ativo_6",
+        content: "Nossa, não sabia que uma doação ajudava tantas pessoas! Me conte mais sobre isso.",
+        timestamp: "09:28",
+        isAI: false,
+      },
+      {
+        id: "msg_6_3",
+        senderId: "ai",
+        content: "É incrível né? Seu sangue é separado em componentes: hemácias, plaquetas e plasma. Cada um ajuda pacientes diferentes! Interessado em doar?",
+        timestamp: "09:29",
+        isAI: true,
+      },
+      {
+        id: "msg_6_4",
+        senderId: "ativo_6",
+        content: "Sim, por favor! Tenho algumas dúvidas sobre peso mínimo, idade e se posso doar tomando medicamentos.",
+        timestamp: "09:30",
+        isAI: false,
+      }
+    ],
+
+    // Conversas Aguardando (Agente/Usuario mandou mensagem mas cliente não respondeu ainda)
+    "aguardando_1": [
+      {
+        id: "msg_w1_1",
+        senderId: "ai",
+        content: "Oi Carlos! Que bom te ver de volta. Temos horários disponíveis esta semana. Qual seria o melhor dia para você?",
+        timestamp: "16:15",
+        isAI: true,
+      },
+      {
+        id: "msg_w1_2",
+        senderId: "aguardando_1",
+        content: "Oi Sofia! Quarta-feira seria perfeito. Que horários têm disponível?",
+        timestamp: "16:18",
+        isAI: false,
+      },
+      {
+        id: "msg_w1_3", 
+        senderId: "aguardando_1",
+        content: "Pode ser às 14h? Fico livre depois do almoço.",
+        timestamp: "16:19",
+        isAI: false,
+      },
+      {
+        id: "msg_w1_4",
+        senderId: "ai",
+        content: "Perfeito! Agendei sua doação para quarta-feira às 14h. Confirma presença?",
+        timestamp: "16:20", 
+        isAI: true,
+      }
+    ],
+    "aguardando_2": [
+      {
+        id: "msg_w2_1",
+        senderId: "ai",
+        content: "Oi Patricia! Já faz um tempo que não te vemos por aqui. Que tal agendar uma nova doação? Cada gesto conta! ❤️",
+        timestamp: "15:05",
+        isAI: true,
+      },
+      {
+        id: "msg_w2_2",
+        senderId: "aguardando_2",
+        content: "Oi Sofia! Verdade, estive viajando muito a trabalho. Mas já voltei e quero voltar a doar!",
+        timestamp: "15:08",
+        isAI: false,
+      },
+      {
+        id: "msg_w2_3",
+        senderId: "ai",
+        content: "Que bom te ver de volta! Temos horários livres na sexta pela manhã. Te interessa?",
+        timestamp: "15:10",
+        isAI: true,
+      }
+    ],
+    "aguardando_3": [
+      {
+        id: "msg_w3_1",
+        senderId: "ai",
+        content: "Olá Eduardo! Estamos com necessidade urgente do seu tipo sanguíneo. Você poderia nos ajudar nos próximos dias?",
+        timestamp: "14:40",
+        isAI: true,
+      },
+      {
+        id: "msg_w3_2",
+        senderId: "aguardando_3",
+        content: "Claro! Sempre que posso ajudo. B+ está em falta mesmo?",
+        timestamp: "14:43",
+        isAI: false,
+      },
+      {
+        id: "msg_w3_3",
+        senderId: "ai",
+        content: "Sim, estamos com estoque baixo. Você pode vir esta semana? Temos urgência mesmo!",
+        timestamp: "14:45",
+        isAI: true,
+      }
+    ],
+    "aguardando_4": [
+      {
+        id: "msg_w4_1",
+        senderId: "ai",
+        content: "Olá! Vejo que você ainda não é doador. Que tal conhecer mais sobre esse ato de amor? Posso tirar suas dúvidas!",
+        timestamp: "13:25",
+        isAI: true,
+      },
+      {
+        id: "msg_w4_2",
+        senderId: "aguardando_4",
+        content: "Oi! Tenho interesse sim! É minha primeira doação, o que preciso saber?",
+        timestamp: "13:28",
+        isAI: false,
+      },
+      {
+        id: "msg_w4_3",
+        senderId: "ai",
+        content: "Que ótimo! Para primeira doação você precisa estar em jejum de 4h. Tudo certo para você?",
+        timestamp: "13:30",
+        isAI: true,
+      }
+    ],
+    "aguardando_5": [
+      {
+        id: "msg_w5_1",
+        senderId: "ai",
+        content: "Oi Marcos! Que tal convidar um amigo para doar junto com você? Doação em dupla é ainda mais especial! 👫",
+        timestamp: "12:10",
+        isAI: true,
+      },
+      {
+        id: "msg_w5_2",
+        senderId: "aguardando_5",
+        content: "Oi Sofia! Que ideia legal! Minha esposa também tem interesse. Vocês fazem agendamento em conjunto?",
+        timestamp: "12:13",
+        isAI: false,
+      },
+      {
+        id: "msg_w5_3",
+        senderId: "ai",
+        content: "Perfeito! Posso agendar vocês no mesmo horário na segunda às 10h. O que acham?",
+        timestamp: "12:15",
+        isAI: true,
+      }
+    ],
+    "aguardando_6": [
+      {
+        id: "msg_w6_1",
+        senderId: "ai",
+        content: "Oi Camila! Você sabia que uma única doação pode salvar até 4 vidas? Que tal ser uma heroína hoje? Te conto mais detalhes!",
+        timestamp: "10:55",
+        isAI: true,
+      },
+      {
+        id: "msg_w6_2",
+        senderId: "aguardando_6",
+        content: "Nossa, não sabia que uma doação ajudava tantas pessoas! Me conte mais sobre como posso ajudar.",
+        timestamp: "10:58",
+        isAI: false,
+      },
+      {
+        id: "msg_w6_3",
+        senderId: "ai",
+        content: "É incrível né? Seu sangue é separado em componentes: hemácias, plaquetas e plasma. Cada um ajuda pacientes diferentes! Interessada em doar?",
+        timestamp: "11:00",
+        isAI: true,
+      }
+    ],
+
+    // Conversas Inativas (clientes que responderam negativamente e não querem mais contato)
+    "inativo_1": [
+      {
+        id: "msg_i1_1",
+        senderId: "ai",
+        content: "Olá Ricardo! Sou a Sofia do Centro de Sangue. Que tal ser um herói e salvar vidas através da doação? 🦸‍♂️",
+        timestamp: "17:40",
+        isAI: true,
+      },
+      {
+        id: "msg_i1_2",
+        senderId: "inativo_1",
+        content: "Não tenho interesse nisso. Não gosto de agulhas.",
+        timestamp: "17:42",
+        isAI: false,
+      },
+      {
+        id: "msg_i1_3",
+        senderId: "ai",
+        content: "Entendo sua preocupação! Muitas pessoas têm medo no início. A agulha é bem fininha e nossos profissionais são super cuidadosos 😊",
+        timestamp: "17:43",
+        isAI: true,
+      },
+      {
+        id: "msg_i1_4",
+        senderId: "inativo_1",
+        content: "Não tenho interesse em doar sangue. Por favor, removam meu contato da lista.",
+        timestamp: "17:45",
+        isAI: false,
+      }
+    ],
+    "inativo_2": [
+      {
+        id: "msg_i2_1",
+        senderId: "ai",
+        content: "Oi Beatriz! Obrigada por ser uma doadora! Sua última doação foi incrível. Já pode doar novamente? Vamos agendar?",
+        timestamp: "16:25",
+        isAI: true,
+      },
+      {
+        id: "msg_i2_2",
+        senderId: "inativo_2",
+        content: "Oi. Infelizmente não posso mais doar por questões de saúde.",
+        timestamp: "16:28",
+        isAI: false,
+      },
+      {
+        id: "msg_i2_3",
+        senderId: "ai",
+        content: "Entendo perfeitamente. Sua saúde em primeiro lugar! Obrigada pelas doações anteriores, você já ajudou muitas pessoas 💝",
+        timestamp: "16:29",
+        isAI: true,
+      },
+      {
+        id: "msg_i2_4",
+        senderId: "inativo_2",
+        content: "Obrigada mas não posso doar por motivos de saúde. Peço para não me contactarem mais.",
+        timestamp: "16:30",
+        isAI: false,
+      }
+    ],
+    "inativo_3": [
+      {
+        id: "msg_i3_1",
+        senderId: "ai",
+        content: "Olá Diego! Sou a Sofia do Centro de Sangue. Gostaria de convidá-lo para conhecer nossa missão de salvar vidas! 🩸",
+        timestamp: "15:15",
+        isAI: true,
+      },
+      {
+        id: "msg_i3_2",
+        senderId: "inativo_3",
+        content: "Não me interesso por doação de sangue.",
+        timestamp: "15:18",
+        isAI: false,
+      },
+      {
+        id: "msg_i3_3",
+        senderId: "ai",
+        content: "Entendo. Se algum dia mudar de ideia, estaremos aqui! Obrigada pelo seu tempo 😊",
+        timestamp: "15:19",
+        isAI: true,
+      },
+      {
+        id: "msg_i3_4",
+        senderId: "inativo_3",
+        content: "Não me interessei pela doação. Favor parar de me enviar mensagens.",
+        timestamp: "15:20",
+        isAI: false,
+      }
+    ],
+    "inativo_4": [
+      {
+        id: "msg_i4_1",
+        senderId: "ai",
+        content: "Oi Stephanie! Já faz um tempo que não te vemos por aqui. Que tal agendar uma nova doação? Cada gesto conta! ❤️",
+        timestamp: "14:05",
+        isAI: true,
+      },
+      {
+        id: "msg_i4_2",
+        senderId: "inativo_4",
+        content: "Oi. Estou grávida e não posso doar no momento.",
+        timestamp: "14:08",
+        isAI: false,
+      },
+      {
+        id: "msg_i4_3",
+        senderId: "ai",
+        content: "Parabéns pela gravidez! 🤱 Você está certa, durante a gestação não é recomendado doar. Após o parto e amamentação você pode voltar!",
+        timestamp: "14:09",
+        isAI: true,
+      },
+      {
+        id: "msg_i4_4",
+        senderId: "inativo_4",
+        content: "Estou grávida e não posso doar no momento. Não entrem em contato pelos próximos meses.",
+        timestamp: "14:10",
+        isAI: false,
+      }
+    ],
+    "inativo_5": [
+      {
+        id: "msg_i5_1",
+        senderId: "ai",
+        content: "Olá Alexandre! Sou a Sofia do Centro de Sangue. Você sabia que uma única doação pode salvar até 4 vidas? Que tal ser um herói? 🦸‍♂️",
+        timestamp: "12:55",
+        isAI: true,
+      },
+      {
+        id: "msg_i5_2",
+        senderId: "inativo_5",
+        content: "Tenho muito medo de agulha. Não consigo nem ver.",
+        timestamp: "12:58",
+        isAI: false,
+      },
+      {
+        id: "msg_i5_3",
+        senderId: "ai",
+        content: "Entendo completamente! É um medo muito comum. Nossos profissionais são treinados para ajudar pessoas com essa fobia. Que tal conversar sem compromisso?",
+        timestamp: "12:59",
+        isAI: true,
+      },
+      {
+        id: "msg_i5_4",
+        senderId: "inativo_5",
+        content: "Não vou doar. Tenho medo de agulha e não quero mais mensagens sobre isso.",
+        timestamp: "13:00",
+        isAI: false,
+      }
+    ],
+    "inativo_6": [
+      {
+        id: "msg_i6_1",
+        senderId: "ai",
+        content: "Oi Larissa! Sei que sua agenda é corrida. Temos horários flexíveis, inclusive aos sábados. Qual seria melhor para você?",
+        timestamp: "12:25",
+        isAI: true,
+      },
+      {
+        id: "msg_i6_2",
+        senderId: "inativo_6",
+        content: "Realmente não tenho tempo para isso no meu dia a dia.",
+        timestamp: "12:28",
+        isAI: false,
+      },
+      {
+        id: "msg_i6_3",
+        senderId: "ai",
+        content: "Entendo que o tempo é precioso! A doação leva apenas 15 minutos. Podemos tentar encaixar em algum momento que seja conveniente?",
+        timestamp: "12:29",
+        isAI: true,
+      },
+      {
+        id: "msg_i6_4",
+        senderId: "inativo_6",
+        content: "Não tenho tempo para doação e também não tenho interesse. Obrigada.",
+        timestamp: "12:30",
+        isAI: false,
+      }
+    ]
+  };
+
+  return messageMap[donorId] || [];
+};
 
 export const mockMessages: Message[] = [
   {

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Paperclip, Send } from "lucide-react";
+import { Paperclip, Send, Sparkles } from "lucide-react";
 import type { FileAttachment as FileAttachmentType } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
 
@@ -11,6 +11,7 @@ interface MessageInputProps {
   onFileUpload: (files: FileList | null) => void;
   onRemoveAttachment: (id: string) => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
+  onEnhanceMessage?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -21,6 +22,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onFileUpload,
   onRemoveAttachment,
   onKeyPress,
+  onEnhanceMessage,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,15 +61,27 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           <Paperclip className="w-4 h-4" />
         </button>
 
-        <textarea
-          value={messageInput}
-          onChange={(e) => onMessageChange(e.target.value)}
-          onKeyPress={onKeyPress}
-          placeholder="Digite sua mensagem..."
-          rows={1}
-          className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          style={{ minHeight: "40px", maxHeight: "120px" }}
-        />
+        <div className="flex-1 relative">
+          <textarea
+            value={messageInput}
+            onChange={(e) => onMessageChange(e.target.value)}
+            onKeyPress={onKeyPress}
+            placeholder="Digite sua mensagem..."
+            rows={1}
+            className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            style={{ minHeight: "40px", maxHeight: "120px" }}
+          />
+          
+          {onEnhanceMessage && messageInput.trim() && (
+            <button
+              onClick={onEnhanceMessage}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-purple-500 hover:text-purple-700 hover:bg-purple-50 p-1 rounded transition-colors"
+              title="Melhorar mensagem com IA"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
         <button
           onClick={onSendMessage}

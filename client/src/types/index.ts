@@ -1,4 +1,4 @@
-export type ChatStatus = 'entrada' | 'esperando' | 'finalizados'
+export type ChatStatus = 'ativos' | 'aguardando' | 'inativo'
 
 export type ContactType = 'comercial' | 'suporte' | 'vendas'
 
