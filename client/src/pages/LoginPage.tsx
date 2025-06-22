@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { Heart, Mail, Lock, Eye, EyeOff, Loader, UserCheck } from "lucide-react";
+import { Heart, Mail, Lock, Eye, EyeOff, Loader } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
-import { mockUsers } from "../mocks/authMock";
 
 interface LoginFormData {
   email: string;
@@ -21,19 +20,6 @@ const LoginScreen: React.FC = () => {
   
   const { login, isLoggingIn, error: authError } = useAuthStore();
   const navigate = useNavigate();
-  
-  // Verificar se está em modo mock
-  const useMockAuth = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
-  
-  // Função para preencher credenciais de teste
-  const fillTestCredentials = (email: string, password: string) => {
-    setFormData({
-      email,
-      password,
-      rememberMe: false
-    });
-    setErrors({});
-  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginFormData> = {};
@@ -105,29 +91,6 @@ const LoginScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Credenciais de teste em modo mock */}
-        {useMockAuth && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <UserCheck className="w-5 h-5 text-blue-600" />
-              <h3 className="text-sm font-semibold text-blue-800">Modo Desenvolvimento - Credenciais de Teste</h3>
-            </div>
-            <div className="space-y-2">
-              {Object.entries(mockUsers).map(([email, data]) => (
-                <button
-                  key={email}
-                  onClick={() => fillTestCredentials(email, data.password)}
-                  className="w-full text-left p-2 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
-                >
-                  <div className="text-xs text-blue-700">
-                    <div className="font-medium">{data.user.name} ({data.user.role})</div>
-                    <div className="text-blue-600">{email} • {data.password}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="bg-white py-8 px-6 shadow-sm rounded-lg border border-gray-200">
           <div className="space-y-6">
