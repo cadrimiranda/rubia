@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ArrowLeft, Upload, User, Check, Plus, Edit3, Sparkles, Trash2, MoreVertical } from "lucide-react";
-import { Button, Select, Input, Upload as AntUpload, DatePicker, message, Card, Avatar, Radio, Dropdown } from "antd";
+import { Button, Select, Input, Upload as AntUpload, DatePicker, message, Radio, Dropdown } from "antd";
 import type { UploadProps, RadioChangeEvent } from "antd";
 import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
