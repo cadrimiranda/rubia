@@ -1,4 +1,4 @@
-import type { LoginRequest } from '../api/types';
+import type { LoginRequest, CustomerDTO, CreateCustomerRequest, PageResponse } from '../api/types';
 import type { AuthUser } from '../auth/authService';
 
 // Mock de usuários para teste
@@ -95,12 +95,126 @@ export const mockValidateToken = async (token: string): Promise<boolean> => {
   await new Promise(resolve => setTimeout(resolve, 200));
   
   // Token mock sempre válido por simplicidade
-  return token.startsWith('mock_token_');
+  return token.startsWith('mock_');
 };
 
 /**
- * Gera um token mock para o usuário
+ * Gera um token mock simples para o usuário
  */
 export const generateMockToken = (user: AuthUser): string => {
-  return `mock_token_${user.id}_${Date.now()}`;
+  return `mock_${user.id.slice(-8)}_${Date.now().toString(36)}`;
+};
+
+// Mock de customers/clientes para teste
+let mockCustomers: CustomerDTO[] = [
+  {
+    id: 'customer_001',
+    phone: '+5511999999999',
+    name: 'João Silva',
+    whatsappId: 'whatsapp_001',
+    profileUrl: '',
+    isBlocked: false,
+    createdAt: '2025-01-15T10:00:00Z',
+    updatedAt: '2025-01-15T10:00:00Z'
+  },
+  {
+    id: 'customer_002', 
+    phone: '+5511888888888',
+    name: 'Maria Santos',
+    whatsappId: 'whatsapp_002',
+    profileUrl: '',
+    isBlocked: false,
+    createdAt: '2025-01-10T14:30:00Z',
+    updatedAt: '2025-01-10T14:30:00Z'
+  },
+  {
+    id: 'customer_003',
+    phone: '+5511777777777',
+    name: 'Pedro Oliveira',
+    whatsappId: 'whatsapp_003', 
+    profileUrl: '',
+    isBlocked: false,
+    createdAt: '2025-01-05T09:15:00Z',
+    updatedAt: '2025-01-05T09:15:00Z'
+  }
+];
+
+/**
+ * Mock para buscar todos os customers
+ */
+export const mockGetAllCustomers = async (filters?: { size?: number; search?: string }): Promise<PageResponse<CustomerDTO>> => {
+  // Simular delay da rede
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  let filteredCustomers = [...mockCustomers];
+  
+  // Aplicar filtro de busca se fornecido
+  if (filters?.search) {
+    const searchTerm = filters.search.toLowerCase();
+    filteredCustomers = filteredCustomers.filter(customer => 
+      customer.name?.toLowerCase().includes(searchTerm) ||
+      customer.phone.includes(searchTerm)
+    );
+  }
+
+  const size = filters?.size || 50;
+  const totalElements = filteredCustomers.length;
+  
+  console.log('🎭 Mock getAll customers - retornando:', filteredCustomers.length, 'clientes');
+  
+  return {
+    content: filteredCustomers.slice(0, size),
+    totalElements,
+    totalPages: Math.ceil(totalElements / size),
+    size,
+    number: 0,
+    first: true,
+    last: true
+  };
+};
+
+/**
+ * Mock para buscar customer por telefone
+ */
+export const mockFindCustomerByPhone = async (phone: string): Promise<CustomerDTO | null> => {
+  // Simular delay da rede
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const customer = mockCustomers.find(c => c.phone === phone);
+  
+  console.log('🎭 Mock findByPhone - telefone:', phone, 'encontrado:', !!customer);
+  
+  return customer || null;
+};
+
+/**
+ * Mock para criar novo customer
+ */
+export const mockCreateCustomer = async (data: CreateCustomerRequest): Promise<CustomerDTO> => {
+  // Simular delay da rede
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  // Verificar se já existe
+  const existing = mockCustomers.find(c => c.phone === data.phone);
+  if (existing) {
+    throw new Error('Cliente com este telefone já existe');
+  }
+
+  const newCustomer: CustomerDTO = {
+    id: `customer_${Date.now()}`,
+    phone: data.phone,
+    name: data.name,
+    whatsappId: data.whatsappId,
+    profileUrl: data.profileUrl,
+    isBlocked: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // Adicionar à lista mock
+  mockCustomers.push(newCustomer);
+  
+  console.log('🎭 Mock createCustomer - criado:', newCustomer.name, newCustomer.phone);
+  
+  return newCustomer;
 };

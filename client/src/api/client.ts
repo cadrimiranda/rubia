@@ -41,20 +41,30 @@ class ApiClient {
     if (!skipAuth) {
       const token = this.getAuthToken();
       if (token) {
+        // Limitar tamanho do token para evitar erro 431
+        const sanitizedToken = token.substring(0, 500);
         config.headers = {
           ...config.headers,
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${sanitizedToken}`,
         };
       }
 
-      // Adicionar contexto da empresa para multi-tenant
+      // Adicionar contexto da empresa para multi-tenant (somente se não for desenvolvimento)
       const companySlug = getCurrentCompanySlug();
-      if (companySlug) {
+      if (companySlug && companySlug !== 'localhost' && companySlug !== '127.0.0.1') {
+        // Limitar tamanho do header para evitar erro 431
+        const sanitizedSlug = companySlug.substring(0, 50);
         config.headers = {
           ...config.headers,
-          "X-Company-Slug": companySlug,
+          "X-Company-Slug": sanitizedSlug,
         };
       }
+    }
+
+    // Debug: verificar tamanho dos headers
+    const headerSize = JSON.stringify(config.headers || {}).length;
+    if (headerSize > 1000) {
+      console.warn(`⚠️ Headers muito grandes: ${headerSize} bytes`, config.headers);
     }
 
     try {
@@ -183,12 +193,14 @@ class ApiClient {
   }
 
   private handleAuthError(): void {
-    // Limpar dados de auth incluindo company context
+    // Limpar dados de auth incluindo company context (formato antigo e novo)
     localStorage.removeItem("auth_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("token_expires_at");
     localStorage.removeItem("auth_company");
+    localStorage.removeItem("auth_company_id");
+    localStorage.removeItem("auth_company_slug");
 
     // Notificar store de auth (se disponível)
     if (typeof window !== "undefined") {

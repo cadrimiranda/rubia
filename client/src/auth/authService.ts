@@ -70,10 +70,12 @@ class AuthService {
       // Obter contexto da empresa atual
       const companyInfo = getCompanyFromSubdomain()
       
-      // Incluir company slug nas credenciais
+      // Incluir company slug nas credenciais (limitado para evitar headers grandes)
+      const sanitizedSlug = companyInfo.slug?.substring(0, 50) || 'default';
       const loginData = {
-        ...credentials,
-        companySlug: companyInfo.slug
+        email: credentials.email,
+        password: credentials.password,
+        companySlug: sanitizedSlug
       }
       
       const response = await apiClient.post<LoginResponse>('/api/auth/login', loginData)
@@ -288,7 +290,21 @@ class AuthService {
   }
 
   private setUser(user: AuthUser): void {
-    localStorage.setItem(this.USER_KEY, JSON.stringify(user))
+    // Store only essential user data to avoid large localStorage values
+    const essentialUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department ? {
+        id: user.department.id,
+        name: user.department.name
+      } : undefined,
+      isOnline: user.isOnline,
+      companyId: user.companyId,
+      companySlug: user.companySlug
+    };
+    localStorage.setItem(this.USER_KEY, JSON.stringify(essentialUser))
   }
 
   private clearAuthData(): void {
@@ -296,7 +312,8 @@ class AuthService {
     localStorage.removeItem(this.REFRESH_TOKEN_KEY)
     localStorage.removeItem(this.USER_KEY)
     localStorage.removeItem(this.EXPIRES_AT_KEY)
-    localStorage.removeItem(this.COMPANY_KEY)
+    localStorage.removeItem(`${this.COMPANY_KEY}_id`)
+    localStorage.removeItem(`${this.COMPANY_KEY}_slug`)
   }
 
   private mapUserDtoToAuthUser(dto: UserDTO, companyId: string, companySlug: string): AuthUser {
@@ -317,11 +334,12 @@ class AuthService {
   }
 
   /**
-   * Salva contexto da empresa
+   * Salva contexto da empresa de forma otimizada
    */
   private setCompanyContext(companyId: string, companySlug: string): void {
-    const companyData = { companyId, companySlug }
-    localStorage.setItem(this.COMPANY_KEY, JSON.stringify(companyData))
+    // Store minimal company data
+    localStorage.setItem(`${this.COMPANY_KEY}_id`, companyId)
+    localStorage.setItem(`${this.COMPANY_KEY}_slug`, companySlug)
   }
 
   /**
@@ -329,8 +347,13 @@ class AuthService {
    */
   getCompanyContext(): { companyId: string; companySlug: string } | null {
     try {
-      const companyData = localStorage.getItem(this.COMPANY_KEY)
-      return companyData ? JSON.parse(companyData) : null
+      const companyId = localStorage.getItem(`${this.COMPANY_KEY}_id`)
+      const companySlug = localStorage.getItem(`${this.COMPANY_KEY}_slug`)
+      
+      if (companyId && companySlug) {
+        return { companyId, companySlug }
+      }
+      return null
     } catch {
       return null
     }
@@ -345,13 +368,99 @@ class AuthService {
     
     if (!user) return false
     
+    // Em modo mock ou desenvolvimento, sempre permitir acesso
+    if (this.useMockAuth) {
+      return true
+    }
+    
+    // Em desenvolvimento local, permitir acesso para localhost
+    if (currentCompanySlug === 'localhost' || currentCompanySlug === '127.0.0.1') {
+      return true
+    }
+    
     return user.companySlug === currentCompanySlug
+  }
+
+  /**
+   * Limpa dados antigos para evitar problemas de header size
+   */
+  private cleanupLegacyData(): void {
+    try {
+      // Lista de chaves que podem estar causando problemas
+      const keysToCheck = [
+        this.COMPANY_KEY,
+        'auth_company',
+        'conversations', 
+        'chat_state',
+        'large_data'
+      ];
+
+      keysToCheck.forEach(key => {
+        const value = localStorage.getItem(key);
+        if (value && value.length > 1000) {
+          console.log(`🧹 Removendo chave grande do localStorage: ${key} (${value.length} chars)`);
+          localStorage.removeItem(key);
+        }
+      });
+
+      // Remove old company format that might be large
+      const oldCompany = localStorage.getItem(this.COMPANY_KEY);
+      if (oldCompany) {
+        localStorage.removeItem(this.COMPANY_KEY);
+        // Try to migrate if it's valid JSON
+        try {
+          const parsed = JSON.parse(oldCompany);
+          if (parsed.companyId && parsed.companySlug) {
+            this.setCompanyContext(parsed.companyId, parsed.companySlug);
+          }
+        } catch {
+          // Invalid data, just remove it
+        }
+      }
+
+      // Força limpeza completa se ainda há problemas
+      if (typeof window !== 'undefined') {
+        const totalSize = new Blob(Object.values(localStorage)).size;
+        if (totalSize > 50000) { // Se localStorage > 50KB
+          console.log('🧹 localStorage muito grande, limpando dados desnecessários');
+          Object.keys(localStorage).forEach(key => {
+            if (!key.startsWith('auth_') && !key.startsWith('token_')) {
+              localStorage.removeItem(key);
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('Error cleaning legacy data:', error);
+      // Em caso de erro, limpar tudo exceto dados essenciais de auth
+      try {
+        const essentialKeys = [this.ACCESS_TOKEN_KEY, this.USER_KEY, this.EXPIRES_AT_KEY];
+        const backup: Record<string, string> = {};
+        
+        essentialKeys.forEach(key => {
+          const value = localStorage.getItem(key);
+          if (value) backup[key] = value;
+        });
+        
+        localStorage.clear();
+        
+        Object.entries(backup).forEach(([key, value]) => {
+          localStorage.setItem(key, value);
+        });
+        
+        console.log('🧹 localStorage completamente limpo e refeito');
+      } catch (e) {
+        console.error('Erro crítico na limpeza:', e);
+      }
+    }
   }
 
   /**
    * Inicializa serviços automáticos
    */
   init(): void {
+    // Clean up legacy data first
+    this.cleanupLegacyData();
     // Auto refresh token quando necessário
     setInterval(() => {
       if (this.isAuthenticated() && this.isTokenExpiringSoon()) {
