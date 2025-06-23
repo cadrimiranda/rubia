@@ -4,34 +4,19 @@ import { Button, Select, Input, Upload as AntUpload, DatePicker, message, Radio,
 import type { UploadProps, RadioChangeEvent } from "antd";
 import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
+import type { ConversationTemplate, CampaignData } from "../../types/types";
+import { createMockCampaign, syncCampaignConversationsWithStore, simulateContactStatusChanges, getAllCampaignConversations } from "../../mocks/campaignMock";
+import { useChatStore } from "../../store/useChatStore";
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
-
-interface ConversationTemplate {
-  id: string;
-  title: string;
-  content: string;
-  selected: boolean;
-  category?: string;
-  isCustom?: boolean;
-}
 
 interface AgentConfig {
   name: string;
   avatar: string;
   speechProfile: string;
   llmType: string;
-}
-
-interface CampaignData {
-  name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  sourceSystem: string;
-  file?: File;
 }
 
 interface ConfigurationPageProps {
@@ -132,6 +117,8 @@ const defaultTemplates: ConversationTemplate[] = [
 ];
 
 export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) => {
+  const { refreshConversations } = useChatStore();
+  
   const [activeTab, setActiveTab] = useState<'agent' | 'campaign' | 'templates'>('agent');
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",
@@ -270,81 +257,96 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
 
     setIsUploading(true);
     
-    // Simular detecção de usuários duplicados
-    const mockDuplicates = ['João Silva', 'Maria Santos', 'Ana Costa'];
-    
     try {
-      // Simular processamento do arquivo CSV/XLSX
+      // Simular processamento do arquivo enviado
       message.loading('Processando arquivo...', 0.5);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Simular aplicação dos templates
+      message.loading('Validando contatos...', 0.5);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       message.loading('Aplicando templates de conversa...', 0.5);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
       
-      // Simular criação de conversas com templates selecionados
-      const contactsProcessed = Math.floor(Math.random() * 50) + 20; // 20-70 contatos
-      const conversationsCreated = Math.floor(contactsProcessed * 0.8); // 80% receberam mensagens
+      // Criar campanha mock com contatos gerados
+      const result = await createMockCampaign(campaignData, selectedTemplates);
       
-      // Simular distribuição dos templates
-      const templateDistribution = selectedTemplates.map(template => ({
-        template: template.title,
-        used: Math.floor(Math.random() * (conversationsCreated / selectedTemplates.length)) + 1
-      }));
-      
-      setDuplicateUsers(mockDuplicates);
-      
-      // Mensagem de sucesso detalhada
-      
-      message.success({
-        content: (
-          <div>
-            <div className="font-semibold mb-2">
-              Campanha "{campaignData.name}" importada com sucesso! 🎉
-            </div>
-            <div className="text-sm space-y-1">
-              <div>📊 {contactsProcessed} contatos processados</div>
-              <div>💬 {conversationsCreated} conversas iniciadas</div>
-              <div>📝 {selectedTemplates.length} templates aplicados:</div>
-              <div className="pl-4 text-xs text-gray-600">
-                {templateDistribution.map((item, index) => (
-                  <div key={index}>• {item.template}: {item.used} mensagens</div>
-                ))}
+      if (result.success) {
+        setDuplicateUsers(result.stats.duplicatesFound);
+        
+        // Mensagem de sucesso detalhada
+        message.success({
+          content: (
+            <div>
+              <div className="font-semibold mb-2">
+                Campanha "{campaignData.name}" criada com sucesso! 🎉
               </div>
-              <div>⚠️ {mockDuplicates.length} duplicatas detectadas</div>
+              <div className="text-sm space-y-1">
+                <div>📊 {result.stats.contactsProcessed} contatos processados do arquivo</div>
+                <div>💬 {result.stats.conversationsCreated} conversas iniciadas</div>
+                <div>📝 {selectedTemplates.length} templates aplicados:</div>
+                <div className="pl-4 text-xs text-gray-600">
+                  {result.stats.templateDistribution.map((item, index) => (
+                    <div key={index}>• {item.template}: {item.used} mensagens</div>
+                  ))}
+                </div>
+                <div>⚠️ {result.stats.duplicatesFound.length} duplicatas detectadas</div>
+                <div className="mt-2 text-green-600">✅ Campanhas ativas receberão respostas automaticamente</div>
+              </div>
             </div>
-          </div>
-        ),
-        duration: 8,
-      });
+          ),
+          duration: 10,
+        });
+        
+        // Reset form
+        setCampaignData({
+          name: "",
+          description: "",
+          startDate: "",
+          endDate: "",
+          sourceSystem: "",
+          file: undefined
+        });
+        
+        // Limpar lista de duplicados
+        setDuplicateUsers([]);
+        
+        // Log detalhado dos templates utilizados
+        console.log('🎯 Campanha criada:', result.campaign.name);
+        console.log('📋 Templates aplicados:');
+        result.stats.templateDistribution.forEach((item) => {
+          const template = selectedTemplates.find(t => t.title === item.template);
+          console.log(`${item.template} (${item.used}x):`);
+          console.log(`"${template?.content}"`);
+        });
+        
+        // Debug: verificar conversas criadas
+        console.log('🔍 Debug: Verificando conversas criadas...')
+        setTimeout(() => {
+          const allConversations = getAllCampaignConversations()
+          console.log('📊 Total de conversas no sistema:', allConversations.length)
+          allConversations.forEach((conv, index) => {
+            console.log(`  ${index + 1}. ${conv.customer?.name} - Status: ${conv.status}`)
+          })
+        }, 500)
+        
+        // Sincronizar conversas com o chat store
+        syncCampaignConversationsWithStore(refreshConversations);
+        
+        // Iniciar simulação de mudanças de status
+        simulateContactStatusChanges();
+        
+        // Voltar para conversas após 4 segundos
+        setTimeout(() => {
+          onBack();
+        }, 4000);
+      } else {
+        message.error('Erro ao criar campanha!');
+      }
       
-      // Reset form
-      setCampaignData({
-        name: "",
-        description: "",
-        startDate: "",
-        endDate: "",
-        sourceSystem: "",
-        file: undefined
-      });
-      
-      // Log detalhado dos templates utilizados
-      console.log('🎯 Campanha importada:', campaignData.name);
-      console.log('📋 Templates aplicados:');
-      templateDistribution.forEach((item) => {
-        const template = selectedTemplates.find(t => t.title === item.template);
-        console.log(`
-${item.template} (${item.used}x):`);
-        console.log(`"${template?.content}"`);
-      });
-      
-      // Voltar para conversas após 3 segundos
-      setTimeout(() => {
-        onBack();
-      }, 3000);
-      
-    } catch {
-      message.error('Erro ao importar campanha!');
+    } catch (error) {
+      console.error('Erro ao criar campanha:', error);
+      message.error('Erro ao criar campanha!');
     } finally {
       setIsUploading(false);
     }
@@ -674,10 +676,15 @@ ${item.template} (${item.used}x):`);
                         placeholder="Selecione o sistema"
                         size="large"
                       >
-                        <Option value="crm">CRM</Option>
-                        <Option value="erp">ERP</Option>
-                        <Option value="planilha">Planilha</Option>
-                        <Option value="outro">Outro</Option>
+                        <Option value="realblood">RealBlood</Option>
+                        <Option value="realclinic">RealClinic</Option>
+                        <Option value="hemovida">HemoVida</Option>
+                        <Option value="sangueheroi">SangueHerói</Option>
+                        <Option value="doadordoar">DoadorDoar</Option>
+                        <Option value="hemocentro">Sistema HemoCentro</Option>
+                        <Option value="vidaativa">VidaAtiva</Option>
+                        <Option value="planilha">Planilha Manual</Option>
+                        <Option value="outro">Outro Sistema</Option>
                       </Select>
                     </div>
 
@@ -693,7 +700,7 @@ ${item.template} (${item.used}x):`);
                           Clique ou arraste arquivo para esta área
                         </p>
                         <p className="ant-upload-hint text-gray-500">
-                          Suporta apenas arquivos .xlsx ou .csv
+                          Suporta arquivos .xlsx, .csv. O sistema processará automaticamente os contatos.
                         </p>
                       </AntUpload.Dragger>
                     </div>
@@ -802,7 +809,7 @@ ${item.template} (${item.used}x):`);
                   }
                   className="px-12 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                 >
-                  {isUploading ? 'Importando e Aplicando Templates...' : 'Criar Campanha'}
+                  {isUploading ? 'Processando Arquivo e Aplicando Templates...' : 'Criar Campanha'}
                 </Button>
               </div>
             </div>

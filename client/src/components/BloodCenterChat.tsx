@@ -18,7 +18,10 @@ import { customerApi } from "../api/services/customerApi";
 import { customerAdapter } from "../adapters/customerAdapter";
 // import type { ConversationDTO } from "../api/types";
 import { getMessagesForDonor } from "../mocks/data";
-import { mockCampaigns, getDonorsByCampaignAndStatus, getMessagesByCampaign, getAllDonorsByStatus } from "../mocks/campaignData";
+import { getDonorsByCampaignAndStatus, getMessagesByCampaign, getAllDonorsByStatus } from "../mocks/campaignData";
+import { mockCampaigns } from "../mocks/campaigns";
+import { getAllCampaignConversations, getContactsByCampaign } from "../mocks/campaignMock";
+import { conversationAdapter } from "../adapters/conversationAdapter";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
 
@@ -57,8 +60,100 @@ export const BloodCenterChat: React.FC = () => {
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<ChatStatus>('ativos');
-  const [campaigns] = useState<Campaign[]>(mockCampaigns);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+
+  // Recarregar campanhas periodicamente para pegar novas campanhas criadas
+  useEffect(() => {
+    const reloadCampaigns = () => {
+      console.log('🔄 Recarregando lista de campanhas...')
+      setCampaigns([...mockCampaigns])
+    }
+
+    // Recarregar campanhas a cada 5 segundos
+    const interval = setInterval(reloadCampaigns, 5000)
+    
+    return () => clearInterval(interval)
+  }, []);
+
+  // Converter conversas de campanha em Donors para compatibilidade
+  const convertCampaignConversationsToDonors = React.useCallback((campaignId?: string, status?: ChatStatus): Donor[] => {
+    const campaignConversations = getAllCampaignConversations()
+    console.log('📞 Conversas de campanha encontradas:', campaignConversations.length)
+    
+    if (campaignConversations.length === 0) {
+      return []
+    }
+
+    // Filtrar por campanha se especificada
+    let filteredConversations = campaignConversations
+    if (campaignId) {
+      const campaignContacts = getContactsByCampaign(campaignId)
+      const campaignConversationIds = campaignContacts
+        .filter(c => c.conversation)
+        .map(c => c.conversation!.id)
+      
+      filteredConversations = campaignConversations.filter(conv => 
+        campaignConversationIds.includes(conv.id)
+      )
+    }
+
+    // Filtrar por status se especificado
+    if (status) {
+      filteredConversations = filteredConversations.filter(conv => {
+        switch (status) {
+          case 'ativos':
+            return conv.status === 'ENTRADA'
+          case 'aguardando':
+            return conv.status === 'ESPERANDO'
+          case 'inativo':
+            return conv.status === 'FINALIZADOS'
+          default:
+            return true
+        }
+      })
+    }
+
+    // Converter para Donors
+    return filteredConversations.map(conv => {
+      const customer = conv.customer!
+      return {
+        id: customer.id,
+        name: customer.name || 'Cliente',
+        avatar: customer.profileUrl || '',
+        lastMessage: conv.lastMessage?.content || 'Mensagem inicial enviada',
+        timestamp: new Date(conv.updatedAt).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        unread: conv.status === 'ESPERANDO' ? 1 : 0,
+        status: 'offline' as const,
+        bloodType: 'N/I',
+        phone: customer.phone,
+        email: '',
+        lastDonation: 'Sem registro',
+        totalDonations: 0,
+        address: '',
+        birthDate: '',
+        weight: 0,
+        height: 0,
+        hasActiveConversation: true,
+        conversationStatus: conv.status,
+        campaignId: findCampaignIdForConversation(conv.id)
+      }
+    })
+  }, []);
+
+  // Encontrar ID da campanha para uma conversa
+  const findCampaignIdForConversation = (conversationId: string): string | undefined => {
+    for (const campaign of campaigns) {
+      const contacts = getContactsByCampaign(campaign.id)
+      if (contacts.some(c => c.conversation?.id === conversationId)) {
+        return campaign.id
+      }
+    }
+    return undefined
+  };
 
   const updateState = React.useCallback((updates: Partial<ChatState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -114,13 +209,21 @@ export const BloodCenterChat: React.FC = () => {
       // Simular delay da API
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Usar dados mock baseados no status e campanha
+      // Primeiro tentar carregar conversas de campanha (novas)
+      let campaignDonors = convertCampaignConversationsToDonors(campaignToLoad, statusToLoad);
+      
+      // Se não há conversas de campanha, usar dados mock antigos
       let mockDonors: Donor[];
-      if (campaignToLoad) {
-        mockDonors = getDonorsByCampaignAndStatus(campaignToLoad, statusToLoad);
+      if (campaignDonors.length > 0) {
+        console.log(`✅ Usando ${campaignDonors.length} conversas de campanha`);
+        mockDonors = campaignDonors;
       } else {
-        // Se nenhuma campanha selecionada, carregar de todas as campanhas
-        mockDonors = getAllDonorsByStatus(statusToLoad);
+        console.log('📚 Usando dados mock legacy');
+        if (campaignToLoad) {
+          mockDonors = getDonorsByCampaignAndStatus(campaignToLoad, statusToLoad);
+        } else {
+          mockDonors = getAllDonorsByStatus(statusToLoad);
+        }
       }
 
       console.log(`✅ Carregadas ${mockDonors.length} conversas para status ${statusToLoad} e campanha ${campaignToLoad || 'todas'}`);
@@ -132,7 +235,7 @@ export const BloodCenterChat: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentStatus, selectedCampaign]);
+  }, [currentStatus, selectedCampaign, convertCampaignConversationsToDonors]);
 
   // Carregar todos os contatos (customers) da API
   const loadAllContacts = React.useCallback(async () => {

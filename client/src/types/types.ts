@@ -9,6 +9,24 @@ export interface Campaign {
   templatesUsed: string[];
 }
 
+export interface CampaignData {
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  sourceSystem: string;
+  file?: File;
+}
+
+export interface ConversationTemplate {
+  id: string;
+  title: string;
+  content: string;
+  selected: boolean;
+  category?: string;
+  isCustom?: boolean;
+}
+
 export interface Donor {
   id: string;
   name: string;
