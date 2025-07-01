@@ -72,4 +72,8 @@ public class Conversation {
     
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_id") // Novo campo: Opcional, para indicar se a conversa faz parte de uma campanha
+    private Campaign campaign;
 }
