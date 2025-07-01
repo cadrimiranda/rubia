@@ -21,7 +21,7 @@ import { getMessagesForDonor } from "../mocks/data";
 import { getDonorsByCampaignAndStatus, getMessagesByCampaign, getAllDonorsByStatus } from "../mocks/campaignData";
 import { mockCampaigns } from "../mocks/campaigns";
 import { getAllCampaignConversations, getContactsByCampaign } from "../mocks/campaignMock";
-import { conversationAdapter } from "../adapters/conversationAdapter";
+// import { conversationAdapter } from "../adapters/conversationAdapter";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
 
@@ -327,10 +327,13 @@ export const BloodCenterChat: React.FC = () => {
     }
 
     // Mostrar feedback
-    const statusLabels = {
+    const statusLabels: Record<ChatStatus, string> = {
       ativos: 'Ativo',
       aguardando: 'Aguardando', 
-      inativo: 'Inativo'
+      inativo: 'Inativo',
+      entrada: 'Entrada',
+      esperando: 'Esperando',
+      finalizados: 'Finalizados'
     };
     
     console.log(`✅ Conversa de ${donor.name} movida para ${statusLabels[newStatus]}`);

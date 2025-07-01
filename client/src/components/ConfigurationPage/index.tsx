@@ -153,7 +153,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
     }));
   };
 
-  const handleDateRangeChange = (dates: [dayjs.Dayjs, dayjs.Dayjs] | null) => {
+  const handleDateRangeChange = (dates: any) => {
     if (dates && dates.length === 2) {
       setCampaignData(prev => ({
         ...prev,

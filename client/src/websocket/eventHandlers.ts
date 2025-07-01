@@ -298,6 +298,9 @@ class WebSocketEventHandlers {
 
   private getStatusText = (status: ChatStatus): string => {
     const statusMap: Record<ChatStatus, string> = {
+      ativos: 'Ativos',
+      aguardando: 'Aguardando',
+      inativo: 'Inativo',
       entrada: 'Entrada',
       esperando: 'Esperando',
       finalizados: 'Finalizados'

@@ -96,7 +96,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
   // Estado inicial
   chats: [],
   activeChat: null,
-  currentStatus: 'entrada',
+  currentStatus: 'ativos',
   searchQuery: '',
   isLoading: false,
   isLoadingMessages: false,
@@ -169,9 +169,9 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       if (mockConversations.length > 0) {
         // Filtrar conversas por status
         const filteredConversations = mockConversations.filter(conv => {
-          if (targetStatus === 'entrada') return conv.status === 'ENTRADA'
-          if (targetStatus === 'esperando') return conv.status === 'ESPERANDO'
-          if (targetStatus === 'finalizados') return conv.status === 'FINALIZADOS'
+          if (targetStatus === 'ativos') return conv.status === 'ENTRADA'
+          if (targetStatus === 'aguardando') return conv.status === 'ESPERANDO'
+          if (targetStatus === 'inativo') return conv.status === 'FINALIZADOS'
           return true
         })
         
@@ -568,7 +568,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
     
     try {
       await customerApi.block(chat.contact.id)
-      await get().changeStatus(chatId, 'finalizados')
+      await get().changeStatus(chatId, 'inativo')
       
     } catch (error) {
       console.error('Erro ao bloquear cliente:', error)

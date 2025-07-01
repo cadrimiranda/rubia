@@ -1,5 +1,5 @@
 import type { Campaign, CampaignData, ConversationTemplate } from '../types/types'
-import type { CustomerDTO, ConversationDTO, MessageDTO, CreateCustomerRequest, CreateConversationRequest, CreateMessageRequest } from '../api/types'
+import type { CustomerDTO, ConversationDTO, MessageDTO, CreateCustomerRequest } from '../api/types'
 import { mockCampaigns } from './campaigns'
 
 // Nomes brasileiros realistas para gerar contatos
@@ -22,13 +22,13 @@ const LAST_NAMES = [
   'Azevedo', 'Cunha', 'Pinto', 'Coelho', 'Mendes', 'Nunes', 'Moura'
 ]
 
-const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+// const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
-const CITIES = [
-  'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília', 'Curitiba',
-  'Recife', 'Porto Alegre', 'Salvador', 'Fortaleza', 'Goiânia', 'Manaus',
-  'Belém', 'Vitória', 'João Pessoa', 'Natal', 'Maceió', 'Aracaju', 'Teresina'
-]
+// const CITIES = [
+//   'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília', 'Curitiba',
+//   'Recife', 'Porto Alegre', 'Salvador', 'Fortaleza', 'Goiânia', 'Manaus',
+//   'Belém', 'Vitória', 'João Pessoa', 'Natal', 'Maceió', 'Aracaju', 'Teresina'
+// ]
 
 // Estados do contato durante a campanha
 type ContactStatus = 'pendente' | 'contatado' | 'respondeu' | 'agendou' | 'doou' | 'recusou'
@@ -71,20 +71,20 @@ const generatePhone = (): string => {
 /**
  * Gera um email baseado no nome
  */
-const generateEmail = (name: string): string => {
-  const domains = ['gmail.com', 'hotmail.com', 'yahoo.com.br', 'outlook.com', 'uol.com.br']
-  const cleanName = name.toLowerCase()
-    .replace(/\s+/g, '.')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  const domain = domains[Math.floor(Math.random() * domains.length)]
-  return `${cleanName}@${domain}`
-}
+// const generateEmail = (name: string): string => {
+//   const domains = ['gmail.com', 'hotmail.com', 'yahoo.com.br', 'outlook.com', 'uol.com.br']
+//   const cleanName = name.toLowerCase()
+//     .replace(/\s+/g, '.')
+//     .normalize('NFD')
+//     .replace(/[\u0300-\u036f]/g, '')
+//   const domain = domains[Math.floor(Math.random() * domains.length)]
+//   return `${cleanName}@${domain}`
+// }
 
 /**
  * Gera dados de contato realistas
  */
-const generateContactData = (campaignId: string): CreateCustomerRequest => {
+const generateContactData = (): CreateCustomerRequest => {
   const name = generateName()
   const phone = generatePhone()
   
@@ -147,7 +147,7 @@ export const processCampaignFile = async (
   const duplicatesFound: string[] = []
   
   for (let i = 0; i < contactsProcessed; i++) {
-    const contactData = generateContactData(campaignId)
+    const contactData = generateContactData()
     
     // Reduzir duplicatas para demonstração (apenas 1-2)
     if (Math.random() < 0.05 && duplicatesFound.length < 2) {
@@ -258,8 +258,8 @@ export const processCampaignFile = async (
  */
 const generateAutomaticResponse = async (
   contact: CampaignContact,
-  conversation: ConversationDTO,
-  initialMessage: MessageDTO
+  _conversation: ConversationDTO,
+  _initialMessage: MessageDTO
 ): Promise<void> => {
   const responses = [
     'Oi! Obrigado por entrar em contato. Tenho interesse em saber mais sobre a doação.',
@@ -276,16 +276,16 @@ const generateAutomaticResponse = async (
   const responseDelay = Math.floor(Math.random() * 270 + 30) * 1000
   
   setTimeout(() => {
-    const responseMessage: MessageDTO = {
-      id: `msg_${contact.campaignId}_${contact.id}_response`,
-      conversationId: conversation.id,
-      content: response,
-      senderType: 'CUSTOMER',
-      messageType: 'TEXT',
-      isAiGenerated: false,
-      status: 'SENT',
-      createdAt: new Date().toISOString()
-    }
+    // const responseMessage: MessageDTO = {
+    //   id: `msg_${contact.campaignId}_${contact.id}_response`,
+    //   conversationId: conversation.id,
+    //   content: response,
+    //   senderType: 'CUSTOMER',
+    //   messageType: 'TEXT',
+    //   isAiGenerated: false,
+    //   status: 'SENT',
+    //   createdAt: new Date().toISOString()
+    // }
     
     // Atualizar status do contato
     contact.status = 'respondeu'

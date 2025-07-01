@@ -133,12 +133,12 @@ class ConversationAdapter {
    */
   private mapStatus(backendStatus: string): ChatStatus {
     const statusMap: Record<string, ChatStatus> = {
-      'ENTRADA': 'entrada',
-      'ESPERANDO': 'esperando', 
-      'FINALIZADOS': 'finalizados'
+      'ENTRADA': 'ativos',
+      'ESPERANDO': 'aguardando', 
+      'FINALIZADOS': 'inativo'
     }
     
-    return statusMap[backendStatus] || 'entrada'
+    return statusMap[backendStatus] || 'ativos'
   }
 
   /**
@@ -146,6 +146,9 @@ class ConversationAdapter {
    */
   mapStatusToBackend(frontendStatus: ChatStatus): string {
     const statusMap: Record<ChatStatus, string> = {
+      'ativos': 'ENTRADA',
+      'aguardando': 'ESPERANDO', 
+      'inativo': 'FINALIZADOS',
       'entrada': 'ENTRADA',
       'esperando': 'ESPERANDO',
       'finalizados': 'FINALIZADOS'
