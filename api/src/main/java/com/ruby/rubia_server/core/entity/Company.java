@@ -68,4 +68,8 @@ public class Company {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_group_id", nullable = false)
+    private CompanyGroup companyGroup;
 }

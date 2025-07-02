@@ -1,5 +1,7 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.MessageType;
+import com.ruby.rubia_server.core.enums.SenderType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,54 +33,40 @@ public class Message {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false)
-    private SenderType senderType; // AGENT, CUSTOMER
+    private SenderType senderType;
 
     @Column(name = "sender_id")
-    private UUID senderId; // ID do User se senderType for AGENT
+    private UUID senderId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type", nullable = false)
-    private MessageType messageType; // TEXT, MEDIA
+    private MessageType messageType;
 
     @Column(name = "media_url")
     private String mediaUrl;
 
     @Column(name = "external_message_id")
-    private String externalMessageId; // ID da mensagem na plataforma externa (WhatsApp)
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private MessageStatus status; // SENT, DELIVERED, READ
+    private String externalMessageId;
 
     @Column(name = "is_ai_generated")
-    private Boolean isAiGenerated; // Indica se a mensagem foi gerada por IA
+    private Boolean isAiGenerated;
 
     @Column(name = "ai_confidence")
-    private Double aiConfidence; // Confiança da IA na geração da mensagem
+    private Double aiConfidence;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ai_agent_id")
     private AIAgent aiAgent;
 
-    // NOVO CAMPO: Referência ao MessageTemplate usado para criar esta mensagem
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "message_template_id") // Esta coluna será nula se a mensagem não for de um template
+    @JoinColumn(name = "message_template_id")
     private MessageTemplate messageTemplate;
+
+    @OneToOne(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)
+    @PrimaryKeyJoinColumn // Indica que a PK é também a FK
+    private MessageStatusDetail statusDetail;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-}
-
-// Enums (apenas para contexto, não são entidades JPA)
-enum SenderType {
-    AGENT, CUSTOMER
-}
-
-enum MessageType {
-    TEXT, MEDIA
-}
-
-enum MessageStatus {
-    SENT, DELIVERED, READ
 }

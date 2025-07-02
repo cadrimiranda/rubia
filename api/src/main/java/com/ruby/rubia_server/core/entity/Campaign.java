@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.CampaignStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

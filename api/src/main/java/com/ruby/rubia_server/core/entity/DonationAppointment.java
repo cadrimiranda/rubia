@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.DonationAppointmentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
