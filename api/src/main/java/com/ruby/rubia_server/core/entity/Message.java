@@ -1,6 +1,5 @@
 package com.ruby.rubia_server.core.entity;
 
-import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.enums.SenderType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -28,7 +27,7 @@ public class Message {
     @JoinColumn(name = "conversation_id", nullable = false)
     private Conversation conversation;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT") // Conteúdo da mensagem (pode ser a legenda da mídia, ou nulo se for só mídia)
     private String content;
 
     @Enumerated(EnumType.STRING)
@@ -37,13 +36,6 @@ public class Message {
 
     @Column(name = "sender_id")
     private UUID senderId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "message_type", nullable = false)
-    private MessageType messageType;
-
-    @Column(name = "media_url")
-    private String mediaUrl;
 
     @Column(name = "external_message_id")
     private String externalMessageId;
@@ -63,8 +55,12 @@ public class Message {
     private MessageTemplate messageTemplate;
 
     @OneToOne(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)
-    @PrimaryKeyJoinColumn // Indica que a PK é também a FK
+    @PrimaryKeyJoinColumn
     private MessageStatusDetail statusDetail;
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_media_id", unique = true) // Garante que cada ConversationMedia é vinculada por apenas uma Message
+    private ConversationMedia media; // Pode ser nulo se a mensagem for apenas texto.
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
