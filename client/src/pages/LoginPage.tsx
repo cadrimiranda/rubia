@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Heart, Mail, Lock, Eye, EyeOff, Loader } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
@@ -18,8 +18,15 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<LoginFormData>>({});
   
-  const { login, isLoggingIn, error: authError } = useAuthStore();
+  const { login, isLoggingIn, error: authError, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
+
+  // Se já está autenticado, redirecionar para home
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginFormData> = {};
@@ -90,6 +97,7 @@ const LoginScreen: React.FC = () => {
             Sistema de Comunicação com Doadores
           </p>
         </div>
+
 
         <div className="bg-white py-8 px-6 shadow-sm rounded-lg border border-gray-200">
           <div className="space-y-6">

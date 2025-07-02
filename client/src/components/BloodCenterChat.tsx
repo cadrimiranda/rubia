@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
-import type { Donor, Message, FileAttachment, ChatState } from "../types/types";
+import type { Donor, Message, FileAttachment, ChatState, ViewMode } from "../types/types";
 import { getCurrentTimestamp } from "../utils";
 import { DonorSidebar } from "./DonorSidebar";
 import { ChatHeader } from "./ChatHeader";
@@ -9,10 +9,21 @@ import { MessageInput } from "./MessageInput";
 import { ContextMenu as ContextMenuComponent } from "./ContextMenu";
 import { NewChatModal } from "./NewChatModal";
 import { DonorInfoModal } from "./DonorInfoModal";
+import { ConfigurationPage } from "./ConfigurationPage";
+import { ScheduleModal } from "./ScheduleModal";
+import { ConfirmationModal } from "./ConfirmationModal";
+import { MessageEnhancerModal } from "./MessageEnhancerModal";
 import { conversationApi } from "../api/services/conversationApi";
 import { customerApi } from "../api/services/customerApi";
 import { customerAdapter } from "../adapters/customerAdapter";
-import type { ConversationDTO } from "../api/types";
+// import type { ConversationDTO } from "../api/types";
+import { getMessagesForDonor } from "../mocks/data";
+import { getDonorsByCampaignAndStatus, getMessagesByCampaign, getAllDonorsByStatus } from "../mocks/campaignData";
+import { mockCampaigns } from "../mocks/campaigns";
+import { getAllCampaignConversations, getContactsByCampaign } from "../mocks/campaignMock";
+// import { conversationAdapter } from "../adapters/conversationAdapter";
+import type { ChatStatus } from "../types/index";
+import type { Campaign } from "../types/types";
 
 interface NewContactData {
   name: string;
@@ -23,6 +34,7 @@ interface NewContactData {
 export const BloodCenterChat: React.FC = () => {
   const [state, setState] = useState<ChatState>({
     selectedDonor: null,
+    selectedCampaign: null,
     messages: [],
     attachments: [],
     searchTerm: "",
@@ -32,19 +44,123 @@ export const BloodCenterChat: React.FC = () => {
     newChatSearch: "",
     isDragging: false,
     contextMenu: { show: false, x: 0, y: 0, donorId: "" },
+    showConfiguration: false,
+    showScheduleModal: false,
+    scheduleTarget: null,
+    showConfirmationModal: false,
+    confirmationData: null,
+    viewMode: 'full',
   });
+
+  const [showMessageEnhancer, setShowMessageEnhancer] = useState(false);
 
   const [donors, setDonors] = useState<Donor[]>([]); // Contatos com conversas ativas
   const [allContacts, setAllContacts] = useState<Donor[]>([]); // TODOS os contatos
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<ChatStatus>('ativos');
+  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+
+  // Recarregar campanhas periodicamente para pegar novas campanhas criadas
+  useEffect(() => {
+    const reloadCampaigns = () => {
+      console.log('🔄 Recarregando lista de campanhas...')
+      setCampaigns([...mockCampaigns])
+    }
+
+    // Recarregar campanhas a cada 5 segundos
+    const interval = setInterval(reloadCampaigns, 5000)
+    
+    return () => clearInterval(interval)
+  }, []);
+
+  // Converter conversas de campanha em Donors para compatibilidade
+  const convertCampaignConversationsToDonors = React.useCallback((campaignId?: string, status?: ChatStatus): Donor[] => {
+    const campaignConversations = getAllCampaignConversations()
+    console.log('📞 Conversas de campanha encontradas:', campaignConversations.length)
+    
+    if (campaignConversations.length === 0) {
+      return []
+    }
+
+    // Filtrar por campanha se especificada
+    let filteredConversations = campaignConversations
+    if (campaignId) {
+      const campaignContacts = getContactsByCampaign(campaignId)
+      const campaignConversationIds = campaignContacts
+        .filter(c => c.conversation)
+        .map(c => c.conversation!.id)
+      
+      filteredConversations = campaignConversations.filter(conv => 
+        campaignConversationIds.includes(conv.id)
+      )
+    }
+
+    // Filtrar por status se especificado
+    if (status) {
+      filteredConversations = filteredConversations.filter(conv => {
+        switch (status) {
+          case 'ativos':
+            return conv.status === 'ENTRADA'
+          case 'aguardando':
+            return conv.status === 'ESPERANDO'
+          case 'inativo':
+            return conv.status === 'FINALIZADOS'
+          default:
+            return true
+        }
+      })
+    }
+
+    // Converter para Donors
+    return filteredConversations.map(conv => {
+      const customer = conv.customer!
+      return {
+        id: customer.id,
+        name: customer.name || 'Cliente',
+        avatar: customer.profileUrl || '',
+        lastMessage: conv.lastMessage?.content || 'Mensagem inicial enviada',
+        timestamp: new Date(conv.updatedAt).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        unread: conv.status === 'ESPERANDO' ? 1 : 0,
+        status: 'offline' as const,
+        bloodType: 'N/I',
+        phone: customer.phone,
+        email: '',
+        lastDonation: 'Sem registro',
+        totalDonations: 0,
+        address: '',
+        birthDate: '',
+        weight: 0,
+        height: 0,
+        hasActiveConversation: true,
+        conversationStatus: conv.status,
+        campaignId: findCampaignIdForConversation(conv.id)
+      }
+    })
+  }, []);
+
+  // Encontrar ID da campanha para uma conversa
+  const findCampaignIdForConversation = (conversationId: string): string | undefined => {
+    for (const campaign of campaigns) {
+      const contacts = getContactsByCampaign(campaign.id)
+      if (contacts.some(c => c.conversation?.id === conversationId)) {
+        return campaign.id
+      }
+    }
+    return undefined
+  };
 
   const updateState = React.useCallback((updates: Partial<ChatState>) => {
     setState((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  // Converter ConversationDTO em Donor
+  // Converter ConversationDTO em Donor (desabilitado para usar mock data)
+  /*
   const convertConversationToDonor = React.useCallback((conversation: ConversationDTO): Donor => {
     const customer = conversation.customer;
     const user = customer ? customerAdapter.toUser(customer) : {
@@ -77,42 +193,49 @@ export const BloodCenterChat: React.FC = () => {
       height: 0,
     };
   }, []);
+  */
 
-  // Carregar conversas da API
-  const loadConversations = React.useCallback(async () => {
+  // Carregar conversas usando dados mock
+  const loadConversations = React.useCallback(async (status?: ChatStatus, campaignId?: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔄 Carregando conversas...');
+      const statusToLoad = status || currentStatus;
+      const campaignToLoad = campaignId || selectedCampaign?.id;
+      
+      console.log(`🔄 Carregando conversas para status: ${statusToLoad}, campanha: ${campaignToLoad || 'todas'}...`);
 
-      // Buscar conversas de todas as categorias
-      const [entradaResponse, esperandoResponse, finalizadosResponse] = await Promise.all([
-        conversationApi.getByStatus('ENTRADA', 0, 50),
-        conversationApi.getByStatus('ESPERANDO', 0, 50),
-        conversationApi.getByStatus('FINALIZADOS', 0, 50)
-      ]);
+      // Simular delay da API
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Combinar todas as conversas
-      const allConversations = [
-        ...entradaResponse.content,
-        ...esperandoResponse.content,
-        ...finalizadosResponse.content
-      ];
+      // Primeiro tentar carregar conversas de campanha (novas)
+      let campaignDonors = convertCampaignConversationsToDonors(campaignToLoad, statusToLoad);
+      
+      // Se não há conversas de campanha, usar dados mock antigos
+      let mockDonors: Donor[];
+      if (campaignDonors.length > 0) {
+        console.log(`✅ Usando ${campaignDonors.length} conversas de campanha`);
+        mockDonors = campaignDonors;
+      } else {
+        console.log('📚 Usando dados mock legacy');
+        if (campaignToLoad) {
+          mockDonors = getDonorsByCampaignAndStatus(campaignToLoad, statusToLoad);
+        } else {
+          mockDonors = getAllDonorsByStatus(statusToLoad);
+        }
+      }
 
-      console.log(`✅ Carregadas ${allConversations.length} conversas`);
+      console.log(`✅ Carregadas ${mockDonors.length} conversas para status ${statusToLoad} e campanha ${campaignToLoad || 'todas'}`);
 
-      // Converter para Donors
-      const donorsFromConversations = allConversations.map(convertConversationToDonor);
-
-      setDonors(donorsFromConversations);
+      setDonors(mockDonors);
     } catch (err) {
       console.error('❌ Erro ao carregar conversas:', err);
       setError('Erro ao carregar conversas. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
-  }, [convertConversationToDonor]);
+  }, [currentStatus, selectedCampaign, convertCampaignConversationsToDonors]);
 
   // Carregar todos os contatos (customers) da API
   const loadAllContacts = React.useCallback(async () => {
@@ -168,6 +291,111 @@ export const BloodCenterChat: React.FC = () => {
     }
   }, []);
 
+  // Função para trocar de status da aba
+  const handleStatusChange = React.useCallback((newStatus: ChatStatus) => {
+    setCurrentStatus(newStatus);
+    loadConversations(newStatus, selectedCampaign?.id);
+    updateState({ selectedDonor: null }); // Limpar seleção ao trocar status
+  }, [loadConversations, updateState, selectedCampaign]);
+
+  // Função para trocar de campanha
+  const handleCampaignChange = React.useCallback((campaign: Campaign | null) => {
+    setSelectedCampaign(campaign);
+    updateState({ selectedDonor: null, selectedCampaign: campaign }); // Limpar seleção ao trocar campanha
+    loadConversations(currentStatus, campaign?.id);
+  }, [loadConversations, updateState, currentStatus]);
+
+  // Função para trocar modo de visualização
+  const handleViewModeChange = React.useCallback((mode: ViewMode) => {
+    updateState({ viewMode: mode });
+  }, [updateState]);
+
+  // Função para trocar status de uma conversa específica
+  const handleConversationStatusChange = React.useCallback((donorId: string, newStatus: ChatStatus) => {
+    console.log(`🔄 Mudando status da conversa ${donorId} para: ${newStatus}`);
+    
+    // Encontrar o donor atual
+    const donor = donors.find(d => d.id === donorId);
+    if (!donor) return;
+
+    // Remover da lista atual
+    setDonors(prev => prev.filter(d => d.id !== donorId));
+    
+    // Se o donor selecionado foi movido, limpar seleção
+    if (state.selectedDonor?.id === donorId) {
+      updateState({ selectedDonor: null, messages: [] });
+    }
+
+    // Mostrar feedback
+    const statusLabels: Record<ChatStatus, string> = {
+      ativos: 'Ativo',
+      aguardando: 'Aguardando', 
+      inativo: 'Inativo',
+      entrada: 'Entrada',
+      esperando: 'Esperando',
+      finalizados: 'Finalizados'
+    };
+    
+    console.log(`✅ Conversa de ${donor.name} movida para ${statusLabels[newStatus]}`);
+    
+    // Se mudou para o status atual, recarregar para mostrar na lista
+    if (newStatus === currentStatus) {
+      setTimeout(() => {
+        loadConversations(currentStatus);
+      }, 100);
+    }
+  }, [donors, state.selectedDonor, updateState, currentStatus, loadConversations]);
+
+  // Função para lidar com agendamento
+  const handleSchedule = React.useCallback((scheduleData: { type: string; date: string; time: string; notes: string }) => {
+    const donor = state.scheduleTarget;
+    if (!donor) return;
+
+    console.log(`📅 Agendamento criado para ${donor.name}:`, scheduleData);
+    
+    const typeLabels = {
+      doacao: 'doação',
+      triagem: 'triagem médica',
+      retorno: 'consulta de retorno',
+      orientacao: 'orientação'
+    };
+
+    // Adicionar mensagem de agendamento à conversa
+    const agendamentoMessage = {
+      id: `schedule_${Date.now()}`,
+      senderId: "ai",
+      content: `Perfeito! Agendei sua ${typeLabels[scheduleData.type as keyof typeof typeLabels] || 'doação'} para ${new Date(scheduleData.date).toLocaleDateString('pt-BR')} às ${scheduleData.time}. Confirma presença? 📅${scheduleData.notes ? `\n\nObservações: ${scheduleData.notes}` : ''}`,
+      timestamp: getCurrentTimestamp(),
+      isAI: true,
+    };
+
+    // Se é a conversa ativa, adicionar a mensagem
+    if (state.selectedDonor?.id === donor.id) {
+      updateState({
+        messages: [...state.messages, agendamentoMessage]
+      });
+    }
+
+    // Fechar modal
+    updateState({
+      showScheduleModal: false,
+      scheduleTarget: null
+    });
+
+    console.log(`✅ Agendamento confirmado para ${donor.name}`);
+  }, [state.scheduleTarget, state.selectedDonor, state.messages, updateState]);
+
+  // Função para agendamento direto via botão do header
+  const handleDirectSchedule = React.useCallback((donorId: string) => {
+    const donor = donors.find(d => d.id === donorId) || allContacts.find(c => c.id === donorId);
+    if (donor) {
+      updateState({
+        showScheduleModal: true,
+        scheduleTarget: donor
+      });
+    }
+  }, [donors, allContacts, updateState]);
+
   // Carregar dados ao montar componente
   useEffect(() => {
     console.log('🚀 BloodCenterChat montado - carregando dados...');
@@ -185,12 +413,21 @@ export const BloodCenterChat: React.FC = () => {
   );
 
   const handleDonorSelect = React.useCallback((donor: Donor) => {
-    console.log('👤 Selecionando donor:', donor.name);
+    console.log('👤 Selecionando donor:', donor.name, 'campanha:', donor.campaignId);
+    
+    // Carregar mensagens específicas do doador e campanha
+    let donorMessages;
+    if (donor.campaignId) {
+      donorMessages = getMessagesByCampaign(donor.id, donor.campaignId);
+    } else {
+      donorMessages = getMessagesForDonor(donor.id);
+    }
+    
     updateState({
       selectedDonor: donor,
       showNewChatModal: false,
       showDonorInfo: false,
-      messages: [], // Por enquanto sempre vazio até implementar busca de mensagens
+      messages: donorMessages,
     });
   }, [updateState]);
 
@@ -255,7 +492,105 @@ export const BloodCenterChat: React.FC = () => {
   };
 
   const handleContextMenuAction = (action: string, donorId: string) => {
-    console.log(`Action: ${action} for donor: ${donorId}`);
+    console.log(`🎯 Ação: ${action} para donor: ${donorId}`);
+    
+    // Encontrar o donor
+    const donor = donors.find(d => d.id === donorId) || allContacts.find(c => c.id === donorId);
+    if (!donor) {
+      console.error('Donor não encontrado:', donorId);
+      updateState({
+        contextMenu: { show: false, x: 0, y: 0, donorId: "" },
+      });
+      return;
+    }
+
+    switch (action) {
+      case 'view-conversation':
+        // Selecionar a conversa (igual ao clique normal)
+        handleDonorSelect(donor);
+        break;
+
+      case 'schedule-donation':
+        // Abrir modal de agendamento
+        updateState({
+          showScheduleModal: true,
+          scheduleTarget: donor
+        });
+        break;
+
+      case 'view-profile':
+        // Abrir modal de informações do doador
+        updateState({
+          selectedDonor: donor,
+          showDonorInfo: true
+        });
+        break;
+
+      case 'archive-conversation':
+        // Mostrar confirmação para arquivar
+        updateState({
+          showConfirmationModal: true,
+          confirmationData: {
+            title: 'Arquivar Conversa',
+            message: `Tem certeza que deseja arquivar a conversa com ${donor.name}? Esta ação pode ser desfeita posteriormente.`,
+            type: 'warning',
+            confirmText: 'Arquivar',
+            onConfirm: () => {
+              // Arquivar conversa (remover da lista atual)
+              setDonors(prev => prev.filter(d => d.id !== donorId));
+              
+              // Se é a conversa selecionada, limpar seleção
+              if (state.selectedDonor?.id === donorId) {
+                updateState({ selectedDonor: null, messages: [] });
+              }
+              
+              console.log(`📁 Conversa de ${donor.name} arquivada`);
+              
+              // Fechar modal
+              updateState({
+                showConfirmationModal: false,
+                confirmationData: null
+              });
+            }
+          }
+        });
+        break;
+
+      case 'block-contact':
+        // Mostrar confirmação para bloquear
+        updateState({
+          showConfirmationModal: true,
+          confirmationData: {
+            title: 'Bloquear Contato',
+            message: `Tem certeza que deseja bloquear ${donor.name}? Esta pessoa não receberá mais mensagens e será movida para a lista de inativos.`,
+            type: 'danger',
+            confirmText: 'Bloquear',
+            onConfirm: () => {
+              // Bloquear contato (mover para inativo e remover)
+              setDonors(prev => prev.filter(d => d.id !== donorId));
+              
+              // Se é a conversa selecionada, limpar seleção
+              if (state.selectedDonor?.id === donorId) {
+                updateState({ selectedDonor: null, messages: [] });
+              }
+              
+              console.log(`🚫 Contato ${donor.name} bloqueado`);
+              
+              // Fechar modal
+              updateState({
+                showConfirmationModal: false,
+                confirmationData: null
+              });
+            }
+          }
+        });
+        break;
+
+      default:
+        console.warn('Ação não implementada:', action);
+    }
+
+    // Fechar menu de contexto
     updateState({
       contextMenu: { show: false, x: 0, y: 0, donorId: "" },
     });
@@ -275,6 +610,15 @@ export const BloodCenterChat: React.FC = () => {
     updateState({
       attachments: [...state.attachments, ...newAttachments],
     });
+  };
+
+  const handleEnhanceMessage = () => {
+    setShowMessageEnhancer(true);
+  };
+
+  const handleApplyEnhancedMessage = (enhancedMessage: string) => {
+    updateState({ messageInput: enhancedMessage });
+    setShowMessageEnhancer(false);
   };
 
   const handleSendMessage = async () => {
@@ -371,13 +715,23 @@ export const BloodCenterChat: React.FC = () => {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
     }
-  }, [state.contextMenu.show]);
+  }, [state.contextMenu.show, updateState]);
+
+  if (state.showConfiguration) {
+    return (
+      <ConfigurationPage
+        onBack={() => updateState({ showConfiguration: false })}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen bg-white">
       <ContextMenuComponent
         contextMenu={state.contextMenu}
         onAction={handleContextMenuAction}
+        currentStatus={currentStatus}
+        onStatusChange={handleConversationStatusChange}
       />
 
       <DonorSidebar
@@ -390,7 +744,15 @@ export const BloodCenterChat: React.FC = () => {
         onContextMenu={handleContextMenu}
         isLoading={isLoading}
         error={error}
-        onRetry={loadConversations}
+        onRetry={() => loadConversations()}
+        onConfigClick={() => updateState({ showConfiguration: true })}
+        currentStatus={currentStatus}
+        onStatusChange={handleStatusChange}
+        campaigns={campaigns}
+        selectedCampaign={selectedCampaign}
+        onCampaignChange={handleCampaignChange}
+        viewMode={state.viewMode}
+        onViewModeChange={handleViewModeChange}
       />
 
       <NewChatModal
@@ -410,12 +772,44 @@ export const BloodCenterChat: React.FC = () => {
         onClose={() => updateState({ showDonorInfo: false })}
       />
 
+      <ScheduleModal
+        show={state.showScheduleModal}
+        donor={state.scheduleTarget}
+        onClose={() => updateState({ showScheduleModal: false, scheduleTarget: null })}
+        onSchedule={handleSchedule}
+      />
+
+      {state.confirmationData && (
+        <ConfirmationModal
+          show={state.showConfirmationModal}
+          title={state.confirmationData.title}
+          message={state.confirmationData.message}
+          type={state.confirmationData.type}
+          confirmText={state.confirmationData.confirmText}
+          onConfirm={state.confirmationData.onConfirm}
+          onCancel={() => updateState({ 
+            showConfirmationModal: false, 
+            confirmationData: null 
+          })}
+        />
+      )}
+
+      <MessageEnhancerModal
+        show={showMessageEnhancer}
+        originalMessage={state.messageInput}
+        onClose={() => setShowMessageEnhancer(false)}
+        onApply={handleApplyEnhancedMessage}
+      />
+
       <div className="flex-1 flex flex-col">
         {state.selectedDonor ? (
           <>
             <ChatHeader
               donor={state.selectedDonor}
               onDonorInfoClick={() => updateState({ showDonorInfo: true })}
+              currentStatus={currentStatus}
+              onStatusChange={handleConversationStatusChange}
+              onScheduleClick={handleDirectSchedule}
             />
 
             <MessageList
@@ -438,6 +832,7 @@ export const BloodCenterChat: React.FC = () => {
                 })
               }
               onKeyPress={handleKeyPress}
+              onEnhanceMessage={handleEnhanceMessage}
             />
           </>
         ) : (

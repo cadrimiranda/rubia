@@ -162,9 +162,36 @@ cp .env.example .env.local
 
 ### Variáveis de Ambiente
 ```env
-VITE_API_URL=http://localhost:8080/api
+# Configurações do ambiente
+VITE_APP_TITLE=Rubia - Centro de Sangue
+
+# Backend API
+VITE_API_BASE_URL=http://localhost:8080
 VITE_WS_URL=ws://localhost:8080/ws
+
+# Mock Configuration
+VITE_USE_MOCK_AUTH=true   # true = usar mock para login/logout
+VITE_USE_MOCK_DATA=true   # true = usar mock para criação de usuários
+
+# Development
+VITE_DEBUG=true
 ```
+
+### Modo Mock (Desenvolvimento)
+
+O sistema oferece dois tipos de mock independentes:
+
+**Mock de Autenticação (`VITE_USE_MOCK_AUTH=true`)**
+- Login/logout sem backend
+- **Credenciais disponíveis:**
+  - **Admin**: `admin@centrodesangue.com` / `admin123`
+  - **Supervisor**: `supervisor@centrodesangue.com` / `super123`
+  - **Agente**: `agente@centrodesangue.com` / `agente123`
+
+**Mock de Dados (`VITE_USE_MOCK_DATA=true`)**
+- Criação de novos contatos/clientes sem backend
+- Lista de clientes mockados para teste
+- Validação de telefones e duplicatas
 
 ## 🚀 Desenvolvimento
 

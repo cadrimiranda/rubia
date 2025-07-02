@@ -4,6 +4,7 @@ import type { ConversationStatus } from '../api/types'
 import { conversationApi, messageApi, customerApi } from '../api'
 import { conversationAdapter, messageAdapter } from '../adapters'
 import { MessageValidator } from '../utils/validation'
+import { getAllCampaignConversations, getCampaignConversationMessages } from '../mocks/campaignMock'
 // import { mockDonors } from '../mocks/data'
 
 interface ChatStoreState {
@@ -95,7 +96,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
   // Estado inicial
   chats: [],
   activeChat: null,
-  currentStatus: 'entrada',
+  currentStatus: 'ativos',
   searchQuery: '',
   isLoading: false,
   isLoadingMessages: false,
@@ -158,15 +159,47 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
     const state = get()
     const targetStatus = status || state.currentStatus
     
+    set({ isLoading: true, error: null })
+    
+    // Tentar carregar conversas mock primeiro (campanhas)
     try {
-      set({ isLoading: true, error: null })
+      const mockConversations = getAllCampaignConversations()
+      console.log('📞 Verificando conversas de campanha:', mockConversations.length)
       
+      if (mockConversations.length > 0) {
+        // Filtrar conversas por status
+        const filteredConversations = mockConversations.filter(conv => {
+          if (targetStatus === 'ativos') return conv.status === 'ENTRADA'
+          if (targetStatus === 'aguardando') return conv.status === 'ESPERANDO'
+          if (targetStatus === 'inativo') return conv.status === 'FINALIZADOS'
+          return true
+        })
+        
+        const mockChats = conversationAdapter.toChatArray(filteredConversations)
+        
+        set({
+          chats: page === 0 ? mockChats : [...state.chats, ...mockChats],
+          currentPage: page,
+          hasMore: false,
+          totalChats: mockChats.length,
+          isLoading: false,
+          error: null
+        })
+        
+        console.log(`✅ Carregadas ${mockChats.length} conversas de campanha para status: ${targetStatus}`)
+        return
+      }
+    } catch (mockError) {
+      console.warn('Erro ao carregar conversas de campanha:', mockError)
+    }
+    
+    // Tentar carregar da API se não há conversas mock
+    try {
       const response = await conversationApi.getByStatus(
         conversationAdapter.mapStatusToBackend(targetStatus) as ConversationStatus,
         page,
         20
       )
-      
       
       const newChats = conversationAdapter.toChatArray(response?.content || [])
       
@@ -179,12 +212,9 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       })
       
     } catch (error) {
-      console.error('Erro ao carregar conversas:', error)
-      console.log('Carregando dados mock como fallback para status:', targetStatus)
+      console.error('Erro ao carregar conversas da API:', error)
       
-      // Fallback para dados mock durante desenvolvimento
-      console.log('Usando dados mock como fallback')
-      
+      // Sem conversas mock e API falhou
       set({
         chats: page === 0 ? [] : state.chats,
         currentPage: page,
@@ -236,16 +266,58 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error)
-      set({ 
-        error: 'Erro ao carregar mensagens', 
-        isLoadingMessages: false 
-      })
+      
+      // Fallback para mensagens de campanha mock
+      try {
+        const mockMessages = getCampaignConversationMessages(chatId)
+        console.log('💬 Carregando mensagens da conversa:', chatId, mockMessages.length)
+        
+        if (mockMessages.length > 0) {
+          const convertedMessages = messageAdapter.toMessageArray(mockMessages)
+          
+          set({
+            messagesCache: {
+              ...state.messagesCache,
+              [chatId]: {
+                messages: convertedMessages,
+                page: 0,
+                hasMore: false
+              }
+            },
+            isLoadingMessages: false
+          })
+          
+          // Atualizar chat ativo se for o mesmo
+          if (state.activeChat?.id === chatId) {
+            set({
+              activeChat: {
+                ...state.activeChat,
+                messages: convertedMessages
+              }
+            })
+          }
+          
+          console.log(`✅ Carregadas ${convertedMessages.length} mensagens`)
+        } else {
+          set({ 
+            error: 'Nenhuma mensagem encontrada', 
+            isLoadingMessages: false 
+          })
+        }
+      } catch (mockError) {
+        console.error('Erro ao carregar mensagens mock:', mockError)
+        set({ 
+          error: 'Erro ao carregar mensagens', 
+          isLoadingMessages: false 
+        })
+      }
     }
   },
 
   // Refresh das conversas
   refreshConversations: async () => {
     const state = get()
+    console.log('🔄 Refreshing conversas para status:', state.currentStatus)
     set({ currentPage: 0, hasMore: true, chats: [] })
     await get().loadConversations(state.currentStatus, 0)
   },
@@ -496,7 +568,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
     
     try {
       await customerApi.block(chat.contact.id)
-      await get().changeStatus(chatId, 'finalizados')
+      await get().changeStatus(chatId, 'inativo')
       
     } catch (error) {
       console.error('Erro ao bloquear cliente:', error)

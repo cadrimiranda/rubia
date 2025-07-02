@@ -65,6 +65,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   // Multi-tenant state inicial
   currentCompanySlug: '',
   companyInfo: null,
+  
+  // Flag para evitar inicialização múltipla
+  _initialized: false,
 
   // Login
   login: async (credentials: LoginRequest) => {
@@ -135,25 +138,53 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   // Verificar autenticação com contexto da empresa
   checkAuth: () => {
+    console.log('🔍 Iniciando checkAuth...')
+    
     try {
       const isAuthenticated = authService.isAuthenticated()
       const user = authService.getCurrentUser()
       const hasAccess = authService.hasCompanyAccess()
       
+      console.log('🔍 checkAuth resultado:', { 
+        isAuthenticated, 
+        hasAccess, 
+        userCompany: user?.companySlug,
+        currentSlug: getCurrentCompanySlug(),
+        useMockAuth: import.meta.env.VITE_USE_MOCK_AUTH
+      })
+      
+      const finalAuthenticated = isAuthenticated && hasAccess
+      
       set({
-        isAuthenticated: isAuthenticated && hasAccess,
+        isAuthenticated: finalAuthenticated,
         user: hasAccess ? user : null,
         isLoading: false
       })
       
-      // Se não autenticado ou sem acesso à empresa, mostrar modal de login
-      if (!isAuthenticated || !hasAccess) {
+      console.log('🔍 Estado após checkAuth:', { 
+        isAuthenticated: finalAuthenticated,
+        hasUser: !!user,
+        isLoading: false
+      })
+      
+      // Se não autenticado, mostrar modal de login
+      if (!isAuthenticated) {
         set({ showLoginModal: true })
+      } else if (!hasAccess) {
+        // Só redirecionar se não estiver em modo mock e não for desenvolvimento local
+        const companyInfo = getCompanyFromSubdomain()
+        const useMockAuth = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
+        const isLocalDev = companyInfo.isLocalDevelopment
         
-        // Se o usuário tem token mas não tem acesso à empresa atual, redirecionar
-        if (isAuthenticated && !hasAccess && user) {
+        if (!useMockAuth && !isLocalDev && user) {
           get().redirectToCompany(user.companySlug)
+        } else {
+          // Em modo development/mock, apenas mostrar modal de login
+          set({ showLoginModal: true })
         }
+      } else {
+        // Autenticado e com acesso, esconder modal
+        set({ showLoginModal: false })
       }
       
     } catch (error) {
@@ -164,6 +195,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         isLoading: false,
         showLoginModal: true
       })
+    } finally {
+      // Garantir que loading seja sempre false no final
+      const currentState = get()
+      if (currentState.isLoading) {
+        set({ isLoading: false })
+      }
     }
   },
 
@@ -265,13 +302,28 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   // Inicializar contexto da empresa
   initializeCompanyContext: () => {
-    const companyInfo = getCompanyFromSubdomain()
-    const currentCompanySlug = getCurrentCompanySlug()
-    
-    set({
-      companyInfo,
-      currentCompanySlug
-    })
+    try {
+      const companyInfo = getCompanyFromSubdomain()
+      const currentCompanySlug = getCurrentCompanySlug()
+      
+      console.log('🏢 Contexto da empresa:', { companyInfo, currentCompanySlug })
+      
+      set({
+        companyInfo,
+        currentCompanySlug
+      })
+    } catch (error) {
+      console.error('Erro ao inicializar contexto da empresa:', error)
+      // Definir contexto padrão para desenvolvimento
+      set({
+        companyInfo: {
+          slug: 'localhost',
+          subdomain: 'localhost',
+          isLocalDevelopment: true
+        },
+        currentCompanySlug: 'localhost'
+      })
+    }
   },
 
   // Verificar se tem acesso à empresa atual
@@ -290,13 +342,40 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   // Inicializar store
   initialize: () => {
-    set({ isLoading: true })
+    const state = get()
     
-    // Inicializar contexto da empresa primeiro
-    get().initializeCompanyContext()
+    // Evitar inicialização múltipla
+    if ((state as any)._initialized) {
+      console.log('🚀 Auth store já foi inicializado, pulando...');
+      return
+    }
     
-    // Depois verificar autenticação
-    get().checkAuth()
+    console.log('🚀 Inicializando auth store...');
+    set({ isLoading: true, ...(state as any), _initialized: true } as any)
+    
+    try {
+      // Inicializar contexto da empresa primeiro
+      get().initializeCompanyContext()
+      
+      // Depois verificar autenticação
+      get().checkAuth()
+    } catch (error) {
+      console.error('Erro na inicialização:', error)
+      set({ 
+        isLoading: false, 
+        isAuthenticated: false,
+        showLoginModal: true 
+      })
+    }
+    
+    // Timeout de segurança - se ainda estiver loading após 3 segundos, force para false
+    setTimeout(() => {
+      const currentState = get()
+      if (currentState.isLoading) {
+        console.warn('⚠️ Timeout na inicialização, forçando loading = false')
+        set({ isLoading: false })
+      }
+    }, 3000)
     
     // Configurar listeners para renovação automática de token
     const checkTokenInterval = setInterval(() => {
