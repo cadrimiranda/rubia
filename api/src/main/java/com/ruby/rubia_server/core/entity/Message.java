@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.SenderType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -37,6 +38,18 @@ public class Message {
     @Column(name = "sender_id")
     private UUID senderId;
 
+    // CAMPOS DE STATUS RESTAURADOS PARA A ENTIDADE MESSAGE
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    @Builder.Default
+    private MessageStatus status = MessageStatus.SENT;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
+
     @Column(name = "external_message_id")
     private String externalMessageId;
 
@@ -54,13 +67,10 @@ public class Message {
     @JoinColumn(name = "message_template_id")
     private MessageTemplate messageTemplate;
 
-    @OneToOne(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)
-    @PrimaryKeyJoinColumn
-    private MessageStatusDetail statusDetail;
-
+    // A relação com ConversationMedia permanece como está (One-to-One opcional)
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "conversation_media_id", unique = true) // Garante que cada ConversationMedia é vinculada por apenas uma Message
-    private ConversationMedia media; // Pode ser nulo se a mensagem for apenas texto.
+    @JoinColumn(name = "conversation_media_id", unique = true)
+    private ConversationMedia media;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
