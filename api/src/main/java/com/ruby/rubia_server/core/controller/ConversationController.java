@@ -163,19 +163,7 @@ public class ConversationController {
         }
     }
     
-    @PutMapping("/{conversationId}/pin")
-    public ResponseEntity<ConversationDTO> pinConversation(@PathVariable UUID conversationId) {
-        log.info("Toggling pin status for conversation: {}", conversationId);
-        
-        try {
-            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
-            ConversationDTO pinned = conversationService.pinConversation(conversationId, currentCompanyId);
-            return ResponseEntity.ok(pinned);
-        } catch (IllegalArgumentException e) {
-            log.warn("Error pinning conversation: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
-    }
+    
     
     @GetMapping("/stats/count")
     public ResponseEntity<Long> countByStatus(@RequestParam ConversationStatus status) {

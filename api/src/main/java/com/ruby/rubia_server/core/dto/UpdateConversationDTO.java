@@ -1,6 +1,6 @@
 package com.ruby.rubia_server.core.dto;
 
-import com.ruby.rubia_server.core.enums.ConversationChannel;
+import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +21,7 @@ public class UpdateConversationDTO {
     
     private ConversationStatus status;
     
-    private ConversationChannel channel;
+    private Channel channel;
     
     private Integer priority;
     
