@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.CompanyPlanType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -48,7 +49,7 @@ public class Company {
     
     @Column(name = "plan_type")
     @Builder.Default
-    private String planType = "BASIC";
+    private CompanyPlanType planType = CompanyPlanType.BASIC;
     
     @Column(name = "max_users")
     @Builder.Default
