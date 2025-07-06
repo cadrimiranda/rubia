@@ -151,11 +151,9 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(updateDTO.getPassword()));
         }
         
-        if (updateDTO.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(updateDTO.getDepartmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
-            user.setDepartment(department);
-        }
+        Department department = departmentRepository.findById(updateDTO.getDepartmentId())
+                .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
+        user.setDepartment(department);
         
         if (updateDTO.getRole() != null) {
             user.setRole(updateDTO.getRole());
@@ -243,6 +241,15 @@ public class UserService {
         
         userRepository.deleteById(id);
         log.info("User deleted successfully");
+    }
+    
+    public void deleteAllByCompany(UUID companyId) {
+        log.info("Deleting all users for company: {}", companyId);
+        
+        List<User> users = userRepository.findByCompanyId(companyId);
+        userRepository.deleteAll(users);
+        
+        log.info("Deleted {} users for company: {}", users.size(), companyId);
     }
     
     private UserDTO toDTO(User user) {
