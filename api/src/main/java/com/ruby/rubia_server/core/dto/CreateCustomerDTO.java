@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -29,8 +31,13 @@ public class CreateCustomerDTO {
     
     private String profileUrl;
     
-    // CompanyId é obtido do contexto JWT, não enviado pelo frontend
-    
     @Builder.Default
     private Boolean isBlocked = false;
+
+    private String sourceSystemName;
+    private String sourceSystemId;
+    private LocalDateTime importedAt;
+    private LocalDate birthDate;
+    private LocalDate lastDonationDate;
+    private LocalDate nextEligibleDonationDate;
 }

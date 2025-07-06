@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -45,8 +46,15 @@ public class CustomerService {
                 .whatsappId(createDTO.getWhatsappId())
                 .profileUrl(createDTO.getProfileUrl())
                 .isBlocked(createDTO.getIsBlocked() != null ? createDTO.getIsBlocked() : false)
-                .company(company) // DEFINIR A COMPANY!
+                .sourceSystemName(createDTO.getSourceSystemName())
+                .sourceSystemId(createDTO.getSourceSystemId())
+                .importedAt(createDTO.getImportedAt())
+                .birthDate(createDTO.getBirthDate())
+                .lastDonationDate(createDTO.getLastDonationDate())
+                .company(company)
                 .build();
+        
+        customer.setNextEligibleDonationDate(createDTO.getNextEligibleDonationDate());
         
         Customer saved = customerRepository.save(customer);
         log.info("Customer created successfully with id: {}", saved.getId());
@@ -107,6 +115,13 @@ public class CustomerService {
         if (updateDTO.getIsBlocked() != null) {
             customer.setIsBlocked(updateDTO.getIsBlocked());
         }
+
+        Optional.ofNullable(updateDTO.getSourceSystemName()).ifPresent(customer::setSourceSystemName);
+        Optional.ofNullable(updateDTO.getSourceSystemId()).ifPresent(customer::setSourceSystemId);
+        Optional.ofNullable(updateDTO.getImportedAt()).ifPresent(customer::setImportedAt);
+        Optional.ofNullable(updateDTO.getBirthDate()).ifPresent(customer::setBirthDate);
+        Optional.ofNullable(updateDTO.getLastDonationDate()).ifPresent(customer::setLastDonationDate);
+        Optional.ofNullable(updateDTO.getNextEligibleDonationDate()).ifPresent(customer::setNextEligibleDonationDate);
         
         Customer updated = customerRepository.save(customer);
         log.info("Customer updated successfully");
@@ -234,6 +249,15 @@ public class CustomerService {
     public long countActiveByCompany(UUID companyId) {
         return customerRepository.countActiveCustomersByCompany(companyId);
     }
+    
+    public void deleteAllByCompany(UUID companyId) {
+        log.info("Deleting all customers for company: {}", companyId);
+        
+        List<Customer> customers = customerRepository.findByCompanyId(companyId);
+        customerRepository.deleteAll(customers);
+        
+        log.info("Deleted {} customers for company: {}", customers.size(), companyId);
+    }
 
     private CustomerDTO toDTO(Customer customer) {
         return CustomerDTO.builder()
@@ -244,6 +268,12 @@ public class CustomerService {
                 .whatsappId(customer.getWhatsappId())
                 .profileUrl(customer.getProfileUrl())
                 .isBlocked(customer.getIsBlocked())
+                .sourceSystemName(customer.getSourceSystemName())
+                .sourceSystemId(customer.getSourceSystemId())
+                .importedAt(customer.getImportedAt())
+                .birthDate(customer.getBirthDate())
+                .lastDonationDate(customer.getLastDonationDate())
+                .nextEligibleDonationDate(customer.getNextEligibleDonationDate())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())
                 .build();

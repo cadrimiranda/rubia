@@ -60,7 +60,7 @@ public class Customer {
     private LocalDate lastDonationDate; // Última data de doação (para doadores)
 
     @Column(name = "next_eligible_donation_date")
-    private LocalDate nextEligible_donation_date; // Próxima data elegível para doação
+    private LocalDate nextEligibleDonationDate; // Próxima data elegível para doação
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
