@@ -44,5 +44,5 @@ public class CreateMessageDTO {
     @Builder.Default
     private Boolean isAiGenerated = false;
     
-    private BigDecimal aiConfidence;
+    private Double aiConfidence;
 }
