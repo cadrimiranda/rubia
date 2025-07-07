@@ -1,10 +1,9 @@
 package com.ruby.rubia_server;
 
+import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class RubiaChatServerApplicationTests {
+class RubiaChatServerApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {

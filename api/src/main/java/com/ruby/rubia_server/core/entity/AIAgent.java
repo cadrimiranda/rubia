@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -48,7 +49,7 @@ public class AIAgent {
 
     @Column(name = "temperature", precision = 3, scale = 2)
     @Builder.Default
-    private Double temperature = 0.7; // Parâmetro de criatividade da IA (0.0 a 1.0)
+    private BigDecimal temperature = BigDecimal.valueOf(0.7); // Parâmetro de criatividade da IA (0.0 a 1.0)
 
     @Column(name = "is_active")
     @Builder.Default

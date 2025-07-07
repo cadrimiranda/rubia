@@ -27,7 +27,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     
     Page<Conversation> findByStatusAndCompanyId(ConversationStatus status, UUID companyId, Pageable pageable);
     
-    List<Conversation> findByCustomerIdAndCompanyId(UUID customerId, UUID companyId);
+    @Query("SELECT c FROM Conversation c JOIN c.participants p WHERE p.customer.id = :customerId AND c.company.id = :companyId")
+    List<Conversation> findByCustomerIdAndCompanyId(@Param("customerId") UUID customerId, @Param("companyId") UUID companyId);
     
     List<Conversation> findByAssignedUserIdAndCompanyId(UUID assignedUserId, UUID companyId);
     
