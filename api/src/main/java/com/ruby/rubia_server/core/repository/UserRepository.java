@@ -18,6 +18,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     
     Optional<User> findByEmailAndCompanyId(String email, UUID companyId);
     
+    @Query("SELECT u FROM User u WHERE u.email = :email AND u.company.companyGroup.id = :companyGroupId")
+    Optional<User> findByEmailAndCompanyGroupId(@Param("email") String email, @Param("companyGroupId") UUID companyGroupId);
+    
     Optional<User> findByWhatsappNumberAndCompanyId(String whatsappNumber, UUID companyId);
     
     List<User> findByCompanyId(UUID companyId);

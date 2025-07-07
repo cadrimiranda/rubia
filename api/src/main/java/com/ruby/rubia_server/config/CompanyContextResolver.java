@@ -19,9 +19,9 @@ public class CompanyContextResolver {
 
     public Optional<Company> resolveCompany(HttpServletRequest request) {
         // Try to get company from JWT token first (if authenticated)
-        UUID companyIdFromToken = (UUID) request.getAttribute("companyId");
-        if (companyIdFromToken != null) {
-            return companyRepository.findById(companyIdFromToken);
+        UUID companyGroupIdFromToken = (UUID) request.getAttribute("companyGroupId");
+        if (companyGroupIdFromToken != null) {
+            return companyRepository.findByCompanyGroupId(companyGroupIdFromToken);
         }
 
         // Fallback to subdomain resolution

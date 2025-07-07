@@ -22,4 +22,6 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
     List<Company> findByPlanType(@Param("planType") CompanyPlanType planType);
     
     boolean existsBySlug(String slug);
+    
+    Optional<Company> findByCompanyGroupId(UUID companyGroupId);
 }
