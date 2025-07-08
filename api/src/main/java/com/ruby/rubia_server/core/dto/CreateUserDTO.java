@@ -34,6 +34,7 @@ public class CreateUserDTO {
     @NotNull(message = "ID da empresa é obrigatório")
     private UUID companyId;
     
+    @NotNull(message = "ID do departamento é obrigatório")
     private UUID departmentId;
     
     @NotNull(message = "Role é obrigatório")

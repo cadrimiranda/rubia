@@ -74,4 +74,7 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<UUID> findConversationIdsByAgent(@Param("userId") UUID userId);
     
     boolean existsByExternalMessageId(String externalMessageId);
+    
+    @Query("SELECT m FROM Message m WHERE m.conversation.company.id = :companyId")
+    List<Message> findByConversationCompanyId(@Param("companyId") UUID companyId);
 }

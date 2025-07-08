@@ -56,8 +56,6 @@ public class MessageService {
                 .content(createDTO.getContent())
                 .senderType(createDTO.getSenderType())
                 .senderId(createDTO.getSenderId())
-                .messageType(createDTO.getMessageType())
-                .mediaUrl(createDTO.getMediaUrl())
                 .externalMessageId(createDTO.getExternalMessageId())
                 .isAiGenerated(createDTO.getIsAiGenerated())
                 .aiConfidence(createDTO.getAiConfidence())
@@ -77,8 +75,6 @@ public class MessageService {
                 .content(incomingMessage.getBody())
                 .senderType(SenderType.CUSTOMER)
                 .senderId(null)
-                .messageType(determineMessageType(incomingMessage))
-                .mediaUrl(incomingMessage.getMediaUrl())
                 .externalMessageId(incomingMessage.getMessageId())
                 .isAiGenerated(false)
                 .build();
@@ -194,10 +190,6 @@ public class MessageService {
         
         if (updateDTO.getContent() != null) {
             message.setContent(updateDTO.getContent());
-        }
-        
-        if (updateDTO.getMediaUrl() != null) {
-            message.setMediaUrl(updateDTO.getMediaUrl());
         }
         
         if (updateDTO.getStatus() != null) {
@@ -316,19 +308,16 @@ public class MessageService {
         return messageRepository.countByConversationId(conversationId);
     }
     
-    private com.ruby.rubia_server.core.enums.MessageType determineMessageType(IncomingMessage incomingMessage) {
-        if (incomingMessage.getMediaType() != null) {
-            String mediaType = incomingMessage.getMediaType().toLowerCase();
-            if (mediaType.startsWith("image")) {
-                return com.ruby.rubia_server.core.enums.MessageType.IMAGE;
-            } else if (mediaType.startsWith("audio")) {
-                return com.ruby.rubia_server.core.enums.MessageType.AUDIO;
-            } else {
-                return com.ruby.rubia_server.core.enums.MessageType.FILE;
-            }
-        }
-        return com.ruby.rubia_server.core.enums.MessageType.TEXT;
+    public void deleteAllByCompany(UUID companyId) {
+        log.info("Deleting all messages for company: {}", companyId);
+        
+        List<Message> messages = messageRepository.findByConversationCompanyId(companyId);
+        messageRepository.deleteAll(messages);
+        
+        log.info("Deleted {} messages for company: {}", messages.size(), companyId);
     }
+    
+    
     
     private MessageDTO toDTO(Message message, User sender) {
         return MessageDTO.builder()
@@ -338,8 +327,6 @@ public class MessageService {
                 .senderType(message.getSenderType())
                 .senderId(message.getSenderId())
                 .senderName(sender != null ? sender.getName() : null)
-                .messageType(message.getMessageType())
-                .mediaUrl(message.getMediaUrl())
                 .externalMessageId(message.getExternalMessageId())
                 .isAiGenerated(message.getIsAiGenerated())
                 .aiConfidence(message.getAiConfidence())

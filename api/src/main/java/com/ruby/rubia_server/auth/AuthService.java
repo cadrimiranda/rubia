@@ -42,10 +42,10 @@ public class AuthService {
             
             Company company = companyOpt.get();
             
-            // Find user by email and company
-            Optional<User> userOpt = userRepository.findByEmailAndCompanyId(request.getEmail(), company.getId());
+            // Find user by email and company group
+            Optional<User> userOpt = userRepository.findByEmailAndCompanyGroupId(request.getEmail(), company.getCompanyGroup().getId());
             if (userOpt.isEmpty()) {
-                throw new com.ruby.rubia_server.auth.AuthenticationException("User not found for this company");
+                throw new com.ruby.rubia_server.auth.AuthenticationException("User not found for this company group");
             }
             
             User user = userOpt.get();
@@ -58,10 +58,10 @@ public class AuthService {
                 )
             );
 
-            // Generate JWT token with company context
+            // Generate JWT token with company group context
             String jwtToken = jwtService.generateToken(
                 user.getEmail(), 
-                company.getId(), 
+                company.getCompanyGroup().getId(), 
                 company.getSlug()
             );
 
@@ -72,12 +72,12 @@ public class AuthService {
                     .name(user.getName())
                     .email(user.getEmail())
                     .role(user.getRole().name())
-                    .companyId(company.getId())
-                    .companyName(company.getName())
+                    .companyGroupId(company.getCompanyGroup().getId())
+                    .companyGroupName(company.getCompanyGroup().getName())
                     .companySlug(company.getSlug())
                     .build())
                 .expiresIn(3600)
-                .companyId(company.getId().toString())
+                .companyGroupId(company.getCompanyGroup().getId().toString())
                 .companySlug(company.getSlug())
                 .build();
                 
@@ -96,7 +96,7 @@ public class AuthService {
             if (jwtService.isTokenValid(request.getRefreshToken(), user.getEmail())) {
                 String jwtToken = jwtService.generateToken(
                     user.getEmail(),
-                    user.getCompany().getId(),
+                    user.getCompany().getCompanyGroup().getId(),
                     user.getCompany().getSlug()
                 );
                 
@@ -107,12 +107,12 @@ public class AuthService {
                         .name(user.getName())
                         .email(user.getEmail())
                         .role(user.getRole().name())
-                        .companyId(user.getCompany().getId())
-                        .companyName(user.getCompany().getName())
+                        .companyGroupId(user.getCompany().getCompanyGroup().getId())
+                        .companyGroupName(user.getCompany().getCompanyGroup().getName())
                         .companySlug(user.getCompany().getSlug())
                         .build())
                     .expiresIn(3600)
-                    .companyId(user.getCompany().getId().toString())
+                    .companyGroupId(user.getCompany().getCompanyGroup().getId().toString())
                     .companySlug(user.getCompany().getSlug())
                     .build();
             }

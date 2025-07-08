@@ -24,5 +24,5 @@ public class UpdateMessageDTO {
     
     private Boolean isAiGenerated;
     
-    private BigDecimal aiConfidence;
+    private Double aiConfidence;
 }

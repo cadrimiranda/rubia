@@ -1,0 +1,1 @@
+ALTER TABLE users ALTER COLUMN department_id SET NOT NULL;

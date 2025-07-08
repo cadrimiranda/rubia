@@ -1,18 +1,8 @@
+// src/main/java/com/ruby/rubia_server/core/enums/SenderType.java
 package com.ruby.rubia_server.core.enums;
 
 public enum SenderType {
-    CUSTOMER("Cliente"),
-    AGENT("Agente"),
-    AI("IA"),
-    SYSTEM("Sistema");
-    
-    private final String displayName;
-    
-    SenderType(String displayName) {
-        this.displayName = displayName;
-    }
-    
-    public String getDisplayName() {
-        return displayName;
-    }
+    AGENT,    // Usuário humano
+    CUSTOMER, // Cliente
+    AI_AGENT  // Agente de IA (NOVO)
 }

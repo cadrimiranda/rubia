@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.CompanyPlanType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -46,9 +47,10 @@ public class Company {
     @Builder.Default
     private Boolean isActive = true;
     
+    @Enumerated(EnumType.STRING)
     @Column(name = "plan_type")
     @Builder.Default
-    private String planType = "BASIC";
+    private CompanyPlanType planType = CompanyPlanType.BASIC;
     
     @Column(name = "max_users")
     @Builder.Default
@@ -68,4 +70,8 @@ public class Company {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_group_id", nullable = false)
+    private CompanyGroup companyGroup;
 }

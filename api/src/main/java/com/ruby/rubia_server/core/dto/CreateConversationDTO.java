@@ -1,6 +1,6 @@
 package com.ruby.rubia_server.core.dto;
 
-import com.ruby.rubia_server.core.enums.ConversationChannel;
+import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -19,10 +19,6 @@ public class CreateConversationDTO {
     @NotNull(message = "ID do cliente é obrigatório")
     private UUID customerId;
     
-    // CompanyId é obtido do contexto JWT, não enviado pelo frontend
-    // @NotNull(message = "ID da empresa é obrigatório")
-    // private UUID companyId;
-    
     private UUID assignedUserId;
     
     private UUID departmentId;
@@ -31,7 +27,7 @@ public class CreateConversationDTO {
     private ConversationStatus status = ConversationStatus.ENTRADA;
     
     @Builder.Default
-    private ConversationChannel channel = ConversationChannel.WHATSAPP;
+    private Channel channel = Channel.WHATSAPP;
     
     @Builder.Default
     private Integer priority = 0;

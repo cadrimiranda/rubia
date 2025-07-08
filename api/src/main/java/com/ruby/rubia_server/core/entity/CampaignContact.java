@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.CampaignContactStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,14 +8,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import com.ruby.rubia_server.core.enums.CampaignContactStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
 @Table(name = "campaign_contacts")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,33 +30,29 @@ public class CampaignContact {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campaign_id", nullable = false)
-    private Campaign campaign; // A qual campanha este contato pertence
+    private Campaign campaign;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "contact_id", nullable = false)
-    private Contact contact; // O contato importado associado a esta campanha
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id")
-    private Customer customer; // O cliente (se o contato foi convertido) associado à conversa da campanha
+    @JoinColumn(name = "customer_id", nullable = false) // Era 'contact_id'
+    private Customer customer; // O cliente (agora a entidade consolidada) associado a esta campanha
 
     @Enumerated(EnumType.STRING)
     @Column(name = "contact_status", nullable = false)
     @Builder.Default
-    private CampaignContactStatus status = CampaignContactStatus.PENDING; // Status do contato na campanha (PENDING, SENT, FAILED, CONVERTED, OPT_OUT)
+    private CampaignContactStatus status = CampaignContactStatus.PENDING;
 
     @Column(name = "message_sent_at")
-    private LocalDateTime messageSentAt; // Quando a mensagem inicial da campanha foi enviada para este contato
+    private LocalDateTime messageSentAt;
 
     @Column(name = "response_received_at")
-    private LocalDateTime responseReceivedAt; // Quando a primeira resposta do contato foi recebida
+    private LocalDateTime responseReceivedAt;
 
     @Column(columnDefinition = "TEXT")
-    private String notes; // Notas relevantes sobre este contato na campanha
+    private String notes;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt; // Quando o contato foi adicionado à campanha
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")

@@ -62,10 +62,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                // Extract company context from JWT and set in request
-                UUID companyId = jwtService.extractCompanyId(jwt);
-                if (companyId != null) {
-                    request.setAttribute("companyId", companyId);
+                // Extract company group context from JWT and set in request
+                UUID companyGroupId = jwtService.extractCompanyGroupId(jwt);
+                if (companyGroupId != null) {
+                    request.setAttribute("companyGroupId", companyGroupId);
                 }
             }
         }

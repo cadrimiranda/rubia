@@ -1,5 +1,7 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.enums.MessageStatus;
+import com.ruby.rubia_server.core.enums.SenderType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,9 +12,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
 @Table(name = "messages")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,59 +32,51 @@ public class Message {
     @JoinColumn(name = "conversation_id", nullable = false)
     private Conversation conversation;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT") // Conteúdo da mensagem (pode ser a legenda da mídia, ou nulo se for só mídia)
     private String content;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false)
-    private SenderType senderType; // AGENT, CUSTOMER
+    private SenderType senderType;
 
     @Column(name = "sender_id")
-    private UUID senderId; // ID do User se senderType for AGENT
+    private UUID senderId;
 
+    // CAMPOS DE STATUS RESTAURADOS PARA A ENTIDADE MESSAGE
     @Enumerated(EnumType.STRING)
-    @Column(name = "message_type", nullable = false)
-    private MessageType messageType; // TEXT, MEDIA
+    @Column(name = "status", nullable = false)
+    @Builder.Default
+    private MessageStatus status = MessageStatus.SENT;
 
-    @Column(name = "media_url")
-    private String mediaUrl;
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
 
     @Column(name = "external_message_id")
-    private String externalMessageId; // ID da mensagem na plataforma externa (WhatsApp)
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private MessageStatus status; // SENT, DELIVERED, READ
+    private String externalMessageId;
 
     @Column(name = "is_ai_generated")
-    private Boolean isAiGenerated; // Indica se a mensagem foi gerada por IA
+    private Boolean isAiGenerated;
 
     @Column(name = "ai_confidence")
-    private Double aiConfidence; // Confiança da IA na geração da mensagem
+    private Double aiConfidence;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ai_agent_id")
     private AIAgent aiAgent;
 
-    // NOVO CAMPO: Referência ao MessageTemplate usado para criar esta mensagem
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "message_template_id") // Esta coluna será nula se a mensagem não for de um template
+    @JoinColumn(name = "message_template_id")
     private MessageTemplate messageTemplate;
+
+    // A relação com ConversationMedia permanece como está (One-to-One opcional)
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_media_id", unique = true)
+    private ConversationMedia media;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-}
-
-// Enums (apenas para contexto, não são entidades JPA)
-enum SenderType {
-    AGENT, CUSTOMER
-}
-
-enum MessageType {
-    TEXT, MEDIA
-}
-
-enum MessageStatus {
-    SENT, DELIVERED, READ
 }

@@ -73,14 +73,11 @@ public class ConversationService {
         }
         
         Conversation conversation = Conversation.builder()
-                .customer(customer)
                 .assignedUser(assignedUser)
-                .department(department)
                 .company(company)
                 .status(createDTO.getStatus())
                 .channel(createDTO.getChannel())
                 .priority(createDTO.getPriority())
-                .isPinned(createDTO.getIsPinned())
                 .build();
         
         Conversation saved = conversationRepository.save(conversation);
@@ -156,14 +153,7 @@ public class ConversationService {
             throw new IllegalArgumentException("Conversa não pertence a esta empresa");
         }
         
-        ConversationStatus oldStatus = conversation.getStatus();
         conversation.setStatus(newStatus);
-        
-        if (newStatus == ConversationStatus.FINALIZADOS && oldStatus != ConversationStatus.FINALIZADOS) {
-            conversation.setClosedAt(LocalDateTime.now());
-        } else if (newStatus != ConversationStatus.FINALIZADOS && oldStatus == ConversationStatus.FINALIZADOS) {
-            conversation.setClosedAt(null);
-        }
         
         Conversation updated = conversationRepository.save(conversation);
         log.info("Conversation status changed successfully");
@@ -171,24 +161,7 @@ public class ConversationService {
         return toDTO(updated);
     }
     
-    public ConversationDTO pinConversation(UUID conversationId, UUID companyId) {
-        log.info("Toggling pin status for conversation: {} in company: {}", conversationId, companyId);
-        
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
-        
-        // Validate conversation belongs to company
-        if (!conversation.getCompany().getId().equals(companyId)) {
-            throw new IllegalArgumentException("Conversa não pertence a esta empresa");
-        }
-        
-        conversation.setIsPinned(!conversation.getIsPinned());
-        
-        Conversation updated = conversationRepository.save(conversation);
-        log.info("Conversation pin status toggled successfully");
-        
-        return toDTO(updated);
-    }
+    
     
     public ConversationDTO update(UUID id, UpdateConversationDTO updateDTO, UUID companyId) {
         log.info("Updating conversation with id: {} for company: {}", id, companyId);
@@ -211,37 +184,8 @@ public class ConversationService {
             conversation.setAssignedUser(user);
         }
         
-        if (updateDTO.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(updateDTO.getDepartmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Departamento não encontrado"));
-            // Validate department belongs to company
-            if (!department.getCompany().getId().equals(companyId)) {
-                throw new IllegalArgumentException("Departamento não pertence a esta empresa");
-            }
-            conversation.setDepartment(department);
-        }
-        
         if (updateDTO.getStatus() != null) {
-            ConversationStatus oldStatus = conversation.getStatus();
             conversation.setStatus(updateDTO.getStatus());
-            
-            if (updateDTO.getStatus() == ConversationStatus.FINALIZADOS && oldStatus != ConversationStatus.FINALIZADOS) {
-                conversation.setClosedAt(LocalDateTime.now());
-            } else if (updateDTO.getStatus() != ConversationStatus.FINALIZADOS && oldStatus == ConversationStatus.FINALIZADOS) {
-                conversation.setClosedAt(null);
-            }
-        }
-        
-        if (updateDTO.getChannel() != null) {
-            conversation.setChannel(updateDTO.getChannel());
-        }
-        
-        if (updateDTO.getPriority() != null) {
-            conversation.setPriority(updateDTO.getPriority());
-        }
-        
-        if (updateDTO.getIsPinned() != null) {
-            conversation.setIsPinned(updateDTO.getIsPinned());
         }
         
         Conversation updated = conversationRepository.save(conversation);
@@ -319,39 +263,55 @@ public class ConversationService {
     public long countByStatusAndCompany(ConversationStatus status, UUID companyId) {
         return conversationRepository.countByStatusAndCompany(status, companyId);
     }
+    
+    public void deleteAllByCompany(UUID companyId) {
+        log.info("Deleting all conversations for company: {}", companyId);
+        
+        List<Conversation> conversations = conversationRepository.findByCompanyId(companyId);
+        conversationRepository.deleteAll(conversations);
+        
+        log.info("Deleted {} conversations for company: {}", conversations.size(), companyId);
+    }
 
     private ConversationDTO toDTO(Conversation conversation) {
+        Customer customer = conversation.getParticipants().stream()
+                .filter(p -> p.getCustomer() != null)
+                .map(p -> p.getCustomer())
+                .findFirst()
+                .orElse(null);
+
         return ConversationDTO.builder()
                 .id(conversation.getId())
                 .companyId(conversation.getCompany() != null ? conversation.getCompany().getId() : null)
-                .customerId(conversation.getCustomer().getId())
-                .customerName(conversation.getCustomer().getName())
-                .customerPhone(conversation.getCustomer().getPhone())
+                .customerId(customer != null ? customer.getId() : null)
+                .customerName(customer != null ? customer.getName() : null)
+                .customerPhone(customer != null ? customer.getPhone() : null)
                 .assignedUserId(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getId() : null)
                 .assignedUserName(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getName() : null)
-                .departmentId(conversation.getDepartment() != null ? conversation.getDepartment().getId() : null)
-                .departmentName(conversation.getDepartment() != null ? conversation.getDepartment().getName() : null)
                 .status(conversation.getStatus())
                 .channel(conversation.getChannel())
                 .priority(conversation.getPriority())
-                .isPinned(conversation.getIsPinned())
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
-                .closedAt(conversation.getClosedAt())
                 .unreadCount(0L) // Will be calculated by message service
                 .build();
     }
     
     private ConversationSummaryDTO toSummaryDTO(Conversation conversation) {
+        Customer customer = conversation.getParticipants().stream()
+                .filter(p -> p.getCustomer() != null)
+                .map(p -> p.getCustomer())
+                .findFirst()
+                .orElse(null);
+
         return ConversationSummaryDTO.builder()
                 .id(conversation.getId())
-                .customerName(conversation.getCustomer().getName())
-                .customerPhone(conversation.getCustomer().getPhone())
+                .customerName(customer != null ? customer.getName() : null)
+                .customerPhone(customer != null ? customer.getPhone() : null)
                 .assignedUserName(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getName() : null)
                 .status(conversation.getStatus())
                 .channel(conversation.getChannel())
                 .priority(conversation.getPriority())
-                .isPinned(conversation.getIsPinned())
                 .updatedAt(conversation.getUpdatedAt())
                 .unreadCount(0L) // Will be calculated by message service
                 .lastMessageContent(null) // Will be populated by message service

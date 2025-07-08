@@ -32,14 +32,19 @@ public class JwtService {
         return companyIdStr != null ? UUID.fromString(companyIdStr) : null;
     }
 
+    public UUID extractCompanyGroupId(String token) {
+        String companyGroupIdStr = extractClaim(token, claims -> claims.get("companyGroupId", String.class));
+        return companyGroupIdStr != null ? UUID.fromString(companyGroupIdStr) : null;
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(String username, UUID companyId, String companySlug) {
+    public String generateToken(String username, UUID companyGroupId, String companySlug) {
         Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("companyId", companyId.toString());
+        extraClaims.put("companyGroupId", companyGroupId.toString());
         extraClaims.put("companySlug", companySlug);
         return generateToken(extraClaims, username);
     }

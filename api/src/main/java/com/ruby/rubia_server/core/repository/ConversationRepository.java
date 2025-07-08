@@ -1,7 +1,7 @@
 package com.ruby.rubia_server.core.repository;
 
 import com.ruby.rubia_server.core.entity.Conversation;
-import com.ruby.rubia_server.core.enums.ConversationChannel;
+import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,14 +27,15 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     
     Page<Conversation> findByStatusAndCompanyId(ConversationStatus status, UUID companyId, Pageable pageable);
     
-    List<Conversation> findByCustomerIdAndCompanyId(UUID customerId, UUID companyId);
+    @Query("SELECT c FROM Conversation c JOIN c.participants p WHERE p.customer.id = :customerId AND c.company.id = :companyId")
+    List<Conversation> findByCustomerIdAndCompanyId(@Param("customerId") UUID customerId, @Param("companyId") UUID companyId);
     
     List<Conversation> findByAssignedUserIdAndCompanyId(UUID assignedUserId, UUID companyId);
     
-    @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.isPinned DESC, c.priority DESC, c.updatedAt DESC")
+    @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     List<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId);
     
-    @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.isPinned DESC, c.priority DESC, c.updatedAt DESC")
+    @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     Page<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId, Pageable pageable);
     
     @Query("SELECT c FROM Conversation c WHERE c.status = 'ENTRADA' AND c.assignedUser IS NULL AND c.company.id = :companyId")
@@ -42,4 +43,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     
     @Query("SELECT COUNT(c) FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId")
     long countByStatusAndCompany(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId);
+    
+    List<Conversation> findByCompanyId(UUID companyId);
 }

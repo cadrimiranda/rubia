@@ -1,6 +1,6 @@
 package com.ruby.rubia_server.core.dto;
 
-import com.ruby.rubia_server.core.enums.ConversationChannel;
+import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,9 +21,8 @@ public class ConversationSummaryDTO {
     private String customerPhone;
     private String assignedUserName;
     private ConversationStatus status;
-    private ConversationChannel channel;
+    private Channel channel;
     private Integer priority;
-    private Boolean isPinned;
     private LocalDateTime updatedAt;
     private Long unreadCount;
     private String lastMessageContent;
