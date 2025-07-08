@@ -1,11 +1,13 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,11 +24,15 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConversationParticipant {
+public class ConversationParticipant implements BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company; // Para multi-tenancy
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id", nullable = false)
@@ -54,6 +60,14 @@ public class ConversationParticipant {
 
     @Column(name = "left_at")
     private LocalDateTime leftAt; // Quando o participante saiu da conversa (se aplicável)
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     // Importante: A lógica de negócio ou uma restrição de banco de dados (CHECK constraint)
     // deve garantir que APENAS UM dos campos (customer_id, user_id, ai_agent_id) seja não nulo
