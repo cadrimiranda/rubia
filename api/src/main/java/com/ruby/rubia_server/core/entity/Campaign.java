@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.base.BaseEntity;
 import com.ruby.rubia_server.core.enums.CampaignStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,7 +24,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Campaign {
+public class Campaign implements BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
