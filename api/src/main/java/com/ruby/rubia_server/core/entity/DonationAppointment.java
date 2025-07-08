@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.base.BaseEntity;
 import com.ruby.rubia_server.core.enums.DonationAppointmentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -22,7 +23,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DonationAppointment {
+public class DonationAppointment implements BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
