@@ -1,7 +1,6 @@
 import { apiClient } from '../api/client'
 import type { LoginRequest, LoginResponse, UserDTO } from '../api/types'
 import { getCurrentCompanySlug, getCompanyFromSubdomain } from '../utils/company'
-import { mockLogin, mockLogout, generateMockToken } from '../mocks/authMock'
 
 export interface AuthTokens {
   accessToken: string
@@ -31,39 +30,12 @@ class AuthService {
   private readonly EXPIRES_AT_KEY = 'token_expires_at'
   private readonly COMPANY_KEY = 'auth_company'
   
-  /**
-   * Verifica se deve usar mock baseado na variável de ambiente
-   */
-  private get useMockAuth(): boolean {
-    return import.meta.env.VITE_USE_MOCK_AUTH === 'true'
-  }
 
   /**
    * Realiza login com email e senha com contexto da empresa
    */
   async login(credentials: LoginRequest): Promise<AuthUser> {
     try {
-      if (this.useMockAuth) {
-        console.log('🎭 Usando mock de autenticação');
-        
-        // Usar mock login
-        const user = await mockLogin(credentials);
-        
-        // Gerar token mock
-        const mockToken = generateMockToken(user);
-        
-        // Salvar tokens mock
-        this.setTokens({
-          accessToken: mockToken,
-          expiresAt: Date.now() + (8 * 60 * 60 * 1000) // 8 horas
-        });
-
-        this.setUser(user);
-        this.setCompanyContext(user.companyId, user.companySlug);
-
-        return user;
-      }
-
       // Login real com API
       console.log('🌐 Usando autenticação da API');
       
@@ -103,15 +75,10 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      if (this.useMockAuth) {
-        console.log('🎭 Usando mock de logout');
-        await mockLogout();
-      } else {
-        // Chamar endpoint de logout no backend (opcional)
-        const token = this.getAccessToken()
-        if (token) {
-          await apiClient.post('/api/auth/logout')
-        }
+      // Chamar endpoint de logout no backend (opcional)
+      const token = this.getAccessToken()
+      if (token) {
+        await apiClient.post('/api/auth/logout')
       }
     } catch (error) {
       console.warn('Erro ao fazer logout no servidor:', error)
@@ -137,12 +104,7 @@ class AuthService {
     const fiveMinutes = 5 * 60 * 1000
     const isTokenValid = Date.now() < (expiresAt - fiveMinutes)
     
-    // Para mock, sempre considerar empresa correta
-    if (this.useMockAuth) {
-      return isTokenValid
-    }
-    
-    // Para API real, verificar se está na empresa correta
+    // Verificar se está na empresa correta
     const currentCompanySlug = getCurrentCompanySlug()
     const isCorrectCompany = user.companySlug === currentCompanySlug
     
@@ -367,11 +329,6 @@ class AuthService {
     const currentCompanySlug = getCurrentCompanySlug()
     
     if (!user) return false
-    
-    // Em modo mock ou desenvolvimento, sempre permitir acesso
-    if (this.useMockAuth) {
-      return true
-    }
     
     // Em desenvolvimento local, permitir acesso para localhost
     if (currentCompanySlug === 'localhost' || currentCompanySlug === '127.0.0.1') {
