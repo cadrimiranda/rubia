@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client'
-import type { LoginRequest, LoginResponse, UserDTO } from '../api/types'
+import type { LoginRequest, LoginResponse } from '../api/types'
 import { getCurrentCompanySlug, getCompanyFromSubdomain } from '../utils/company'
 
 export interface AuthTokens {
@@ -58,8 +58,8 @@ class AuthService {
         expiresAt: Date.now() + (response.expiresIn * 1000)
       })
 
-      // Converter UserDTO para AuthUser com company context
-      const user = this.mapUserDtoToAuthUser(response.user, response.companyId, response.companySlug)
+      // Converter UserInfo para AuthUser com company context
+      const user = this.mapUserInfoToAuthUser(response.user, response.companyId, response.companySlug)
       this.setUser(user)
       this.setCompanyContext(response.companyId, response.companySlug)
 
@@ -195,8 +195,8 @@ class AuthService {
     }
 
     try {
-      const response = await apiClient.put<UserDTO>(`/api/users/${currentUser.id}`, userData)
-      const updatedUser = this.mapUserDtoToAuthUser(response, currentUser.companyId, currentUser.companySlug)
+      const response = await apiClient.put<any>(`/api/users/${currentUser.id}`, userData)
+      const updatedUser = { ...currentUser, ...userData }
       this.setUser(updatedUser)
       return updatedUser
     } catch (error) {
@@ -278,18 +278,18 @@ class AuthService {
     localStorage.removeItem(`${this.COMPANY_KEY}_slug`)
   }
 
-  private mapUserDtoToAuthUser(dto: UserDTO, companyId: string, companySlug: string): AuthUser {
+  private mapUserInfoToAuthUser(userInfo: LoginResponse['user'], companyId: string, companySlug: string): AuthUser {
     return {
-      id: dto.id,
-      name: dto.name,
-      email: dto.email,
-      role: dto.role,
-      department: dto.department ? {
-        id: dto.department.id,
-        name: dto.department.name
+      id: userInfo.id,
+      name: userInfo.name,
+      email: userInfo.email,
+      role: userInfo.role,
+      department: userInfo.departmentId ? {
+        id: userInfo.departmentId,
+        name: userInfo.departmentName || ''
       } : undefined,
-      avatarUrl: dto.avatarUrl,
-      isOnline: dto.isOnline,
+      avatarUrl: userInfo.avatarUrl,
+      isOnline: userInfo.isOnline,
       companyId,
       companySlug
     }

@@ -19,4 +19,8 @@ public class UserInfo {
     private UUID companyGroupId;
     private String companyGroupName;
     private String companySlug;
+    private UUID departmentId;
+    private String departmentName;
+    private String avatarUrl;
+    private boolean isOnline;
 }

@@ -13,6 +13,6 @@ public class AuthResponse {
     private String token;
     private UserInfo user;
     private long expiresIn;
-    private String companyGroupId;
+    private String companyId;
     private String companySlug;
 }

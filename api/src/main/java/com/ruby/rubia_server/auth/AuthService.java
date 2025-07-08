@@ -80,9 +80,13 @@ public class AuthService {
                     .companyGroupId(company.getCompanyGroup().getId())
                     .companyGroupName(company.getCompanyGroup().getName())
                     .companySlug(company.getSlug())
+                    .departmentId(user.getDepartment() != null ? user.getDepartment().getId() : null)
+                    .departmentName(user.getDepartment() != null ? user.getDepartment().getName() : null)
+                    .avatarUrl(user.getAvatarUrl())
+                    .isOnline(user.isOnline())
                     .build())
                 .expiresIn(3600)
-                .companyGroupId(company.getCompanyGroup().getId().toString())
+                .companyId(company.getId().toString())
                 .companySlug(company.getSlug())
                 .build();
                 
@@ -115,9 +119,13 @@ public class AuthService {
                         .companyGroupId(user.getCompany().getCompanyGroup().getId())
                         .companyGroupName(user.getCompany().getCompanyGroup().getName())
                         .companySlug(user.getCompany().getSlug())
+                        .departmentId(user.getDepartment() != null ? user.getDepartment().getId() : null)
+                        .departmentName(user.getDepartment() != null ? user.getDepartment().getName() : null)
+                        .avatarUrl(user.getAvatarUrl())
+                        .isOnline(user.isOnline())
                         .build())
                     .expiresIn(3600)
-                    .companyGroupId(user.getCompany().getCompanyGroup().getId().toString())
+                    .companyId(user.getCompany().getId().toString())
                     .companySlug(user.getCompany().getSlug())
                     .build();
             }
