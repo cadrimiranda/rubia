@@ -376,7 +376,7 @@ class MessageTemplateServiceTest {
     void findByCreatedByUserId_ShouldReturnMessageTemplatesForUser() {
         // Given
         List<MessageTemplate> messageTemplates = List.of(messageTemplate);
-        when(messageTemplateRepository.findByCreatedByUserId(userId)).thenReturn(messageTemplates);
+        when(messageTemplateRepository.findByCreatedById(userId)).thenReturn(messageTemplates);
 
         // When
         List<MessageTemplate> result = messageTemplateService.findByCreatedByUserId(userId);
@@ -386,7 +386,7 @@ class MessageTemplateServiceTest {
         assertEquals(1, result.size());
         assertEquals(messageTemplate.getId(), result.get(0).getId());
         assertEquals(userId, result.get(0).getCreatedBy().getId());
-        verify(messageTemplateRepository).findByCreatedByUserId(userId);
+        verify(messageTemplateRepository).findByCreatedById(userId);
     }
 
     @Test

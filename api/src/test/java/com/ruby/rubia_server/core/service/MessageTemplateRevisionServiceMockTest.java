@@ -361,7 +361,7 @@ class MessageTemplateRevisionServiceMockTest {
     void findByEditedByUserId_ShouldReturnRevisionsForUser() {
         // Given
         List<MessageTemplateRevision> messageTemplateRevisions = List.of(messageTemplateRevision);
-        when(messageTemplateRevisionRepository.findByEditedByUserId(userId)).thenReturn(messageTemplateRevisions);
+        when(messageTemplateRevisionRepository.findByEditedById(userId)).thenReturn(messageTemplateRevisions);
 
         // When
         List<MessageTemplateRevision> result = messageTemplateRevisionService.findByEditedByUserId(userId);
@@ -371,7 +371,7 @@ class MessageTemplateRevisionServiceMockTest {
         assertEquals(1, result.size());
         assertEquals(messageTemplateRevision.getId(), result.get(0).getId());
         assertEquals(userId, result.get(0).getEditedBy().getId());
-        verify(messageTemplateRevisionRepository).findByEditedByUserId(userId);
+        verify(messageTemplateRevisionRepository).findByEditedById(userId);
     }
 
     @Test

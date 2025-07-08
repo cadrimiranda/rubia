@@ -1,12 +1,12 @@
 package com.ruby.rubia_server.core.service;
 
-import com.ruby.rubia_server.core.base.BaseCompanyEntityService;
-import com.ruby.rubia_server.core.base.EntityRelationshipValidator;
 import com.ruby.rubia_server.core.dto.CreateConversationParticipantDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationParticipantDTO;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.repository.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,36 +18,33 @@ import java.util.UUID;
 @Service
 @Slf4j
 @Transactional
-public class ConversationParticipantService extends BaseCompanyEntityService<ConversationParticipant, CreateConversationParticipantDTO, UpdateConversationParticipantDTO> {
+public class ConversationParticipantService {
 
     private final ConversationParticipantRepository conversationParticipantRepository;
     private final ConversationRepository conversationRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final AIAgentRepository aiAgentRepository;
+    private final CompanyRepository companyRepository;
 
     public ConversationParticipantService(ConversationParticipantRepository conversationParticipantRepository,
-                                         CompanyRepository companyRepository,
                                          ConversationRepository conversationRepository,
                                          CustomerRepository customerRepository,
                                          UserRepository userRepository,
                                          AIAgentRepository aiAgentRepository,
-                                         EntityRelationshipValidator relationshipValidator) {
-        super(conversationParticipantRepository, companyRepository, relationshipValidator);
+                                         CompanyRepository companyRepository) {
         this.conversationParticipantRepository = conversationParticipantRepository;
         this.conversationRepository = conversationRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
         this.aiAgentRepository = aiAgentRepository;
+        this.companyRepository = companyRepository;
     }
 
-    @Override
-    protected String getEntityName() {
-        return "ConversationParticipant";
-    }
-
-    @Override
-    protected ConversationParticipant buildEntityFromDTO(CreateConversationParticipantDTO createDTO) {
+    @Transactional
+    public ConversationParticipant create(CreateConversationParticipantDTO createDTO) {
+        log.debug("Creating ConversationParticipant with data: {}", createDTO);
+        
         // Validate business rule: exactly one participant type must be provided
         int participantCount = 0;
         if (createDTO.getCustomerId() != null) participantCount++;
@@ -60,6 +57,11 @@ public class ConversationParticipantService extends BaseCompanyEntityService<Con
 
         ConversationParticipant.ConversationParticipantBuilder builder = ConversationParticipant.builder()
                 .isActive(createDTO.getIsActive() != null ? createDTO.getIsActive() : true);
+
+        // Validate and set required company
+        Company company = companyRepository.findById(createDTO.getCompanyId())
+                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + createDTO.getCompanyId()));
+        builder.company(company);
 
         // Validate and set required conversation
         Conversation conversation = conversationRepository.findById(createDTO.getConversationId())
@@ -85,32 +87,81 @@ public class ConversationParticipantService extends BaseCompanyEntityService<Con
             builder.aiAgent(aiAgent);
         }
 
-        return builder.build();
+        ConversationParticipant entity = builder.build();
+        ConversationParticipant savedEntity = conversationParticipantRepository.save(entity);
+        log.debug("ConversationParticipant created successfully with id: {}", savedEntity.getId());
+        return savedEntity;
     }
 
-    @Override
-    protected void updateEntityFromDTO(ConversationParticipant conversationParticipant, UpdateConversationParticipantDTO updateDTO) {
+    @Transactional
+    public Optional<ConversationParticipant> update(UUID id, UpdateConversationParticipantDTO updateDTO) {
+        log.debug("Updating ConversationParticipant with id: {} and data: {}", id, updateDTO);
+        
+        Optional<ConversationParticipant> optionalEntity = conversationParticipantRepository.findById(id);
+        if (optionalEntity.isEmpty()) {
+            log.warn("ConversationParticipant not found with id: {}", id);
+            return Optional.empty();
+        }
+
+        ConversationParticipant entity = optionalEntity.get();
+        
         if (updateDTO.getIsActive() != null) {
-            conversationParticipant.setIsActive(updateDTO.getIsActive());
+            entity.setIsActive(updateDTO.getIsActive());
             
             // If marking as inactive, set leftAt timestamp
             if (!updateDTO.getIsActive()) {
-                conversationParticipant.setLeftAt(updateDTO.getLeftAt() != null ? updateDTO.getLeftAt() : LocalDateTime.now());
+                entity.setLeftAt(updateDTO.getLeftAt() != null ? updateDTO.getLeftAt() : LocalDateTime.now());
             }
             // If marking as active again, clear leftAt timestamp
             else {
-                conversationParticipant.setLeftAt(null);
+                entity.setLeftAt(null);
             }
         }
         
         if (updateDTO.getLeftAt() != null) {
-            conversationParticipant.setLeftAt(updateDTO.getLeftAt());
+            entity.setLeftAt(updateDTO.getLeftAt());
+        }
+
+        ConversationParticipant updatedEntity = conversationParticipantRepository.save(entity);
+        log.debug("ConversationParticipant updated successfully with id: {}", updatedEntity.getId());
+        return Optional.of(updatedEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ConversationParticipant> findById(UUID id) {
+        log.debug("Finding ConversationParticipant by id: {}", id);
+        return conversationParticipantRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ConversationParticipant> findAll(Pageable pageable) {
+        log.debug("Finding all ConversationParticipant with pageable: {}", pageable);
+        return conversationParticipantRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConversationParticipant> findByCompanyId(UUID companyId) {
+        log.debug("Finding ConversationParticipant by company id: {}", companyId);
+        return conversationParticipantRepository.findByCompanyId(companyId);
+    }
+
+    @Transactional
+    public boolean deleteById(UUID id) {
+        log.debug("Deleting ConversationParticipant with id: {}", id);
+        if (conversationParticipantRepository.existsById(id)) {
+            conversationParticipantRepository.deleteById(id);
+            log.debug("ConversationParticipant deleted successfully with id: {}", id);
+            return true;
+        } else {
+            log.warn("ConversationParticipant not found with id: {}", id);
+            return false;
         }
     }
 
-    @Override
-    protected Company getCompanyFromDTO(CreateConversationParticipantDTO createDTO) {
-        return validateAndGetCompany(createDTO.getCompanyId());
+    @Transactional(readOnly = true)
+    public long countByCompanyId(UUID companyId) {
+        log.debug("Counting ConversationParticipant by company id: {}", companyId);
+        return conversationParticipantRepository.countByCompanyId(companyId);
     }
 
     // Métodos específicos da entidade

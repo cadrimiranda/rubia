@@ -43,20 +43,25 @@ public class AuthService {
             Company company = companyOpt.get();
             
             // Find user by email and company group
+            log.debug("Searching for user with email: {} and company group: {}", request.getEmail(), company.getCompanyGroup().getId());
             Optional<User> userOpt = userRepository.findByEmailAndCompanyGroupId(request.getEmail(), company.getCompanyGroup().getId());
             if (userOpt.isEmpty()) {
+                log.error("User not found for email: {} and company group: {}", request.getEmail(), company.getCompanyGroup().getId());
                 throw new com.ruby.rubia_server.auth.AuthenticationException("User not found for this company group");
             }
             
             User user = userOpt.get();
+            log.debug("User found: {} with role: {}", user.getEmail(), user.getRole());
             
             // Authenticate user
+            log.debug("Attempting authentication for user: {}", request.getEmail());
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     request.getEmail(),
                     request.getPassword()
                 )
             );
+            log.debug("Authentication successful for user: {}", request.getEmail());
 
             // Generate JWT token with company group context
             String jwtToken = jwtService.generateToken(
