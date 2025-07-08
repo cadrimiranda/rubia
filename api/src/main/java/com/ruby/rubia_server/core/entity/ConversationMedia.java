@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.ruby.rubia_server.core.base.BaseEntity;
 import com.ruby.rubia_server.core.enums.MediaType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -7,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -21,7 +23,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConversationMedia {
+public class ConversationMedia implements BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -57,6 +59,14 @@ public class ConversationMedia {
     @CreationTimestamp
     @Column(name = "uploaded_at", updatable = false)
     private LocalDateTime uploadedAt; // Quando a mídia foi armazenada/registrada
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     // Opcional: Quem enviou/recebeu este arquivo originalmente
     @ManyToOne(fetch = FetchType.LAZY)
