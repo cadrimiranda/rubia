@@ -43,6 +43,7 @@ public class MessageTemplateRevisionController extends BaseCompanyEntityControll
                 .content(revision.getContent())
                 .editedByUserId(revision.getEditedBy() != null ? revision.getEditedBy().getId() : null)
                 .editedByUserName(revision.getEditedBy() != null ? revision.getEditedBy().getName() : null)
+                .revisionType(revision.getRevisionType())
                 .revisionTimestamp(revision.getRevisionTimestamp())
                 .createdAt(revision.getCreatedAt())
                 .updatedAt(revision.getUpdatedAt())

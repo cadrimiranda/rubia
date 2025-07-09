@@ -9,6 +9,7 @@ import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageTemplateRevision;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.CompanyPlanType;
+import com.ruby.rubia_server.core.enums.RevisionType;
 import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
@@ -125,15 +126,32 @@ class MessageTemplateServiceTransactionIntegrationTest extends AbstractIntegrati
 
     @Test
     void createTemplate_ShouldRollbackTransaction_WhenRevisionFailsAndFailOnErrorIsTrue() {
-        // Given - Configure revision service to fail
+        // First, verify that we can create a template successfully without revision failure
+        MessageTemplate template = messageTemplateService.create(createDTO);
+        assertNotNull(template);
+        
+        // Verify the revision service was called for initial creation
+        verify(messageTemplateRevisionService, times(1))
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.CREATE));
+                
+        // Clean up for the real test
+        messageTemplateRepository.deleteAll();
+        messageTemplateRevisionRepository.deleteAll();
+        clearInvocations(messageTemplateRevisionService);
+        
+        // Now configure revision service to fail for CREATE operations
         doThrow(new RuntimeException("Revision creation failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.CREATE));
 
         // When & Then
         assertThrows(MessageTemplateTransactionException.class, () -> {
             messageTemplateService.create(createDTO);
         });
+
+        // Verify the spy was called with the right parameters
+        verify(messageTemplateRevisionService, times(1))
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.CREATE));
 
         // Verify transaction was rolled back - no template should exist
         List<MessageTemplate> templates = messageTemplateRepository.findAll();
@@ -152,13 +170,13 @@ class MessageTemplateServiceTransactionIntegrationTest extends AbstractIntegrati
         // Given - Create template first
         MessageTemplate template = messageTemplateService.create(createDTO);
         
-        // Reset the spy to avoid interference from creation
-        reset(messageTemplateRevisionService);
+        // Clear any previous invocations, but keep the spy setup
+        clearInvocations(messageTemplateRevisionService);
         
-        // Configure revision service to fail on update
+        // Configure revision service to fail on update - both overloaded methods
         doThrow(new RuntimeException("Revision update failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.EDIT));
 
         UpdateMessageTemplateDTO updateDTO = UpdateMessageTemplateDTO.builder()
                 .content("Updated content")
@@ -182,13 +200,13 @@ class MessageTemplateServiceTransactionIntegrationTest extends AbstractIntegrati
         // Given - Create template first
         MessageTemplate template = messageTemplateService.create(createDTO);
         
-        // Reset the spy to avoid interference from creation
-        reset(messageTemplateRevisionService);
+        // Clear any previous invocations, but keep the spy setup
+        clearInvocations(messageTemplateRevisionService);
         
         // Configure revision service to fail on delete
         doThrow(new RuntimeException("Revision delete failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.DELETE));
 
         // When & Then
         assertThrows(MessageTemplateTransactionException.class, () -> {

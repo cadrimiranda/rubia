@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.entity;
 
 import com.ruby.rubia_server.core.base.BaseEntity;
+import com.ruby.rubia_server.core.enums.RevisionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,6 +42,11 @@ public class MessageTemplateRevision implements BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "edited_by_user_id")
     private User editedBy; // Quem criou/editou esta revisão
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "revision_type", nullable = false)
+    @Builder.Default
+    private RevisionType revisionType = RevisionType.EDIT; // Tipo da revisão (CREATE, EDIT, DELETE, RESTORE)
 
     @CreationTimestamp
     @Column(name = "revision_timestamp", updatable = false)

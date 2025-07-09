@@ -5,6 +5,7 @@ import com.ruby.rubia_server.core.base.EntityRelationshipValidator;
 import com.ruby.rubia_server.core.dto.CreateMessageTemplateDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageTemplateDTO;
 import com.ruby.rubia_server.core.entity.*;
+import com.ruby.rubia_server.core.enums.RevisionType;
 import com.ruby.rubia_server.core.exception.MessageTemplateRevisionException;
 import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 import com.ruby.rubia_server.core.repository.*;
@@ -94,7 +95,8 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     createdTemplate.getId(), 
                     createdTemplate.getContent(), 
-                    authenticatedUser.getId()
+                    authenticatedUser.getId(),
+                    RevisionType.CREATE
                 );
                 log.debug("Initial revision created for template: {}", createdTemplate.getId());
             } catch (Exception e) {
@@ -144,7 +146,8 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                     messageTemplateRevisionService.createRevisionFromTemplate(
                         messageTemplate.getId(), 
                         messageTemplate.getContent(), 
-                        authenticatedUser.getId()
+                        authenticatedUser.getId(),
+                        RevisionType.EDIT
                     );
                     log.debug("Revision created for template: {} after content change", messageTemplate.getId());
                 } catch (Exception e) {
@@ -441,8 +444,9 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     template.getId(),
-                    "[TEMPLATE DELETED] " + template.getContent(),
-                    authenticatedUser.getId()
+                    template.getContent(),
+                    authenticatedUser.getId(),
+                    RevisionType.DELETE
                 );
                 log.debug("Deletion revision created for template: {}", template.getId());
             } catch (Exception e) {
@@ -515,8 +519,9 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     template.getId(),
-                    "[TEMPLATE RESTORED] " + template.getContent(),
-                    authenticatedUser.getId()
+                    template.getContent(),
+                    authenticatedUser.getId(),
+                    RevisionType.RESTORE
                 );
                 log.debug("Restoration revision created for template: {}", template.getId());
             } catch (Exception e) {
