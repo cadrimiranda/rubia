@@ -59,9 +59,9 @@ class AuthService {
       })
 
       // Converter UserInfo para AuthUser com company context
-      const user = this.mapUserInfoToAuthUser(response.user, response.companyGroupId, response.companySlug)
+      const user = this.mapUserInfoToAuthUser(response.user, response.companyId, response.companySlug)
       this.setUser(user)
-      this.setCompanyContext(response.companyGroupId, response.companySlug)
+      this.setCompanyContext(response.companyId, response.companySlug)
 
       return user
     } catch (error) {
@@ -278,7 +278,7 @@ class AuthService {
     localStorage.removeItem(`${this.COMPANY_KEY}_slug`)
   }
 
-  private mapUserInfoToAuthUser(userInfo: LoginResponse['user'], companyGroupId: string, companySlug: string): AuthUser {
+  private mapUserInfoToAuthUser(userInfo: LoginResponse['user'], companyId: string, companySlug: string): AuthUser {
     return {
       id: userInfo.id,
       name: userInfo.name,
@@ -290,7 +290,7 @@ class AuthService {
       } : undefined,
       avatarUrl: userInfo.avatarUrl,
       isOnline: userInfo.isOnline,
-      companyId: companyGroupId,
+      companyId: companyId,
       companySlug
     }
   }

@@ -170,6 +170,7 @@ export interface LoginResponse {
     name: string
     email: string
     role: UserRole
+    companyId: string
     companyGroupId: string
     companyGroupName: string
     companySlug: string
@@ -179,6 +180,7 @@ export interface LoginResponse {
     isOnline: boolean
   }
   expiresIn: number
+  companyId: string
   companyGroupId: string
   companySlug: string
 }
