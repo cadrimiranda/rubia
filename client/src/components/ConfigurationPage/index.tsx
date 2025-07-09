@@ -60,7 +60,6 @@ interface ConfigurationPageProps {
   onBack: () => void;
 }
 
-
 export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   onBack,
 }) => {
@@ -91,7 +90,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     useState<ConversationTemplate | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [revisionHistory, setRevisionHistory] = useState<MessageTemplateRevision[]>([]);
+  const [revisionHistory, setRevisionHistory] = useState<
+    MessageTemplateRevision[]
+  >([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Carregar templates da API
@@ -132,16 +133,36 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   // Função para obter ícone e cor do tipo de revisão
   const getRevisionTypeInfo = (type: RevisionType) => {
     switch (type) {
-      case 'CREATE':
-        return { icon: <Plus className="w-3 h-3" />, color: 'green', label: 'Criado' };
-      case 'EDIT':
-        return { icon: <Edit3 className="w-3 h-3" />, color: 'blue', label: 'Editado' };
-      case 'DELETE':
-        return { icon: <Trash2 className="w-3 h-3" />, color: 'red', label: 'Excluído' };
-      case 'RESTORE':
-        return { icon: <History className="w-3 h-3" />, color: 'orange', label: 'Restaurado' };
+      case "CREATE":
+        return {
+          icon: <Plus className="w-3 h-3" />,
+          color: "green",
+          label: "Criado",
+        };
+      case "EDIT":
+        return {
+          icon: <Edit3 className="w-3 h-3" />,
+          color: "blue",
+          label: "Editado",
+        };
+      case "DELETE":
+        return {
+          icon: <Trash2 className="w-3 h-3" />,
+          color: "red",
+          label: "Excluído",
+        };
+      case "RESTORE":
+        return {
+          icon: <History className="w-3 h-3" />,
+          color: "orange",
+          label: "Restaurado",
+        };
       default:
-        return { icon: <Edit3 className="w-3 h-3" />, color: 'gray', label: 'Modificado' };
+        return {
+          icon: <Edit3 className="w-3 h-3" />,
+          color: "gray",
+          label: "Modificado",
+        };
     }
   };
 
@@ -149,7 +170,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const loadTemplateHistory = async (templateId: string) => {
     setIsLoadingHistory(true);
     try {
-      const history = await messageTemplateService.getRevisionHistory(templateId);
+      const history = await messageTemplateService.getRevisionHistory(
+        templateId
+      );
       setRevisionHistory(history);
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
@@ -1203,15 +1226,20 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         }}
         footer={null}
         width={900}
-        style={{ top: 20 }}
-        bodyStyle={{ padding: "24px", maxHeight: "70vh", overflow: "hidden" }}
+        bodyStyle={{ maxHeight: "70vh", overflow: "hidden" }}
       >
         {isLoadingHistory ? (
           <div className="flex justify-center items-center py-8">
             <Spin size="large" />
           </div>
         ) : (
-          <div style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: "8px" }}>
+          <div
+            style={{
+              maxHeight: "60vh",
+              overflowY: "auto",
+              padding: "24px",
+            }}
+          >
             {revisionHistory.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 Nenhum histórico encontrado para este template.
@@ -1219,7 +1247,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
             ) : (
               <Timeline>
                 {revisionHistory.map((revision) => {
-                  const revisionInfo = getRevisionTypeInfo(revision.revisionType);
+                  const revisionInfo = getRevisionTypeInfo(
+                    revision.revisionType
+                  );
                   return (
                     <Timeline.Item
                       key={revision.id}
@@ -1239,11 +1269,16 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                             <Badge
                               count={revisionInfo.label}
                               style={{
-                                backgroundColor: 
-                                  revisionInfo.color === 'green' ? '#52c41a' :
-                                  revisionInfo.color === 'blue' ? '#1890ff' :
-                                  revisionInfo.color === 'red' ? '#ff4d4f' :
-                                  revisionInfo.color === 'orange' ? '#fa8c16' : '#8c8c8c',
+                                backgroundColor:
+                                  revisionInfo.color === "green"
+                                    ? "#52c41a"
+                                    : revisionInfo.color === "blue"
+                                    ? "#1890ff"
+                                    : revisionInfo.color === "red"
+                                    ? "#ff4d4f"
+                                    : revisionInfo.color === "orange"
+                                    ? "#fa8c16"
+                                    : "#8c8c8c",
                                 fontSize: "10px",
                                 height: "18px",
                                 lineHeight: "18px",
