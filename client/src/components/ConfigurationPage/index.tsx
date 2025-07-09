@@ -53,113 +53,6 @@ interface ConfigurationPageProps {
   onBack: () => void;
 }
 
-const defaultTemplates: ConversationTemplate[] = [
-  {
-    id: "1",
-    title: "Convite Inicial Amigável",
-    content:
-      "Olá! 😊 Sou o assistente do Centro de Sangue. Que tal fazer a diferença na vida de alguém hoje? Você gostaria de saber mais sobre doação?",
-    selected: true,
-  },
-  {
-    id: "2",
-    title: "Urgência Específica",
-    content:
-      "Olá! Estamos com necessidade urgente do seu tipo sanguíneo. Você poderia nos ajudar com uma doação nos próximos dias?",
-    selected: false,
-  },
-  {
-    id: "3",
-    title: "Lembrete Carinhoso",
-    content:
-      "Oi! Já faz um tempo que não te vemos por aqui. Que tal agendar uma nova doação? Cada gesto conta! ❤️",
-    selected: true,
-  },
-  {
-    id: "4",
-    title: "Primeira Doação",
-    content:
-      "Olá! Vejo que você ainda não é doador. Que tal conhecer mais sobre esse ato de amor? Posso tirar suas dúvidas!",
-    selected: false,
-  },
-  {
-    id: "5",
-    title: "Agradecimento e Convite",
-    content:
-      "Obrigado por ser um doador! Sua última doação foi incrível. Já pode doar novamente? Vamos agendar?",
-    selected: true,
-  },
-  {
-    id: "6",
-    title: "Campanha Especial",
-    content:
-      "Olá! Estamos com uma campanha especial este mês. Venha doar e ganhe um brinde especial como agradecimento!",
-    selected: false,
-  },
-  {
-    id: "7",
-    title: "Informativo Educativo",
-    content:
-      "Você sabia que uma única doação pode salvar até 4 vidas? Que tal ser um herói hoje? Te conto mais detalhes!",
-    selected: true,
-  },
-  {
-    id: "8",
-    title: "Convite para Amigos",
-    content:
-      "Olá! Que tal convidar um amigo para doar junto com você? Doação em dupla é ainda mais especial! 👫",
-    selected: false,
-  },
-  {
-    id: "9",
-    title: "Horário Flexível",
-    content:
-      "Oi! Sei que sua agenda é corrida. Temos horários flexíveis, inclusive aos sábados. Qual seria melhor para você?",
-    selected: false,
-  },
-  {
-    id: "10",
-    title: "Doação Corporativa",
-    content:
-      "Olá! Sua empresa tem interesse em participar de nossa campanha corporativa de doação? Podemos organizar tudo!",
-    selected: false,
-  },
-  {
-    id: "11",
-    title: "Seguimento Pós-Doação",
-    content:
-      "Oi! Como você se sentiu após a última doação? Espero que tenha sido uma experiência positiva. Já pode doar novamente!",
-    selected: true,
-  },
-  {
-    id: "12",
-    title: "Motivacional",
-    content:
-      "Olá, herói! Sim, você é um herói por salvar vidas através da doação. Que tal continuar essa missão? 🦸‍♂️",
-    selected: false,
-  },
-  {
-    id: "13",
-    title: "Datas Comemorativas",
-    content:
-      "Olá! Em comemoração ao Dia Mundial do Doador, que tal fazer uma doação especial? Será um presente para quem precisa!",
-    selected: false,
-  },
-  {
-    id: "14",
-    title: "Incentivo Familiar",
-    content:
-      "Oi! Que exemplo lindo você dá para sua família sendo doador! Já conversou com eles sobre doação?",
-    selected: false,
-  },
-  {
-    id: "15",
-    title: "Disponibilidade Estendida",
-    content:
-      "Olá! Estamos com atendimento estendido nesta semana. Horários especiais disponíveis! Qual prefere?",
-    selected: true,
-  },
-];
 
 export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   onBack,
@@ -183,8 +76,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     endDate: "",
     sourceSystem: "",
   });
-  const [templates, setTemplates] =
-    useState<ConversationTemplate[]>(defaultTemplates);
+  const [templates, setTemplates] = useState<ConversationTemplate[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [duplicateUsers, setDuplicateUsers] = useState<string[]>([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -208,10 +100,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
           content: template.content,
           selected: false,
           category: template.tone || "geral",
-          isCustom: !template.isAiGenerated,
+          isCustom: true, // Todos os templates vêm da API agora
         })
       );
-      setTemplates([...defaultTemplates, ...convertedTemplates]);
+      setTemplates(convertedTemplates);
     } catch (error) {
       console.error("Erro ao carregar templates:", error);
       message.error("Erro ao carregar templates da API");
@@ -279,17 +171,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {
-      const template = templates.find((t) => t.id === templateId);
-      if (template?.isCustom) {
-        // Apenas templates customizados (da API) podem ser deletados
-        await messageTemplateService.delete(templateId);
-        message.success("Template excluído com sucesso!");
-        // Recarregar templates da API
-        await loadTemplates();
-      } else {
-        // Templates padrão não podem ser deletados
-        message.warning("Templates padrão não podem ser excluídos");
-      }
+      await messageTemplateService.delete(templateId);
+      message.success("Template excluído com sucesso!");
+      // Recarregar templates da API
+      await loadTemplates();
     } catch (error) {
       console.error("Erro ao excluir template:", error);
       message.error("Erro ao excluir template");
@@ -304,21 +189,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     try {
       if (editingTemplate) {
         // Editar template existente
-        if (editingTemplate.isCustom) {
-          // Apenas templates customizados (da API) podem ser editados
-          const updateData: UpdateMessageTemplateRequest = {
-            name: templateData.title,
-            content: templateData.content,
-            tone: templateData.category,
-          };
-          await messageTemplateService.update(editingTemplate.id, updateData);
-          message.success("Template atualizado com sucesso!");
-        } else {
-          // Templates padrão não podem ser editados, apenas clonar
-          message.info(
-            "Templates padrão não podem ser editados. Criando uma nova versão..."
-          );
-        }
+        const updateData: UpdateMessageTemplateRequest = {
+          name: templateData.title,
+          content: templateData.content,
+          tone: templateData.category,
+        };
+        await messageTemplateService.update(editingTemplate.id, updateData);
+        message.success("Template atualizado com sucesso!");
       } else {
         // Criar novo template
         if (!user?.companyId) {

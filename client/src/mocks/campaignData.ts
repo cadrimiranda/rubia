@@ -11,7 +11,7 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-06-30",
     status: "active",
     color: "#3b82f6",
-    templatesUsed: ["1", "3", "5", "7"]
+    templatesUsed: [] // Templates serão carregados da API
   },
   {
     id: "camp_2", 
@@ -21,7 +21,7 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-06-25",
     status: "active",
     color: "#dc2626",
-    templatesUsed: ["2", "4"]
+    templatesUsed: [] // Templates serão carregados da API
   },
   {
     id: "camp_3",
@@ -31,7 +31,7 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-07-31",
     status: "active", 
     color: "#059669",
-    templatesUsed: ["10", "12"]
+    templatesUsed: [] // Templates serão carregados da API
   },
   {
     id: "camp_4",
@@ -41,7 +41,7 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-08-31",
     status: "active",
     color: "#7c3aed",
-    templatesUsed: ["4", "6", "8"]
+    templatesUsed: [] // Templates serão carregados da API
   },
   {
     id: "camp_5",
@@ -51,7 +51,7 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-05-31",
     status: "completed",
     color: "#6b7280",
-    templatesUsed: ["3", "5", "11"]
+    templatesUsed: [] // Templates serão carregados da API
   }
 ];
 

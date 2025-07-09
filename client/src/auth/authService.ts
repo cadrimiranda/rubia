@@ -195,7 +195,7 @@ class AuthService {
     }
 
     try {
-      const response = await apiClient.put<any>(`/api/users/${currentUser.id}`, userData)
+      await apiClient.put<any>(`/api/users/${currentUser.id}`, userData)
       const updatedUser = { ...currentUser, ...userData }
       this.setUser(updatedUser)
       return updatedUser
