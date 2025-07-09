@@ -21,6 +21,4 @@ public class UpdateMessageTemplateDTO {
 
     @Size(max = 50, message = "Tone must not exceed 50 characters")
     private String tone;
-
-    private UUID lastEditedByUserId;
 }

@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.util;
 import com.ruby.rubia_server.config.CompanyContextResolver;
 import com.ruby.rubia_server.config.CustomUserDetailsService;
 import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -97,6 +98,28 @@ public class CompanyContextUtil {
         
         // Fallback to request context
         return getCurrentCompanyId();
+    }
+
+    /**
+     * Gets the authenticated user entity
+     */
+    public User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetailsService.CustomUserPrincipal) {
+            CustomUserDetailsService.CustomUserPrincipal userPrincipal = 
+                (CustomUserDetailsService.CustomUserPrincipal) authentication.getPrincipal();
+            return userPrincipal.getUser();
+        }
+        
+        throw new IllegalStateException("No authenticated user found");
+    }
+
+    /**
+     * Gets the authenticated user's ID
+     */
+    public UUID getAuthenticatedUserId() {
+        return getAuthenticatedUser().getId();
     }
 
     /**

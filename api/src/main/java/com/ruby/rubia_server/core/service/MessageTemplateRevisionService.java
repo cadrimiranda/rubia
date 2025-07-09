@@ -5,6 +5,7 @@ import com.ruby.rubia_server.core.base.EntityRelationshipValidator;
 import com.ruby.rubia_server.core.dto.CreateMessageTemplateRevisionDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageTemplateRevisionDTO;
 import com.ruby.rubia_server.core.entity.*;
+import com.ruby.rubia_server.core.enums.RevisionType;
 import com.ruby.rubia_server.core.repository.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
                 .orElseThrow(() -> new RuntimeException("MessageTemplate not found with ID: " + createDTO.getTemplateId()));
 
         MessageTemplateRevision.MessageTemplateRevisionBuilder builder = MessageTemplateRevision.builder()
+                .company(template.getCompany()) // Set the company from the template
                 .template(template)
                 .revisionNumber(createDTO.getRevisionNumber())
                 .content(createDTO.getContent());
@@ -55,6 +57,10 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
                     .orElseThrow(() -> new RuntimeException("User not found with ID: " + createDTO.getEditedByUserId()));
             builder.editedBy(user);
         }
+
+        // Set revision type based on revision number - first revision is CREATE, others are EDIT by default
+        RevisionType revisionType = createDTO.getRevisionNumber() == 1 ? RevisionType.CREATE : RevisionType.EDIT;
+        builder.revisionType(revisionType);
 
         return builder.build();
     }
@@ -141,7 +147,12 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
 
     @Transactional
     public MessageTemplateRevision createRevisionFromTemplate(UUID templateId, String content, UUID editedByUserId) {
-        log.debug("Creating revision from template id: {} with content by user: {}", templateId, editedByUserId);
+        return createRevisionFromTemplate(templateId, content, editedByUserId, RevisionType.EDIT);
+    }
+
+    @Transactional
+    public MessageTemplateRevision createRevisionFromTemplate(UUID templateId, String content, UUID editedByUserId, RevisionType revisionType) {
+        log.debug("Creating revision from template id: {} with content by user: {} of type: {}", templateId, editedByUserId, revisionType);
 
         MessageTemplate template = messageTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("MessageTemplate not found with ID: " + templateId));
@@ -152,14 +163,16 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
         Integer nextRevisionNumber = getNextRevisionNumber(templateId);
 
         MessageTemplateRevision revision = MessageTemplateRevision.builder()
+                .company(template.getCompany()) // Set the company from the template
                 .template(template)
                 .revisionNumber(nextRevisionNumber)
                 .content(content)
                 .editedBy(editor)
+                .revisionType(revisionType)
                 .build();
 
         MessageTemplateRevision savedRevision = messageTemplateRevisionRepository.save(revision);
-        log.debug("Revision created from template with id: {}", savedRevision.getId());
+        log.debug("Revision created from template with id: {} and type: {}", savedRevision.getId(), revisionType);
 
         return savedRevision;
     }

@@ -1,11 +1,18 @@
 package com.ruby.rubia_server.auth;
 
+import com.ruby.rubia_server.core.exception.MessageTemplateRevisionException;
+import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 
+import java.net.URI;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -58,6 +65,44 @@ public class GlobalExceptionHandler {
                     "code", "INSUFFICIENT_PERMISSIONS",
                     "status", "403"
                 ));
+    }
+
+    @ExceptionHandler(MessageTemplateTransactionException.class)
+    public ResponseEntity<ProblemDetail> handleMessageTemplateTransactionException(
+            MessageTemplateTransactionException ex, WebRequest request) {
+        
+        log.error("MessageTemplate transaction failed: {}", ex.getMessage(), ex);
+        
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR, 
+            ex.getMessage()
+        );
+        problemDetail.setType(URI.create("https://api.rubia.com/errors/message-template-transaction"));
+        problemDetail.setTitle("Message Template Transaction Failed");
+        problemDetail.setProperty("templateId", ex.getTemplateId());
+        problemDetail.setProperty("operation", ex.getOperation());
+        problemDetail.setProperty("timestamp", LocalDateTime.now());
+        
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+    }
+
+    @ExceptionHandler(MessageTemplateRevisionException.class)
+    public ResponseEntity<ProblemDetail> handleMessageTemplateRevisionException(
+            MessageTemplateRevisionException ex, WebRequest request) {
+        
+        log.warn("MessageTemplate revision failed: {}", ex.getMessage(), ex);
+        
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST, 
+            ex.getMessage()
+        );
+        problemDetail.setType(URI.create("https://api.rubia.com/errors/message-template-revision"));
+        problemDetail.setTitle("Message Template Revision Failed");
+        problemDetail.setProperty("templateId", ex.getTemplateId());
+        problemDetail.setProperty("operation", ex.getOperation());
+        problemDetail.setProperty("timestamp", LocalDateTime.now());
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
     }
 
     @ExceptionHandler(RuntimeException.class)

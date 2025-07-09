@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.dto;
 
+import com.ruby.rubia_server.core.enums.RevisionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ public class MessageTemplateRevisionDTO {
     private String content;
     private UUID editedByUserId;
     private String editedByUserName;
+    private RevisionType revisionType;
     private LocalDateTime revisionTimestamp;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

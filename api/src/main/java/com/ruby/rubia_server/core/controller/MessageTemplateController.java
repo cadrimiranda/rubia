@@ -282,4 +282,67 @@ public class MessageTemplateController extends BaseCompanyEntityController<Messa
         
         return ResponseEntity.ok(responseDTOs);
     }
+
+    /**
+     * Override to use soft delete instead of hard delete
+     */
+    @Override
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable UUID id) {
+        log.info("Soft deleting MessageTemplate via API with id: {}", id);
+        
+        Optional<MessageTemplate> entity = messageTemplateService.findById(id);
+        if (entity.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        companyContextUtil.ensureCompanyAccess(entity.get().getCompany().getId());
+        
+        boolean deleted = messageTemplateService.softDeleteById(id);
+        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    }
+
+    /**
+     * Endpoint to restore a soft-deleted template
+     */
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<MessageTemplateDTO> restoreById(@PathVariable UUID id) {
+        log.info("Restoring MessageTemplate via API with id: {}", id);
+        
+        // Use findByIdIncludingDeleted to check if template exists (including soft-deleted ones)
+        Optional<MessageTemplate> entity = messageTemplateService.findByIdIncludingDeleted(id);
+        if (entity.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        companyContextUtil.ensureCompanyAccess(entity.get().getCompany().getId());
+        
+        boolean restored = messageTemplateService.restoreById(id);
+        if (restored) {
+            Optional<MessageTemplate> restoredTemplate = messageTemplateService.findById(id);
+            if (restoredTemplate.isPresent()) {
+                MessageTemplateDTO responseDTO = convertToDTO(restoredTemplate.get());
+                return ResponseEntity.ok(responseDTO);
+            }
+        }
+        
+        return ResponseEntity.notFound().build();
+    }
+
+    /**
+     * Endpoint to get soft-deleted templates for a company
+     */
+    @GetMapping("/company/{companyId}/deleted")
+    public ResponseEntity<List<MessageTemplateDTO>> getDeletedTemplates(@PathVariable UUID companyId) {
+        log.debug("Getting deleted templates for company via API: {}", companyId);
+        
+        companyContextUtil.ensureCompanyAccess(companyId);
+        
+        List<MessageTemplate> messageTemplates = messageTemplateService.findDeletedByCompanyId(companyId);
+        List<MessageTemplateDTO> responseDTOs = messageTemplates.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(responseDTOs);
+    }
 }

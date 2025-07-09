@@ -24,6 +24,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class MessageTemplateRevisionServiceMockTest {
@@ -71,6 +72,7 @@ class MessageTemplateRevisionServiceMockTest {
 
         messageTemplate = MessageTemplate.builder()
                 .id(messageTemplateId)
+                .company(company)
                 .name("Test Template")
                 .content("Original content")
                 .build();
@@ -125,6 +127,37 @@ class MessageTemplateRevisionServiceMockTest {
         assertEquals(messageTemplateId, result.getTemplate().getId());
         assertEquals(userId, result.getEditedBy().getId());
 
+        verify(companyRepository).findById(companyId);
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRevisionRepository).save(any(MessageTemplateRevision.class));
+    }
+
+    @Test
+    void createMessageTemplateRevision_ShouldSetCompanyFromTemplateInBuildEntityFromDTO() {
+        // Given
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        
+        // Capture the revision that would be saved
+        ArgumentCaptor<MessageTemplateRevision> revisionCaptor = ArgumentCaptor.forClass(MessageTemplateRevision.class);
+        when(messageTemplateRevisionRepository.save(revisionCaptor.capture())).thenReturn(messageTemplateRevision);
+
+        // When
+        messageTemplateRevisionService.create(createDTO);
+
+        // Then
+        MessageTemplateRevision capturedRevision = revisionCaptor.getValue();
+        assertNotNull(capturedRevision);
+        assertNotNull(capturedRevision.getCompany());
+        assertEquals(companyId, capturedRevision.getCompany().getId());
+        assertEquals("Test Company", capturedRevision.getCompany().getName());
+        assertEquals(messageTemplateId, capturedRevision.getTemplate().getId());
+        assertEquals(userId, capturedRevision.getEditedBy().getId());
+        assertEquals(createDTO.getContent(), capturedRevision.getContent());
+        assertEquals(createDTO.getRevisionNumber(), capturedRevision.getRevisionNumber());
+        
         verify(companyRepository).findById(companyId);
         verify(messageTemplateRepository).findById(messageTemplateId);
         verify(userRepository).findById(userId);
@@ -504,6 +537,36 @@ class MessageTemplateRevisionServiceMockTest {
         verify(messageTemplateRepository).findById(messageTemplateId);
         verify(userRepository).findById(userId);
         verify(messageTemplateRevisionRepository).findMaxRevisionNumberByTemplateId(messageTemplateId);
+        verify(messageTemplateRevisionRepository).save(any(MessageTemplateRevision.class));
+    }
+
+    @Test
+    void createRevisionFromTemplate_ShouldSetCompanyFromTemplate() {
+        // Given
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRevisionRepository.findMaxRevisionNumberByTemplateId(messageTemplateId)).thenReturn(Optional.of(2));
+        
+        // Capture the revision that would be saved
+        ArgumentCaptor<MessageTemplateRevision> revisionCaptor = ArgumentCaptor.forClass(MessageTemplateRevision.class);
+        when(messageTemplateRevisionRepository.save(revisionCaptor.capture())).thenReturn(messageTemplateRevision);
+
+        // When
+        messageTemplateRevisionService.createRevisionFromTemplate(messageTemplateId, "New content", userId);
+
+        // Then
+        MessageTemplateRevision capturedRevision = revisionCaptor.getValue();
+        assertNotNull(capturedRevision);
+        assertNotNull(capturedRevision.getCompany());
+        assertEquals(companyId, capturedRevision.getCompany().getId());
+        assertEquals("Test Company", capturedRevision.getCompany().getName());
+        assertEquals(messageTemplateId, capturedRevision.getTemplate().getId());
+        assertEquals(userId, capturedRevision.getEditedBy().getId());
+        assertEquals("New content", capturedRevision.getContent());
+        assertEquals(3, capturedRevision.getRevisionNumber()); // 2 + 1
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
         verify(messageTemplateRevisionRepository).save(any(MessageTemplateRevision.class));
     }
 }

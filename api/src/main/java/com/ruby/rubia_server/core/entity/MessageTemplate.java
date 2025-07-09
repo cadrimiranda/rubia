@@ -60,7 +60,7 @@ public class MessageTemplate implements BaseEntity {
     @Builder.Default
     private Integer editCount = 0;
 
-    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "template", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @OrderBy("revisionNumber DESC")
     private List<MessageTemplateRevision> revisions;
 
@@ -71,4 +71,7 @@ public class MessageTemplate implements BaseEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

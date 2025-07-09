@@ -29,8 +29,6 @@ public class CreateMessageTemplateDTO {
     @NotNull(message = "AI generated flag is required")
     private Boolean isAiGenerated;
 
-    private UUID createdByUserId;
-
     private UUID aiAgentId;
 
     @Size(max = 50, message = "Tone must not exceed 50 characters")

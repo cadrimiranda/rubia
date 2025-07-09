@@ -6,9 +6,9 @@ services:
     image: postgres:16-alpine
     container_name: rubia-postgres
     environment:
-      POSTGRES_DB: rubia
-      POSTGRES_USER: rubia_user
-      POSTGRES_PASSWORD: rubia_password
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-rubia_password}
     ports:
       - "5432:5432"
     volumes:

@@ -77,6 +77,7 @@ public class AuthService {
                     .name(user.getName())
                     .email(user.getEmail())
                     .role(user.getRole().name())
+                    .companyId(company.getId())
                     .companyGroupId(company.getCompanyGroup().getId())
                     .companyGroupName(company.getCompanyGroup().getName())
                     .companySlug(company.getSlug())
@@ -86,6 +87,7 @@ public class AuthService {
                     .isOnline(user.getIsOnline() != null ? user.getIsOnline() : false)
                     .build())
                 .expiresIn(3600)
+                .companyId(company.getId().toString())
                 .companyGroupId(company.getCompanyGroup().getId().toString())
                 .companySlug(company.getSlug())
                 .build();
