@@ -10,6 +10,7 @@ import {
   Trash2,
   MoreVertical,
   History,
+  RotateCcw,
 } from "lucide-react";
 import {
   Button,
@@ -67,7 +68,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<
-    "agent" | "campaign" | "templates"
+    "agent" | "campaign" | "templates" | "deleted"
   >("agent");
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",
@@ -83,12 +84,14 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     sourceSystem: "",
   });
   const [templates, setTemplates] = useState<ConversationTemplate[]>([]);
+  const [deletedTemplates, setDeletedTemplates] = useState<ConversationTemplate[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [duplicateUsers, setDuplicateUsers] = useState<string[]>([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] =
     useState<ConversationTemplate | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isLoadingDeletedTemplates, setIsLoadingDeletedTemplates] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [revisionHistory, setRevisionHistory] = useState<
     MessageTemplateRevision[]
@@ -120,6 +123,30 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       message.error("Erro ao carregar templates da API");
     } finally {
       setIsLoadingTemplates(false);
+    }
+  };
+
+  // Carregar templates excluídos da API
+  const loadDeletedTemplates = async () => {
+    setIsLoadingDeletedTemplates(true);
+    try {
+      const apiTemplates = await messageTemplateService.getDeleted();
+      const convertedTemplates: ConversationTemplate[] = apiTemplates.map(
+        (template) => ({
+          id: template.id,
+          title: template.name,
+          content: template.content,
+          selected: false,
+          category: template.tone || "geral",
+          isCustom: true,
+        })
+      );
+      setDeletedTemplates(convertedTemplates);
+    } catch (error) {
+      console.error("Erro ao carregar templates excluídos:", error);
+      message.error("Erro ao carregar templates excluídos da API");
+    } finally {
+      setIsLoadingDeletedTemplates(false);
     }
   };
 
@@ -186,6 +213,19 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const handleViewHistory = async (templateId: string) => {
     setShowHistoryModal(true);
     await loadTemplateHistory(templateId);
+  };
+
+  // Restaurar template excluído
+  const handleRestoreTemplate = async (templateId: string) => {
+    try {
+      await messageTemplateService.restore(templateId);
+      message.success("Template restaurado com sucesso!");
+      loadDeletedTemplates(); // Recarregar templates excluídos
+      loadTemplates(); // Recarregar templates ativos
+    } catch (error) {
+      console.error("Erro ao restaurar template:", error);
+      message.error("Erro ao restaurar template");
+    }
   };
 
   const handleAgentConfigChange = (field: keyof AgentConfig, value: string) => {
@@ -537,6 +577,19 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                 }`}
               >
                 Templates
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("deleted");
+                  loadDeletedTemplates();
+                }}
+                className={`px-6 py-3 font-medium transition-all relative ${
+                  activeTab === "deleted"
+                    ? "text-red-600 border-b-2 border-red-500 bg-red-50/50"
+                    : "text-gray-600 hover:text-red-600 hover:bg-gray-50"
+                }`}
+              >
+                Templates Excluídos
               </button>
             </div>
           </div>
@@ -1210,6 +1263,107 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
           )}
         </div>
       </div>
+
+          {activeTab === "deleted" && (
+            <div className="max-w-6xl mx-auto p-8">
+              {/* Header da seção */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                    <Trash2 className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      Templates Excluídos
+                    </h2>
+                    <p className="text-gray-600">
+                      Visualize templates excluídos e suas revisões
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista de Templates Excluídos */}
+              <div className="space-y-4">
+                {isLoadingDeletedTemplates ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Spin size="large" />
+                  </div>
+                ) : deletedTemplates.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Trash2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-500 mb-2">
+                      Nenhum template excluído
+                    </h3>
+                    <p className="text-gray-400">
+                      Quando você excluir templates, eles aparecerão aqui
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {deletedTemplates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="border border-gray-200 rounded-xl p-6 bg-white hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                              {template.title}
+                            </h3>
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                {template.content}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Dropdown
+                              menu={{
+                                items: [
+                                  {
+                                    key: "history",
+                                    label: "Ver Histórico",
+                                    icon: <History className="w-4 h-4" />,
+                                    onClick: () => handleViewHistory(template.id),
+                                  },
+                                  {
+                                    key: "restore",
+                                    label: "Restaurar",
+                                    icon: <RotateCcw className="w-4 h-4" />,
+                                    onClick: () => handleRestoreTemplate(template.id),
+                                  },
+                                ],
+                              }}
+                              trigger={["click"]}
+                            >
+                              <Button
+                                type="text"
+                                icon={<MoreVertical className="w-4 h-4" />}
+                                size="small"
+                              />
+                            </Dropdown>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Trash2 className="w-3 h-3" />
+                            Template excluído
+                          </span>
+                          {template.category && (
+                            <span className="text-gray-400">•</span>
+                          )}
+                          {template.category && (
+                            <span className="capitalize">{template.category}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
       {/* Modal de Histórico */}
       <Modal

@@ -112,6 +112,26 @@ export const messageTemplateService = {
       console.error('Error fetching template revision history:', error);
       throw error;
     }
+  },
+
+  async getDeleted(): Promise<MessageTemplateResponse[]> {
+    try {
+      const response = await apiClient.get<MessageTemplateResponse[]>('/api/message-templates/deleted');
+      return response;
+    } catch (error) {
+      console.error('Error fetching deleted message templates:', error);
+      throw error;
+    }
+  },
+
+  async restore(id: string): Promise<MessageTemplateResponse> {
+    try {
+      const response = await apiClient.post<MessageTemplateResponse>(`/api/message-templates/${id}/restore`);
+      return response;
+    } catch (error) {
+      console.error('Error restoring message template:', error);
+      throw error;
+    }
   }
 };
 
