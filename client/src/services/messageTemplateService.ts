@@ -116,11 +116,39 @@ export const messageTemplateService = {
 
   async getDeleted(): Promise<MessageTemplateResponse[]> {
     try {
-      const response = await apiClient.get<{content: MessageTemplateResponse[], page: any}>('/api/message-templates', { 
-        deleted: 'true',
-        lastRevisionType: 'DELETE' // Apenas templates onde a última revisão é DELETE
-      });
-      return response.content;
+      // Primeira tentativa: usar parâmetro lastRevisionType se o backend suportar
+      try {
+        const response = await apiClient.get<{content: MessageTemplateResponse[], page: any}>('/api/message-templates', { 
+          deleted: 'true',
+          lastRevisionType: 'DELETE'
+        });
+        return response.content;
+      } catch (paramError) {
+        console.warn('Backend não suporta lastRevisionType, usando fallback');
+        
+        // Fallback: buscar todos os templates excluídos e filtrar no frontend
+        const response = await apiClient.get<{content: MessageTemplateResponse[], page: any}>('/api/message-templates', { 
+          deleted: 'true'
+        });
+        
+        const deletedTemplates = response.content;
+        
+        // Filtrar apenas templates onde a última revisão é DELETE
+        const filteredTemplates = await Promise.all(
+          deletedTemplates.map(async (template) => {
+            try {
+              const history = await this.getRevisionHistory(template.id);
+              const lastRevision = history[0]; // Assumindo que vem ordenado por mais recente
+              return lastRevision?.revisionType === 'DELETE' ? template : null;
+            } catch (error) {
+              console.warn(`Erro ao buscar histórico do template ${template.id}:`, error);
+              return template; // Se não conseguir buscar histórico, mantém o template
+            }
+          })
+        );
+        
+        return filteredTemplates.filter(Boolean) as MessageTemplateResponse[];
+      }
     } catch (error) {
       console.error('Error fetching deleted message templates:', error);
       throw error;
