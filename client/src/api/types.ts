@@ -54,11 +54,27 @@ export interface UserDTO {
 
 export interface CustomerDTO {
   id: string
+  companyId: string
   phone: string
   name?: string
   whatsappId?: string
   profileUrl?: string
   isBlocked: boolean
+  sourceSystemName?: string
+  sourceSystemId?: string
+  importedAt?: string
+  birthDate?: string
+  lastDonationDate?: string
+  nextEligibleDonationDate?: string
+  bloodType?: string
+  height?: number
+  weight?: number
+  addressStreet?: string
+  addressNumber?: string
+  addressComplement?: string
+  addressPostalCode?: string
+  addressCity?: string
+  addressState?: string
   createdAt: string
   updatedAt: string
 }

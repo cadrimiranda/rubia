@@ -1,5 +1,6 @@
 import type { CustomerDTO } from '../api/types'
 import type { User } from '../types'
+import type { Donor } from '../types/types'
 
 class CustomerAdapter {
   /**
@@ -72,15 +73,46 @@ class CustomerAdapter {
   /**
    * Cria um request DTO para criar novo customer
    */
-  toCreateRequest(phone: string, name?: string, whatsappId?: string): {
+  toCreateRequest(
+    phone: string, 
+    name?: string, 
+    whatsappId?: string,
+    profileUrl?: string,
+    sourceSystemName?: string,
+    sourceSystemId?: string,
+    birthDate?: string,
+    lastDonationDate?: string,
+    nextEligibleDonationDate?: string,
+    bloodType?: string,
+    height?: string,
+    weight?: string
+  ): {
     phone: string
     name?: string
     whatsappId?: string
+    profileUrl?: string
+    sourceSystemName?: string
+    sourceSystemId?: string
+    birthDate?: string
+    lastDonationDate?: string
+    nextEligibleDonationDate?: string
+    bloodType?: string
+    height?: number
+    weight?: number
   } {
     return {
       phone: this.normalizePhone(phone),
       name,
-      whatsappId
+      whatsappId,
+      profileUrl,
+      sourceSystemName,
+      sourceSystemId,
+      birthDate,
+      lastDonationDate,
+      nextEligibleDonationDate,
+      bloodType,
+      height: height ? parseInt(height) : undefined,
+      weight: weight ? parseFloat(weight) : undefined
     }
   }
 
@@ -241,6 +273,79 @@ class CustomerAdapter {
       phone: '',
       whatsappId: undefined,
       isBlocked: false
+    }
+  }
+
+  /**
+   * Converte CustomerDTO do backend para Donor do frontend (para modal de informações)
+   */
+  toDonor(dto: CustomerDTO): Donor {
+    return {
+      id: dto.id,
+      name: dto.name || this.formatPhoneAsName(dto.phone),
+      avatar: dto.profileUrl || this.generateAvatarUrl(dto.name || dto.phone),
+      lastMessage: '',
+      timestamp: '',
+      unread: 0,
+      status: 'offline' as const,
+      bloodType: dto.bloodType || 'N/I',
+      phone: dto.phone,
+      email: '', // Campo não existe no CustomerDTO
+      lastDonation: dto.lastDonationDate ? new Date(dto.lastDonationDate).toLocaleDateString('pt-BR') : 'Sem registro',
+      totalDonations: 0, // Campo não existe no CustomerDTO
+      address: this.formatAddress(dto),
+      birthDate: dto.birthDate || '',
+      weight: dto.weight || 0,
+      height: dto.height || 0,
+      hasActiveConversation: false,
+    }
+  }
+
+  /**
+   * Formata o endereço completo a partir dos campos separados
+   */
+  private formatAddress(dto: CustomerDTO): string {
+    const parts: string[] = []
+    
+    if (dto.addressStreet) {
+      let streetPart = dto.addressStreet
+      if (dto.addressNumber) {
+        streetPart += `, ${dto.addressNumber}`
+      }
+      if (dto.addressComplement) {
+        streetPart += ` - ${dto.addressComplement}`
+      }
+      parts.push(streetPart)
+    }
+    
+    if (dto.addressCity && dto.addressState) {
+      parts.push(`${dto.addressCity}/${dto.addressState}`)
+    } else if (dto.addressCity) {
+      parts.push(dto.addressCity)
+    }
+    
+    if (dto.addressPostalCode) {
+      parts.push(`CEP: ${dto.addressPostalCode}`)
+    }
+    
+    return parts.join(' - ')
+  }
+
+  /**
+   * Atualiza um Donor existente com dados completos do CustomerDTO
+   */
+  updateDonorWithCustomerData(donor: Donor, dto: CustomerDTO): Donor {
+    return {
+      ...donor,
+      name: dto.name || this.formatPhoneAsName(dto.phone),
+      avatar: dto.profileUrl || donor.avatar,
+      bloodType: dto.bloodType || donor.bloodType,
+      phone: dto.phone,
+      lastDonation: dto.lastDonationDate ? new Date(dto.lastDonationDate).toLocaleDateString('pt-BR') : donor.lastDonation,
+      address: this.formatAddress(dto) || donor.address,
+      birthDate: dto.birthDate || donor.birthDate,
+      weight: dto.weight || donor.weight,
+      height: dto.height || donor.height,
     }
   }
 }
