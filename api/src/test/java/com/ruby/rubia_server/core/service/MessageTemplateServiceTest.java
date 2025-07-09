@@ -5,6 +5,7 @@ import com.ruby.rubia_server.core.dto.UpdateMessageTemplateDTO;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.repository.*;
 import com.ruby.rubia_server.core.base.EntityRelationshipValidator;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,9 @@ class MessageTemplateServiceTest {
     @Mock
     private MessageTemplateRevisionService messageTemplateRevisionService;
 
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+
     @InjectMocks
     private MessageTemplateService messageTemplateService;
     
@@ -72,6 +76,10 @@ class MessageTemplateServiceTest {
         } catch (Exception e) {
             fail("Failed to set failOnRevisionError field");
         }
+        
+        // Mock CompanyContextUtil to return our test user (lenient for tests that don't need auth)
+        lenient().when(companyContextUtil.getAuthenticatedUser()).thenReturn(user);
+        lenient().when(companyContextUtil.getAuthenticatedUserId()).thenReturn(userId);
         companyId = UUID.randomUUID();
         userId = UUID.randomUUID();
         aiAgentId = UUID.randomUUID();
@@ -97,7 +105,6 @@ class MessageTemplateServiceTest {
                 .name("Test Template")
                 .content("Hello {customerName}, how are you?")
                 .isAiGenerated(false)
-                .createdByUserId(userId)
                 .tone("FORMAL")
                 .build();
 
@@ -105,7 +112,6 @@ class MessageTemplateServiceTest {
                 .name("Updated Template")
                 .content("Updated content")
                 .tone("INFORMAL")
-                .lastEditedByUserId(userId)
                 .build();
 
         messageTemplate = MessageTemplate.builder()
@@ -207,15 +213,20 @@ class MessageTemplateServiceTest {
     @Test
     void createMessageTemplate_ShouldThrowException_WhenAIAgentNotFound() {
         // Given
-        createDTO.setCreatedByUserId(null);
-        createDTO.setAiAgentId(aiAgentId);
+        CreateMessageTemplateDTO dtoWithAiAgent = CreateMessageTemplateDTO.builder()
+                .companyId(companyId)
+                .name("Test Template")
+                .content("Hello there!")
+                .isAiGenerated(false)
+                .aiAgentId(aiAgentId)
+                .build();
         
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(aiAgentRepository.findById(aiAgentId)).thenReturn(Optional.empty());
 
         // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, 
-            () -> messageTemplateService.create(createDTO));
+            () -> messageTemplateService.create(dtoWithAiAgent));
         
         assertEquals("AIAgent not found with ID: " + aiAgentId, exception.getMessage());
         verify(companyRepository).findById(companyId);
@@ -482,10 +493,9 @@ class MessageTemplateServiceTest {
     }
 
     @Test
-    void createMessageTemplate_ShouldCreateInitialRevision_WhenCreatedByUserIdProvided() {
+    void createMessageTemplate_ShouldCreateInitialRevision_WhenAuthenticatedUserProvided() {
         // Given
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
 
         // When
@@ -495,7 +505,7 @@ class MessageTemplateServiceTest {
         assertNotNull(result);
         assertEquals(messageTemplate.getId(), result.getId());
         
-        // Verify that initial revision is created
+        // Verify that initial revision is created using authenticated user
         verify(messageTemplateRevisionService).createRevisionFromTemplate(
             eq(messageTemplate.getId()),
             eq(createDTO.getContent()),
@@ -503,12 +513,12 @@ class MessageTemplateServiceTest {
         );
         
         verify(companyRepository).findById(companyId);
-        verify(userRepository).findById(userId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
+        verify(companyContextUtil).getAuthenticatedUser();
     }
 
     @Test
-    void createMessageTemplate_ShouldNotCreateInitialRevision_WhenCreatedByUserIdNotProvided() {
+    void createMessageTemplate_ShouldNotCreateInitialRevision_WhenNoAuthenticatedUser() {
         // Given
         CreateMessageTemplateDTO dtoWithoutUser = CreateMessageTemplateDTO.builder()
                 .companyId(companyId)
@@ -519,6 +529,7 @@ class MessageTemplateServiceTest {
         
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+        when(companyContextUtil.getAuthenticatedUser()).thenThrow(new IllegalStateException("No authenticated user found"));
 
         // When
         MessageTemplate result = messageTemplateService.create(dtoWithoutUser);
@@ -526,15 +537,16 @@ class MessageTemplateServiceTest {
         // Then
         assertNotNull(result);
         
-        // Verify that no revision is created when user ID is not provided
+        // Verify that no revision is created when user authentication fails
         verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
         
         verify(companyRepository).findById(companyId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
+        verify(companyContextUtil).getAuthenticatedUser();
     }
 
     @Test
-    void updateMessageTemplate_ShouldCreateRevision_WhenContentChangesAndUserProvided() {
+    void updateMessageTemplate_ShouldCreateRevision_WhenContentChangesAndUserAuthenticated() {
         // Given
         String originalContent = "Original content";
         String newContent = "Updated content";
@@ -544,11 +556,9 @@ class MessageTemplateServiceTest {
         UpdateMessageTemplateDTO updateWithContentChange = UpdateMessageTemplateDTO.builder()
                 .name("Updated Template")
                 .content(newContent)
-                .lastEditedByUserId(userId)
                 .build();
         
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
 
         // When
@@ -557,7 +567,7 @@ class MessageTemplateServiceTest {
         // Then
         assertTrue(result.isPresent());
         
-        // Verify that revision is created when content changes
+        // Verify that revision is created when content changes using authenticated user
         verify(messageTemplateRevisionService).createRevisionFromTemplate(
             eq(messageTemplateId),
             eq(newContent),
@@ -565,8 +575,8 @@ class MessageTemplateServiceTest {
         );
         
         verify(messageTemplateRepository).findById(messageTemplateId);
-        verify(userRepository).findById(userId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
+        verify(companyContextUtil).getAuthenticatedUser();
     }
 
     @Test
@@ -579,11 +589,9 @@ class MessageTemplateServiceTest {
         UpdateMessageTemplateDTO updateWithoutContentChange = UpdateMessageTemplateDTO.builder()
                 .name("Updated Template Name Only")
                 .content(originalContent) // Same content
-                .lastEditedByUserId(userId)
                 .build();
         
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
 
         // When
@@ -596,12 +604,12 @@ class MessageTemplateServiceTest {
         verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
         
         verify(messageTemplateRepository).findById(messageTemplateId);
-        verify(userRepository).findById(userId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
+        verify(companyContextUtil).getAuthenticatedUser();
     }
 
     @Test
-    void updateMessageTemplate_ShouldNotCreateRevision_WhenUserNotProvided() {
+    void updateMessageTemplate_ShouldNotCreateRevision_WhenUserNotAuthenticated() {
         // Given
         String originalContent = "Original content";
         String newContent = "Updated content";
@@ -611,10 +619,11 @@ class MessageTemplateServiceTest {
         UpdateMessageTemplateDTO updateWithoutUser = UpdateMessageTemplateDTO.builder()
                 .name("Updated Template")
                 .content(newContent)
-                .build(); // No lastEditedByUserId
+                .build();
         
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+        when(companyContextUtil.getAuthenticatedUser()).thenThrow(new IllegalStateException("No authenticated user found"));
 
         // When
         Optional<MessageTemplate> result = messageTemplateService.update(messageTemplateId, updateWithoutUser);
@@ -622,11 +631,12 @@ class MessageTemplateServiceTest {
         // Then
         assertTrue(result.isPresent());
         
-        // Verify that no revision is created when user is not provided
+        // Verify that no revision is created when user authentication fails
         verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
         
         verify(messageTemplateRepository).findById(messageTemplateId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
+        verify(companyContextUtil).getAuthenticatedUser();
     }
 
     @Test
@@ -668,11 +678,9 @@ class MessageTemplateServiceTest {
         
         UpdateMessageTemplateDTO updateWithContentChange = UpdateMessageTemplateDTO.builder()
                 .content(newContent)
-                .lastEditedByUserId(userId)
                 .build();
         
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         
         // Mock revision service to throw exception
         doThrow(new RuntimeException("Revision creation failed")).when(messageTemplateRevisionService)
@@ -684,7 +692,7 @@ class MessageTemplateServiceTest {
         
         assertEquals("Failed to create revision for template update", exception.getMessage());
         
-        // Verify that revision creation was attempted
+        // Verify that revision creation was attempted using authenticated user
         verify(messageTemplateRevisionService).createRevisionFromTemplate(
             eq(messageTemplateId),
             eq(newContent),
@@ -692,7 +700,7 @@ class MessageTemplateServiceTest {
         );
         
         verify(messageTemplateRepository).findById(messageTemplateId);
-        verify(userRepository).findById(userId);
+        verify(companyContextUtil).getAuthenticatedUser();
         // Note: save should not be called due to rollback
     }
     
@@ -739,16 +747,15 @@ class MessageTemplateServiceTest {
     void softDeleteById_ShouldMarkTemplateAsDeletedAndCreateRevision_WhenValidData() {
         // Given
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
         
         // When
-        boolean result = messageTemplateService.softDeleteById(messageTemplateId, userId);
+        boolean result = messageTemplateService.softDeleteById(messageTemplateId);
         
         // Then
         assertTrue(result);
         
-        // Verify that deletion revision is created
+        // Verify that deletion revision is created using authenticated user
         verify(messageTemplateRevisionService).createRevisionFromTemplate(
             eq(messageTemplateId),
             eq("[TEMPLATE DELETED] " + messageTemplate.getContent()),
@@ -756,7 +763,7 @@ class MessageTemplateServiceTest {
         );
         
         verify(messageTemplateRepository).findById(messageTemplateId);
-        verify(userRepository).findById(userId);
+        verify(companyContextUtil).getAuthenticatedUser();
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
     }
     
@@ -766,7 +773,7 @@ class MessageTemplateServiceTest {
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.empty());
         
         // When
-        boolean result = messageTemplateService.softDeleteById(messageTemplateId, userId);
+        boolean result = messageTemplateService.softDeleteById(messageTemplateId);
         
         // Then
         assertFalse(result);
@@ -785,7 +792,7 @@ class MessageTemplateServiceTest {
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
         
         // When
-        boolean result = messageTemplateService.softDeleteById(messageTemplateId, userId);
+        boolean result = messageTemplateService.softDeleteById(messageTemplateId);
         
         // Then
         assertFalse(result);
@@ -802,16 +809,15 @@ class MessageTemplateServiceTest {
         // Given
         messageTemplate.setDeletedAt(LocalDateTime.now());
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
         
         // When
-        boolean result = messageTemplateService.restoreById(messageTemplateId, userId);
+        boolean result = messageTemplateService.restoreById(messageTemplateId);
         
         // Then
         assertTrue(result);
         
-        // Verify that restoration revision is created
+        // Verify that restoration revision is created using authenticated user
         verify(messageTemplateRevisionService).createRevisionFromTemplate(
             eq(messageTemplateId),
             eq("[TEMPLATE RESTORED] " + messageTemplate.getContent()),
@@ -819,7 +825,7 @@ class MessageTemplateServiceTest {
         );
         
         verify(messageTemplateRepository).findById(messageTemplateId);
-        verify(userRepository).findById(userId);
+        verify(companyContextUtil).getAuthenticatedUser();
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
     }
     
@@ -830,7 +836,7 @@ class MessageTemplateServiceTest {
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
         
         // When
-        boolean result = messageTemplateService.restoreById(messageTemplateId, userId);
+        boolean result = messageTemplateService.restoreById(messageTemplateId);
         
         // Then
         assertFalse(result);
@@ -846,7 +852,6 @@ class MessageTemplateServiceTest {
     void softDeleteById_ShouldRollbackTransaction_WhenRevisionCreationFails() {
         // Given
         when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         
         // Mock revision service to throw exception
         doThrow(new RuntimeException("Revision creation failed")).when(messageTemplateRevisionService)
@@ -854,11 +859,11 @@ class MessageTemplateServiceTest {
         
         // When & Then
         MessageTemplateTransactionException exception = assertThrows(MessageTemplateTransactionException.class,
-            () -> messageTemplateService.softDeleteById(messageTemplateId, userId));
+            () -> messageTemplateService.softDeleteById(messageTemplateId));
         
         assertEquals("Failed to create revision for template deletion", exception.getMessage());
         
-        // Verify that revision creation was attempted
+        // Verify that revision creation was attempted using authenticated user
         verify(messageTemplateRevisionService).createRevisionFromTemplate(
             eq(messageTemplateId),
             eq("[TEMPLATE DELETED] " + messageTemplate.getContent()),
@@ -866,7 +871,7 @@ class MessageTemplateServiceTest {
         );
         
         verify(messageTemplateRepository).findById(messageTemplateId);
-        verify(userRepository).findById(userId);
+        verify(companyContextUtil).getAuthenticatedUser();
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
     }
 }

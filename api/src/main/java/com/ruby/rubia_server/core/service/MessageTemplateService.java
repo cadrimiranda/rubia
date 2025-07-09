@@ -8,6 +8,7 @@ import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.exception.MessageTemplateRevisionException;
 import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 import com.ruby.rubia_server.core.repository.*;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     private final UserRepository userRepository;
     private final AIAgentRepository aiAgentRepository;
     private final MessageTemplateRevisionService messageTemplateRevisionService;
+    private final CompanyContextUtil companyContextUtil;
     
     @Value("${app.message-template.revision.fail-on-error:true}")
     private boolean failOnRevisionError;
@@ -36,12 +38,14 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                                  UserRepository userRepository,
                                  AIAgentRepository aiAgentRepository,
                                  MessageTemplateRevisionService messageTemplateRevisionService,
-                                 EntityRelationshipValidator relationshipValidator) {
+                                 EntityRelationshipValidator relationshipValidator,
+                                 CompanyContextUtil companyContextUtil) {
         super(messageTemplateRepository, companyRepository, relationshipValidator);
         this.messageTemplateRepository = messageTemplateRepository;
         this.userRepository = userRepository;
         this.aiAgentRepository = aiAgentRepository;
         this.messageTemplateRevisionService = messageTemplateRevisionService;
+        this.companyContextUtil = companyContextUtil;
     }
 
     @Override
@@ -58,11 +62,13 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                 .tone(createDTO.getTone())
                 .editCount(0);
 
-        // Handle optional relationships
-        if (createDTO.getCreatedByUserId() != null) {
-            User user = userRepository.findById(createDTO.getCreatedByUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + createDTO.getCreatedByUserId()));
-            builder.createdBy(user);
+        // Automatically set the created by user from authenticated user
+        try {
+            User authenticatedUser = companyContextUtil.getAuthenticatedUser();
+            builder.createdBy(authenticatedUser);
+        } catch (Exception e) {
+            log.warn("Could not set created by user: {}", e.getMessage());
+            // Continue without setting the user - this maintains backward compatibility
         }
 
         if (createDTO.getAiAgentId() != null) {
@@ -81,13 +87,14 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
         // Create the template using the parent method
         MessageTemplate createdTemplate = super.create(createDTO);
         
-        // Create the initial revision (revision number 1)
-        if (createDTO.getCreatedByUserId() != null) {
+        // Create the initial revision (revision number 1) using authenticated user
+        try {
+            User authenticatedUser = companyContextUtil.getAuthenticatedUser();
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     createdTemplate.getId(), 
                     createdTemplate.getContent(), 
-                    createDTO.getCreatedByUserId()
+                    authenticatedUser.getId()
                 );
                 log.debug("Initial revision created for template: {}", createdTemplate.getId());
             } catch (Exception e) {
@@ -99,6 +106,9 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                     createdTemplate
                 );
             }
+        } catch (Exception e) {
+            log.warn("Could not create initial revision - no authenticated user: {}", e.getMessage());
+            // Continue without creating revision - this maintains backward compatibility
         }
         
         return createdTemplate;
@@ -120,11 +130,10 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
             messageTemplate.setTone(updateDTO.getTone());
         }
         
-        // Handle last edited by user
-        if (updateDTO.getLastEditedByUserId() != null) {
-            User user = userRepository.findById(updateDTO.getLastEditedByUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + updateDTO.getLastEditedByUserId()));
-            messageTemplate.setLastEditedBy(user);
+        // Automatically set the last edited by user from the authenticated user
+        try {
+            User authenticatedUser = companyContextUtil.getAuthenticatedUser();
+            messageTemplate.setLastEditedBy(authenticatedUser);
             
             // Increment edit count
             messageTemplate.setEditCount(messageTemplate.getEditCount() + 1);
@@ -135,7 +144,7 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                     messageTemplateRevisionService.createRevisionFromTemplate(
                         messageTemplate.getId(), 
                         messageTemplate.getContent(), 
-                        updateDTO.getLastEditedByUserId()
+                        authenticatedUser.getId()
                     );
                     log.debug("Revision created for template: {} after content change", messageTemplate.getId());
                 } catch (Exception e) {
@@ -147,6 +156,9 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                     );
                 }
             }
+        } catch (Exception e) {
+            log.warn("Could not set last edited by user: {}", e.getMessage());
+            // Continue without setting the user - this maintains backward compatibility
         }
     }
 
@@ -394,12 +406,11 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     /**
      * Soft delete a MessageTemplate and create a revision for the deletion.
      * @param id The template ID to delete
-     * @param deletedByUserId The user who is deleting the template
      * @return true if the template was successfully deleted, false if not found
      */
     @Transactional
-    public boolean softDeleteById(UUID id, UUID deletedByUserId) {
-        log.info("Soft deleting MessageTemplate with id: {} by user: {}", id, deletedByUserId);
+    public boolean softDeleteById(UUID id) {
+        log.info("Soft deleting MessageTemplate with id: {}", id);
         
         Optional<MessageTemplate> optionalTemplate = messageTemplateRepository.findById(id);
         if (optionalTemplate.isEmpty()) {
@@ -418,23 +429,20 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
         // Mark as deleted
         template.setDeletedAt(LocalDateTime.now());
         
-        // Set the user who deleted it
-        if (deletedByUserId != null) {
-            User deletedByUser = userRepository.findById(deletedByUserId)
-                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + deletedByUserId));
-            template.setLastEditedBy(deletedByUser);
-        }
-        
-        // Save the soft-deleted template
-        messageTemplateRepository.save(template);
-        
-        // Create a revision for the deletion
-        if (deletedByUserId != null) {
+        // Set the user who deleted it from authenticated user
+        try {
+            User authenticatedUser = companyContextUtil.getAuthenticatedUser();
+            template.setLastEditedBy(authenticatedUser);
+            
+            // Save the soft-deleted template
+            messageTemplateRepository.save(template);
+            
+            // Create a revision for the deletion
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     template.getId(),
                     "[TEMPLATE DELETED] " + template.getContent(),
-                    deletedByUserId
+                    authenticatedUser.getId()
                 );
                 log.debug("Deletion revision created for template: {}", template.getId());
             } catch (Exception e) {
@@ -445,6 +453,10 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                     e
                 );
             }
+        } catch (Exception e) {
+            log.warn("Could not set deleted by user: {}", e.getMessage());
+            // Still save the template as deleted, but without user information
+            messageTemplateRepository.save(template);
         }
         
         log.info("MessageTemplate soft deleted successfully with id: {}", id);
@@ -452,14 +464,27 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     }
     
     /**
+     * Soft delete a MessageTemplate and create a revision for the deletion.
+     * @param id The template ID to delete
+     * @param deletedByUserId The user who is deleting the template (for backward compatibility)
+     * @return true if the template was successfully deleted, false if not found
+     * @deprecated Use softDeleteById(UUID id) instead - user is automatically determined from authentication
+     */
+    @Deprecated
+    @Transactional
+    public boolean softDeleteById(UUID id, UUID deletedByUserId) {
+        log.warn("Using deprecated softDeleteById(UUID, UUID) method. Consider using softDeleteById(UUID) instead.");
+        return softDeleteById(id);
+    }
+    
+    /**
      * Restore a soft-deleted MessageTemplate.
      * @param id The template ID to restore
-     * @param restoredByUserId The user who is restoring the template
      * @return true if the template was successfully restored, false if not found or not deleted
      */
     @Transactional
-    public boolean restoreById(UUID id, UUID restoredByUserId) {
-        log.info("Restoring MessageTemplate with id: {} by user: {}", id, restoredByUserId);
+    public boolean restoreById(UUID id) {
+        log.info("Restoring MessageTemplate with id: {}", id);
         
         Optional<MessageTemplate> optionalTemplate = messageTemplateRepository.findById(id);
         if (optionalTemplate.isEmpty()) {
@@ -478,23 +503,20 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
         // Restore the template
         template.setDeletedAt(null);
         
-        // Set the user who restored it
-        if (restoredByUserId != null) {
-            User restoredByUser = userRepository.findById(restoredByUserId)
-                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + restoredByUserId));
-            template.setLastEditedBy(restoredByUser);
-        }
-        
-        // Save the restored template
-        messageTemplateRepository.save(template);
-        
-        // Create a revision for the restoration
-        if (restoredByUserId != null) {
+        // Set the user who restored it from authenticated user
+        try {
+            User authenticatedUser = companyContextUtil.getAuthenticatedUser();
+            template.setLastEditedBy(authenticatedUser);
+            
+            // Save the restored template
+            messageTemplateRepository.save(template);
+            
+            // Create a revision for the restoration
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     template.getId(),
                     "[TEMPLATE RESTORED] " + template.getContent(),
-                    restoredByUserId
+                    authenticatedUser.getId()
                 );
                 log.debug("Restoration revision created for template: {}", template.getId());
             } catch (Exception e) {
@@ -505,10 +527,28 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
                     e
                 );
             }
+        } catch (Exception e) {
+            log.warn("Could not set restored by user: {}", e.getMessage());
+            // Still save the template as restored, but without user information
+            messageTemplateRepository.save(template);
         }
         
         log.info("MessageTemplate restored successfully with id: {}", id);
         return true;
+    }
+    
+    /**
+     * Restore a soft-deleted MessageTemplate.
+     * @param id The template ID to restore
+     * @param restoredByUserId The user who is restoring the template (for backward compatibility)
+     * @return true if the template was successfully restored, false if not found or not deleted
+     * @deprecated Use restoreById(UUID id) instead - user is automatically determined from authentication
+     */
+    @Deprecated
+    @Transactional
+    public boolean restoreById(UUID id, UUID restoredByUserId) {
+        log.warn("Using deprecated restoreById(UUID, UUID) method. Consider using restoreById(UUID) instead.");
+        return restoreById(id);
     }
     
     /**

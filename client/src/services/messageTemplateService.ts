@@ -5,7 +5,6 @@ export interface CreateMessageTemplateRequest {
   name: string;
   content: string;
   isAiGenerated: boolean;
-  createdByUserId?: string;
   aiAgentId?: string;
   tone?: string;
 }
@@ -14,7 +13,6 @@ export interface UpdateMessageTemplateRequest {
   name?: string;
   content?: string;
   tone?: string;
-  lastEditedByUserId?: string;
 }
 
 export interface MessageTemplateResponse {

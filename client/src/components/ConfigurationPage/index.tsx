@@ -1,13 +1,41 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Upload, User, Check, Plus, Edit3, Sparkles, Trash2, MoreVertical } from "lucide-react";
-import { Button, Select, Input, Upload as AntUpload, DatePicker, message, Radio, Dropdown } from "antd";
+import {
+  ArrowLeft,
+  Upload,
+  User,
+  Check,
+  Plus,
+  Edit3,
+  Sparkles,
+  Trash2,
+  MoreVertical,
+} from "lucide-react";
+import {
+  Button,
+  Select,
+  Input,
+  Upload as AntUpload,
+  DatePicker,
+  message,
+  Radio,
+  Dropdown,
+} from "antd";
 import type { UploadProps, RadioChangeEvent } from "antd";
 import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
 import type { ConversationTemplate, CampaignData } from "../../types/types";
-import { createMockCampaign, syncCampaignConversationsWithStore, simulateContactStatusChanges, getAllCampaignConversations } from "../../mocks/campaignMock";
+import {
+  createMockCampaign,
+  syncCampaignConversationsWithStore,
+  simulateContactStatusChanges,
+  getAllCampaignConversations,
+} from "../../mocks/campaignMock";
 import { useChatStore } from "../../store/useChatStore";
-import { messageTemplateService, type CreateMessageTemplateRequest, type UpdateMessageTemplateRequest } from "../../services/messageTemplateService";
+import {
+  messageTemplateService,
+  type CreateMessageTemplateRequest,
+  type UpdateMessageTemplateRequest,
+} from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
 
 const { Option } = Select;
@@ -29,118 +57,139 @@ const defaultTemplates: ConversationTemplate[] = [
   {
     id: "1",
     title: "Convite Inicial Amigável",
-    content: "Olá! 😊 Sou o assistente do Centro de Sangue. Que tal fazer a diferença na vida de alguém hoje? Você gostaria de saber mais sobre doação?",
-    selected: true
+    content:
+      "Olá! 😊 Sou o assistente do Centro de Sangue. Que tal fazer a diferença na vida de alguém hoje? Você gostaria de saber mais sobre doação?",
+    selected: true,
   },
   {
-    id: "2", 
+    id: "2",
     title: "Urgência Específica",
-    content: "Olá! Estamos com necessidade urgente do seu tipo sanguíneo. Você poderia nos ajudar com uma doação nos próximos dias?",
-    selected: false
+    content:
+      "Olá! Estamos com necessidade urgente do seu tipo sanguíneo. Você poderia nos ajudar com uma doação nos próximos dias?",
+    selected: false,
   },
   {
     id: "3",
     title: "Lembrete Carinhoso",
-    content: "Oi! Já faz um tempo que não te vemos por aqui. Que tal agendar uma nova doação? Cada gesto conta! ❤️",
-    selected: true
+    content:
+      "Oi! Já faz um tempo que não te vemos por aqui. Que tal agendar uma nova doação? Cada gesto conta! ❤️",
+    selected: true,
   },
   {
     id: "4",
     title: "Primeira Doação",
-    content: "Olá! Vejo que você ainda não é doador. Que tal conhecer mais sobre esse ato de amor? Posso tirar suas dúvidas!",
-    selected: false
+    content:
+      "Olá! Vejo que você ainda não é doador. Que tal conhecer mais sobre esse ato de amor? Posso tirar suas dúvidas!",
+    selected: false,
   },
   {
     id: "5",
     title: "Agradecimento e Convite",
-    content: "Obrigado por ser um doador! Sua última doação foi incrível. Já pode doar novamente? Vamos agendar?",
-    selected: true
+    content:
+      "Obrigado por ser um doador! Sua última doação foi incrível. Já pode doar novamente? Vamos agendar?",
+    selected: true,
   },
   {
     id: "6",
     title: "Campanha Especial",
-    content: "Olá! Estamos com uma campanha especial este mês. Venha doar e ganhe um brinde especial como agradecimento!",
-    selected: false
+    content:
+      "Olá! Estamos com uma campanha especial este mês. Venha doar e ganhe um brinde especial como agradecimento!",
+    selected: false,
   },
   {
     id: "7",
     title: "Informativo Educativo",
-    content: "Você sabia que uma única doação pode salvar até 4 vidas? Que tal ser um herói hoje? Te conto mais detalhes!",
-    selected: true
+    content:
+      "Você sabia que uma única doação pode salvar até 4 vidas? Que tal ser um herói hoje? Te conto mais detalhes!",
+    selected: true,
   },
   {
     id: "8",
     title: "Convite para Amigos",
-    content: "Olá! Que tal convidar um amigo para doar junto com você? Doação em dupla é ainda mais especial! 👫",
-    selected: false
+    content:
+      "Olá! Que tal convidar um amigo para doar junto com você? Doação em dupla é ainda mais especial! 👫",
+    selected: false,
   },
   {
     id: "9",
     title: "Horário Flexível",
-    content: "Oi! Sei que sua agenda é corrida. Temos horários flexíveis, inclusive aos sábados. Qual seria melhor para você?",
-    selected: false
+    content:
+      "Oi! Sei que sua agenda é corrida. Temos horários flexíveis, inclusive aos sábados. Qual seria melhor para você?",
+    selected: false,
   },
   {
     id: "10",
     title: "Doação Corporativa",
-    content: "Olá! Sua empresa tem interesse em participar de nossa campanha corporativa de doação? Podemos organizar tudo!",
-    selected: false
+    content:
+      "Olá! Sua empresa tem interesse em participar de nossa campanha corporativa de doação? Podemos organizar tudo!",
+    selected: false,
   },
   {
     id: "11",
     title: "Seguimento Pós-Doação",
-    content: "Oi! Como você se sentiu após a última doação? Espero que tenha sido uma experiência positiva. Já pode doar novamente!",
-    selected: true
+    content:
+      "Oi! Como você se sentiu após a última doação? Espero que tenha sido uma experiência positiva. Já pode doar novamente!",
+    selected: true,
   },
   {
     id: "12",
     title: "Motivacional",
-    content: "Olá, herói! Sim, você é um herói por salvar vidas através da doação. Que tal continuar essa missão? 🦸‍♂️",
-    selected: false
+    content:
+      "Olá, herói! Sim, você é um herói por salvar vidas através da doação. Que tal continuar essa missão? 🦸‍♂️",
+    selected: false,
   },
   {
     id: "13",
     title: "Datas Comemorativas",
-    content: "Olá! Em comemoração ao Dia Mundial do Doador, que tal fazer uma doação especial? Será um presente para quem precisa!",
-    selected: false
+    content:
+      "Olá! Em comemoração ao Dia Mundial do Doador, que tal fazer uma doação especial? Será um presente para quem precisa!",
+    selected: false,
   },
   {
     id: "14",
     title: "Incentivo Familiar",
-    content: "Oi! Que exemplo lindo você dá para sua família sendo doador! Já conversou com eles sobre doação?",
-    selected: false
+    content:
+      "Oi! Que exemplo lindo você dá para sua família sendo doador! Já conversou com eles sobre doação?",
+    selected: false,
   },
   {
     id: "15",
     title: "Disponibilidade Estendida",
-    content: "Olá! Estamos com atendimento estendido nesta semana. Horários especiais disponíveis! Qual prefere?",
-    selected: true
-  }
+    content:
+      "Olá! Estamos com atendimento estendido nesta semana. Horários especiais disponíveis! Qual prefere?",
+    selected: true,
+  },
 ];
 
-export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) => {
+export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
+  onBack,
+}) => {
   const { refreshConversations } = useChatStore();
   const { user } = useAuthStore();
-  
-  const [activeTab, setActiveTab] = useState<'agent' | 'campaign' | 'templates'>('agent');
+
+  const [activeTab, setActiveTab] = useState<
+    "agent" | "campaign" | "templates"
+  >("agent");
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",
     avatar: "",
     speechProfile: "amigavel",
-    llmType: "medio"
+    llmType: "medio",
   });
   const [campaignData, setCampaignData] = useState<CampaignData>({
     name: "",
     description: "",
     startDate: "",
     endDate: "",
-    sourceSystem: ""
+    sourceSystem: "",
   });
-  const [templates, setTemplates] = useState<ConversationTemplate[]>(defaultTemplates);
+  const [templates, setTemplates] =
+    useState<ConversationTemplate[]>(defaultTemplates);
   const [isUploading, setIsUploading] = useState(false);
   const [duplicateUsers, setDuplicateUsers] = useState<string[]>([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<ConversationTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] =
+    useState<ConversationTemplate | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   // Carregar templates da API
@@ -148,22 +197,24 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
     setIsLoadingTemplates(true);
     try {
       // Carregar todos os templates ou apenas da empresa do usuário
-      const apiTemplates = user?.companyId 
+      const apiTemplates = user?.companyId
         ? await messageTemplateService.getByCompany(user.companyId)
         : await messageTemplateService.getAll();
-        
-      const convertedTemplates: ConversationTemplate[] = apiTemplates.map(template => ({
-        id: template.id,
-        title: template.name,
-        content: template.content,
-        selected: false,
-        category: template.tone || 'geral',
-        isCustom: !template.isAiGenerated
-      }));
+
+      const convertedTemplates: ConversationTemplate[] = apiTemplates.map(
+        (template) => ({
+          id: template.id,
+          title: template.name,
+          content: template.content,
+          selected: false,
+          category: template.tone || "geral",
+          isCustom: !template.isAiGenerated,
+        })
+      );
       setTemplates([...defaultTemplates, ...convertedTemplates]);
     } catch (error) {
-      console.error('Erro ao carregar templates:', error);
-      message.error('Erro ao carregar templates da API');
+      console.error("Erro ao carregar templates:", error);
+      message.error("Erro ao carregar templates da API");
     } finally {
       setIsLoadingTemplates(false);
     }
@@ -177,32 +228,32 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
   }, [user?.companyId]);
 
   const handleAgentConfigChange = (field: keyof AgentConfig, value: string) => {
-    setAgentConfig(prev => ({
+    setAgentConfig((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleCampaignChange = (field: keyof CampaignData, value: string) => {
-    setCampaignData(prev => ({
+    setCampaignData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleDateRangeChange = (dates: any) => {
     if (dates && dates.length === 2) {
-      setCampaignData(prev => ({
+      setCampaignData((prev) => ({
         ...prev,
-        startDate: dates[0].format('YYYY-MM-DD'),
-        endDate: dates[1].format('YYYY-MM-DD')
+        startDate: dates[0].format("YYYY-MM-DD"),
+        endDate: dates[1].format("YYYY-MM-DD"),
       }));
     }
   };
 
   const handleTemplateToggle = (templateId: string) => {
-    setTemplates(prev =>
-      prev.map(template =>
+    setTemplates((prev) =>
+      prev.map((template) =>
         template.id === templateId
           ? { ...template, selected: !template.selected }
           : template
@@ -211,7 +262,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
   };
 
   const handleEditTemplate = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
+    const template = templates.find((t) => t.id === templateId);
     if (template) {
       setEditingTemplate(template);
       setShowTemplateModal(true);
@@ -219,7 +270,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
   };
 
   const handleEnhanceTemplate = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
+    const template = templates.find((t) => t.id === templateId);
     if (template) {
       setEditingTemplate({ ...template, content: template.content });
       setShowTemplateModal(true);
@@ -228,24 +279,28 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {
-      const template = templates.find(t => t.id === templateId);
+      const template = templates.find((t) => t.id === templateId);
       if (template?.isCustom) {
         // Apenas templates customizados (da API) podem ser deletados
         await messageTemplateService.delete(templateId);
-        message.success('Template excluído com sucesso!');
+        message.success("Template excluído com sucesso!");
         // Recarregar templates da API
         await loadTemplates();
       } else {
         // Templates padrão não podem ser deletados
-        message.warning('Templates padrão não podem ser excluídos');
+        message.warning("Templates padrão não podem ser excluídos");
       }
     } catch (error) {
-      console.error('Erro ao excluir template:', error);
-      message.error('Erro ao excluir template');
+      console.error("Erro ao excluir template:", error);
+      message.error("Erro ao excluir template");
     }
   };
 
-  const handleSaveTemplate = async (templateData: { title: string; content: string; category: string }) => {
+  const handleSaveTemplate = async (templateData: {
+    title: string;
+    content: string;
+    category: string;
+  }) => {
     try {
       if (editingTemplate) {
         // Editar template existente
@@ -255,99 +310,105 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
             name: templateData.title,
             content: templateData.content,
             tone: templateData.category,
-            lastEditedByUserId: user.id
           };
           await messageTemplateService.update(editingTemplate.id, updateData);
-          message.success('Template atualizado com sucesso!');
+          message.success("Template atualizado com sucesso!");
         } else {
           // Templates padrão não podem ser editados, apenas clonar
-          message.info('Templates padrão não podem ser editados. Criando uma nova versão...');
+          message.info(
+            "Templates padrão não podem ser editados. Criando uma nova versão..."
+          );
         }
       } else {
         // Criar novo template
         if (!user?.companyId) {
-          message.error('Erro: Usuário não possui empresa associada');
+          message.error("Erro: Usuário não possui empresa associada");
           return;
         }
-        
+
         const createData: CreateMessageTemplateRequest = {
           companyId: user.companyId,
           name: templateData.title,
           content: templateData.content,
           isAiGenerated: false,
           tone: templateData.category,
-          createdByUserId: user.id
         };
-        
+
         await messageTemplateService.create(createData);
-        message.success('Template criado com sucesso!');
+        message.success("Template criado com sucesso!");
       }
-      
+
       // Recarregar templates da API
       await loadTemplates();
-      
     } catch (error) {
-      console.error('Erro ao salvar template:', error);
-      message.error('Erro ao salvar template');
+      console.error("Erro ao salvar template:", error);
+      message.error("Erro ao salvar template");
     }
-    
+
     setShowTemplateModal(false);
     setEditingTemplate(null);
   };
 
   const uploadProps: UploadProps = {
-    name: 'file',
-    accept: '.xlsx,.csv',
+    name: "file",
+    accept: ".xlsx,.csv",
     beforeUpload: (file) => {
-      const isValidType = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-                          file.type === 'text/csv' ||
-                          file.name.endsWith('.xlsx') ||
-                          file.name.endsWith('.csv');
-      
+      const isValidType =
+        file.type ===
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        file.type === "text/csv" ||
+        file.name.endsWith(".xlsx") ||
+        file.name.endsWith(".csv");
+
       if (!isValidType) {
-        message.error('Você só pode enviar arquivos XLSX ou CSV!');
+        message.error("Você só pode enviar arquivos XLSX ou CSV!");
         return false;
       }
 
-      setCampaignData(prev => ({ ...prev, file }));
+      setCampaignData((prev) => ({ ...prev, file }));
       return false;
     },
     onRemove: () => {
-      setCampaignData(prev => ({ ...prev, file: undefined }));
-    }
+      setCampaignData((prev) => ({ ...prev, file: undefined }));
+    },
   };
 
   const handleImportCampaign = async () => {
-    if (!campaignData.name || !campaignData.file || !campaignData.startDate || !campaignData.endDate) {
-      message.error('Preencha todos os campos obrigatórios!');
+    if (
+      !campaignData.name ||
+      !campaignData.file ||
+      !campaignData.startDate ||
+      !campaignData.endDate
+    ) {
+      message.error("Preencha todos os campos obrigatórios!");
       return;
     }
 
-    const selectedTemplates = templates.filter(t => t.selected);
+    const selectedTemplates = templates.filter((t) => t.selected);
     if (selectedTemplates.length === 0) {
-      message.error('Selecione pelo menos um template de conversa!');
+      message.error("Selecione pelo menos um template de conversa!");
       return;
     }
 
     setIsUploading(true);
-    
+
     try {
       // Simular processamento do arquivo enviado
-      message.loading('Processando arquivo...', 0.5);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      message.loading('Validando contatos...', 0.5);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      message.loading('Aplicando templates de conversa...', 0.5);
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
+      message.loading("Processando arquivo...", 0.5);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      message.loading("Validando contatos...", 0.5);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      message.loading("Aplicando templates de conversa...", 0.5);
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
       // Criar campanha mock com contatos gerados
       const result = await createMockCampaign(campaignData, selectedTemplates);
-      
+
       if (result.success) {
         setDuplicateUsers(result.stats.duplicatesFound);
-        
+
         // Mensagem de sucesso detalhada
         message.success({
           content: (
@@ -356,22 +417,33 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                 Campanha "{campaignData.name}" criada com sucesso! 🎉
               </div>
               <div className="text-sm space-y-1">
-                <div>📊 {result.stats.contactsProcessed} contatos processados do arquivo</div>
-                <div>💬 {result.stats.conversationsCreated} conversas iniciadas</div>
+                <div>
+                  📊 {result.stats.contactsProcessed} contatos processados do
+                  arquivo
+                </div>
+                <div>
+                  💬 {result.stats.conversationsCreated} conversas iniciadas
+                </div>
                 <div>📝 {selectedTemplates.length} templates aplicados:</div>
                 <div className="pl-4 text-xs text-gray-600">
                   {result.stats.templateDistribution.map((item, index) => (
-                    <div key={index}>• {item.template}: {item.used} mensagens</div>
+                    <div key={index}>
+                      • {item.template}: {item.used} mensagens
+                    </div>
                   ))}
                 </div>
-                <div>⚠️ {result.stats.duplicatesFound.length} duplicatas detectadas</div>
-                <div className="mt-2 text-green-600">✅ Campanhas ativas receberão respostas automaticamente</div>
+                <div>
+                  ⚠️ {result.stats.duplicatesFound.length} duplicatas detectadas
+                </div>
+                <div className="mt-2 text-green-600">
+                  ✅ Campanhas ativas receberão respostas automaticamente
+                </div>
               </div>
             </div>
           ),
           duration: 10,
         });
-        
+
         // Reset form
         setCampaignData({
           name: "",
@@ -379,73 +451,79 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
           startDate: "",
           endDate: "",
           sourceSystem: "",
-          file: undefined
+          file: undefined,
         });
-        
+
         // Limpar lista de duplicados
         setDuplicateUsers([]);
-        
+
         // Log detalhado dos templates utilizados
-        console.log('🎯 Campanha criada:', result.campaign.name);
-        console.log('📋 Templates aplicados:');
+        console.log("🎯 Campanha criada:", result.campaign.name);
+        console.log("📋 Templates aplicados:");
         result.stats.templateDistribution.forEach((item) => {
-          const template = selectedTemplates.find(t => t.title === item.template);
+          const template = selectedTemplates.find(
+            (t) => t.title === item.template
+          );
           console.log(`${item.template} (${item.used}x):`);
           console.log(`"${template?.content}"`);
         });
-        
+
         // Debug: verificar conversas criadas
-        console.log('🔍 Debug: Verificando conversas criadas...')
+        console.log("🔍 Debug: Verificando conversas criadas...");
         setTimeout(() => {
-          const allConversations = getAllCampaignConversations()
-          console.log('📊 Total de conversas no sistema:', allConversations.length)
+          const allConversations = getAllCampaignConversations();
+          console.log(
+            "📊 Total de conversas no sistema:",
+            allConversations.length
+          );
           allConversations.forEach((conv, index) => {
-            console.log(`  ${index + 1}. ${conv.customer?.name} - Status: ${conv.status}`)
-          })
-        }, 500)
-        
+            console.log(
+              `  ${index + 1}. ${conv.customer?.name} - Status: ${conv.status}`
+            );
+          });
+        }, 500);
+
         // Sincronizar conversas com o chat store
         syncCampaignConversationsWithStore(refreshConversations);
-        
+
         // Iniciar simulação de mudanças de status
         simulateContactStatusChanges();
-        
+
         // Voltar para conversas após 4 segundos
         setTimeout(() => {
           onBack();
         }, 4000);
       } else {
-        message.error('Erro ao criar campanha!');
+        message.error("Erro ao criar campanha!");
       }
-      
     } catch (error) {
-      console.error('Erro ao criar campanha:', error);
-      message.error('Erro ao criar campanha!');
+      console.error("Erro ao criar campanha:", error);
+      message.error("Erro ao criar campanha!");
     } finally {
       setIsUploading(false);
     }
   };
 
   const avatarUploadProps: UploadProps = {
-    name: 'avatar',
-    accept: '.jpg,.jpeg,.png,.gif',
+    name: "avatar",
+    accept: ".jpg,.jpeg,.png,.gif",
     beforeUpload: (file) => {
-      const isImage = file.type.startsWith('image/');
+      const isImage = file.type.startsWith("image/");
       if (!isImage) {
-        message.error('Você só pode enviar arquivos de imagem!');
+        message.error("Você só pode enviar arquivos de imagem!");
         return false;
       }
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          handleAgentConfigChange('avatar', e.target.result as string);
+          handleAgentConfigChange("avatar", e.target.result as string);
         }
       };
       reader.readAsDataURL(file);
-      
+
       return false;
-    }
+    },
   };
 
   return (
@@ -463,8 +541,12 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-800">Configurações do Sistema</h1>
-                  <p className="text-sm text-gray-600 mt-1">Gerencie agentes, campanhas e templates de conversa</p>
+                  <h1 className="text-2xl font-bold text-gray-800">
+                    Configurações do Sistema
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Gerencie agentes, campanhas e templates de conversa
+                  </p>
                 </div>
               </div>
               {/* Status do centro de sangue */}
@@ -481,31 +563,31 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
           <div className="px-6">
             <div className="flex gap-1 border-b border-gray-200">
               <button
-                onClick={() => setActiveTab('agent')}
+                onClick={() => setActiveTab("agent")}
                 className={`px-6 py-3 font-medium transition-all relative ${
-                  activeTab === 'agent'
-                    ? 'text-red-600 border-b-2 border-red-500 bg-red-50/50'
-                    : 'text-gray-600 hover:text-red-600 hover:bg-gray-50'
+                  activeTab === "agent"
+                    ? "text-red-600 border-b-2 border-red-500 bg-red-50/50"
+                    : "text-gray-600 hover:text-red-600 hover:bg-gray-50"
                 }`}
               >
                 Agente IA
               </button>
               <button
-                onClick={() => setActiveTab('campaign')}
+                onClick={() => setActiveTab("campaign")}
                 className={`px-6 py-3 font-medium transition-all relative ${
-                  activeTab === 'campaign'
-                    ? 'text-red-600 border-b-2 border-red-500 bg-red-50/50'
-                    : 'text-gray-600 hover:text-red-600 hover:bg-gray-50'
+                  activeTab === "campaign"
+                    ? "text-red-600 border-b-2 border-red-500 bg-red-50/50"
+                    : "text-gray-600 hover:text-red-600 hover:bg-gray-50"
                 }`}
               >
                 Nova Campanha
               </button>
               <button
-                onClick={() => setActiveTab('templates')}
+                onClick={() => setActiveTab("templates")}
                 className={`px-6 py-3 font-medium transition-all relative ${
-                  activeTab === 'templates'
-                    ? 'text-red-600 border-b-2 border-red-500 bg-red-50/50'
-                    : 'text-gray-600 hover:text-red-600 hover:bg-gray-50'
+                  activeTab === "templates"
+                    ? "text-red-600 border-b-2 border-red-500 bg-red-50/50"
+                    : "text-gray-600 hover:text-red-600 hover:bg-gray-50"
                 }`}
               >
                 Templates
@@ -515,7 +597,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
         </div>
 
         <div className="flex-1 overflow-y-auto bg-gray-50">
-          {activeTab === 'agent' && (
+          {activeTab === "agent" && (
             <div className="max-w-4xl mx-auto p-8">
               {/* Seção principal com card melhorado */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
@@ -524,8 +606,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                     <User className="w-6 h-6 text-red-600" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Configuração do Agente IA</h2>
-                    <p className="text-gray-600">Configure a personalidade e comportamento do assistente virtual</p>
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      Configuração do Agente IA
+                    </h2>
+                    <p className="text-gray-600">
+                      Configure a personalidade e comportamento do assistente
+                      virtual
+                    </p>
                   </div>
                 </div>
 
@@ -534,9 +621,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                   <div className="relative">
                     <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
                       {agentConfig.avatar ? (
-                        <img 
-                          src={agentConfig.avatar} 
-                          alt="Agent Avatar" 
+                        <img
+                          src={agentConfig.avatar}
+                          alt="Agent Avatar"
                           className="w-full h-full object-cover rounded-xl"
                         />
                       ) : (
@@ -555,7 +642,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                     </label>
                     <Input
                       value={agentConfig.name}
-                      onChange={(e) => handleAgentConfigChange('name', e.target.value)}
+                      onChange={(e) =>
+                        handleAgentConfigChange("name", e.target.value)
+                      }
                       placeholder="Ex: Sofia, Ana, João..."
                       size="large"
                       className="font-medium"
@@ -576,24 +665,54 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       <div className="space-y-2">
                         <Radio.Group
                           value={agentConfig.speechProfile}
-                          onChange={(e: RadioChangeEvent) => handleAgentConfigChange('speechProfile', e.target.value)}
+                          onChange={(e: RadioChangeEvent) =>
+                            handleAgentConfigChange(
+                              "speechProfile",
+                              e.target.value
+                            )
+                          }
                           className="w-full"
                         >
                           <div className="space-y-2">
-                            <Radio.Button value="formal" className="w-full h-12 flex items-center text-left">
-                              <span className="font-medium">Formal e Respeitoso</span>
+                            <Radio.Button
+                              value="formal"
+                              className="w-full h-12 flex items-center text-left"
+                            >
+                              <span className="font-medium">
+                                Formal e Respeitoso
+                              </span>
                             </Radio.Button>
-                            <Radio.Button value="amigavel" className="w-full h-12 flex items-center text-left">
-                              <span className="font-medium">Amigável e Acolhedor</span>
+                            <Radio.Button
+                              value="amigavel"
+                              className="w-full h-12 flex items-center text-left"
+                            >
+                              <span className="font-medium">
+                                Amigável e Acolhedor
+                              </span>
                             </Radio.Button>
-                            <Radio.Button value="descontraido" className="w-full h-12 flex items-center text-left">
-                              <span className="font-medium">Descontraído e Informal</span>
+                            <Radio.Button
+                              value="descontraido"
+                              className="w-full h-12 flex items-center text-left"
+                            >
+                              <span className="font-medium">
+                                Descontraído e Informal
+                              </span>
                             </Radio.Button>
-                            <Radio.Button value="serio" className="w-full h-12 flex items-center text-left">
-                              <span className="font-medium">Sério e Profissional</span>
+                            <Radio.Button
+                              value="serio"
+                              className="w-full h-12 flex items-center text-left"
+                            >
+                              <span className="font-medium">
+                                Sério e Profissional
+                              </span>
                             </Radio.Button>
-                            <Radio.Button value="animado" className="w-full h-12 flex items-center text-left">
-                              <span className="font-medium">Animado e Entusiasmado</span>
+                            <Radio.Button
+                              value="animado"
+                              className="w-full h-12 flex items-center text-left"
+                            >
+                              <span className="font-medium">
+                                Animado e Entusiasmado
+                              </span>
                             </Radio.Button>
                           </div>
                         </Radio.Group>
@@ -609,26 +728,45 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       <div className="space-y-2">
                         <Radio.Group
                           value={agentConfig.llmType}
-                          onChange={(e: RadioChangeEvent) => handleAgentConfigChange('llmType', e.target.value)}
+                          onChange={(e: RadioChangeEvent) =>
+                            handleAgentConfigChange("llmType", e.target.value)
+                          }
                           className="w-full"
                         >
                           <div className="space-y-2">
-                            <Radio.Button value="barato" className="w-full h-16 flex items-center text-left">
+                            <Radio.Button
+                              value="barato"
+                              className="w-full h-16 flex items-center text-left"
+                            >
                               <div>
                                 <div className="font-medium">Econômico</div>
-                                <div className="text-xs text-gray-500">Respostas rápidas e diretas</div>
+                                <div className="text-xs text-gray-500">
+                                  Respostas rápidas e diretas
+                                </div>
                               </div>
                             </Radio.Button>
-                            <Radio.Button value="medio" className="w-full h-16 flex items-center text-left">
+                            <Radio.Button
+                              value="medio"
+                              className="w-full h-16 flex items-center text-left"
+                            >
                               <div>
-                                <div className="font-medium">Padrão (Recomendado)</div>
-                                <div className="text-xs text-gray-500">Equilibrio entre custo e qualidade</div>
+                                <div className="font-medium">
+                                  Padrão (Recomendado)
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Equilibrio entre custo e qualidade
+                                </div>
                               </div>
                             </Radio.Button>
-                            <Radio.Button value="caro" className="w-full h-16 flex items-center text-left">
+                            <Radio.Button
+                              value="caro"
+                              className="w-full h-16 flex items-center text-left"
+                            >
                               <div>
                                 <div className="font-medium">Premium</div>
-                                <div className="text-xs text-gray-500">Máxima qualidade e contextualização</div>
+                                <div className="text-xs text-gray-500">
+                                  Máxima qualidade e contextualização
+                                </div>
                               </div>
                             </Radio.Button>
                           </div>
@@ -647,9 +785,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                     <Button size="large" className="px-6">
                       Testar Agente
                     </Button>
-                    <Button 
-                      type="primary" 
-                      size="large" 
+                    <Button
+                      type="primary"
+                      size="large"
                       className="px-8 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                     >
                       Salvar Configurações
@@ -660,20 +798,29 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
 
               {/* Card de preview do agente */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Preview da Conversa</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Preview da Conversa
+                </h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
                       <User className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-700 mb-1">{agentConfig.name}</div>
+                      <div className="text-sm font-medium text-gray-700 mb-1">
+                        {agentConfig.name}
+                      </div>
                       <div className="text-sm text-gray-600">
-                        {agentConfig.speechProfile === 'formal' && "Bom dia! Sou a assistente virtual do Centro de Sangue. Como posso ajudá-lo hoje?"}
-                        {agentConfig.speechProfile === 'amigavel' && "Oi! 😊 Eu sou a assistente do Centro de Sangue! Como posso te ajudar hoje?"}
-                        {agentConfig.speechProfile === 'descontraido' && "E aí! Tudo bem? Sou a assistente aqui do Centro. Em que posso te ajudar?"}
-                        {agentConfig.speechProfile === 'serio' && "Olá. Sou a assistente do Centro de Sangue. Estou aqui para ajudá-lo."}
-                        {agentConfig.speechProfile === 'animado' && "Oi, oi! 🎉 Que alegria ter você aqui! Sou a assistente do Centro de Sangue!"}
+                        {agentConfig.speechProfile === "formal" &&
+                          "Bom dia! Sou a assistente virtual do Centro de Sangue. Como posso ajudá-lo hoje?"}
+                        {agentConfig.speechProfile === "amigavel" &&
+                          "Oi! 😊 Eu sou a assistente do Centro de Sangue! Como posso te ajudar hoje?"}
+                        {agentConfig.speechProfile === "descontraido" &&
+                          "E aí! Tudo bem? Sou a assistente aqui do Centro. Em que posso te ajudar?"}
+                        {agentConfig.speechProfile === "serio" &&
+                          "Olá. Sou a assistente do Centro de Sangue. Estou aqui para ajudá-lo."}
+                        {agentConfig.speechProfile === "animado" &&
+                          "Oi, oi! 🎉 Que alegria ter você aqui! Sou a assistente do Centro de Sangue!"}
                       </div>
                     </div>
                   </div>
@@ -682,7 +829,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
             </div>
           )}
 
-          {activeTab === 'campaign' && (
+          {activeTab === "campaign" && (
             <div className="max-w-7xl mx-auto p-8">
               {/* Header da seção */}
               <div className="flex items-center gap-3 mb-8">
@@ -690,8 +837,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                   <Plus className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800">Nova Campanha</h2>
-                  <p className="text-gray-600">Configure uma nova campanha de doação e selecione os templates</p>
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    Nova Campanha
+                  </h2>
+                  <p className="text-gray-600">
+                    Configure uma nova campanha de doação e selecione os
+                    templates
+                  </p>
                 </div>
               </div>
 
@@ -699,8 +851,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Coluna 1: Dados da Campanha */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-6">Dados da Campanha</h3>
-                  
+                  <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                    Dados da Campanha
+                  </h3>
+
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -708,7 +862,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       </label>
                       <Input
                         value={campaignData.name}
-                        onChange={(e) => handleCampaignChange('name', e.target.value)}
+                        onChange={(e) =>
+                          handleCampaignChange("name", e.target.value)
+                        }
                         placeholder="Ex: Campanha Junho 2025"
                         size="large"
                       />
@@ -720,7 +876,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       </label>
                       <TextArea
                         value={campaignData.description}
-                        onChange={(e) => handleCampaignChange('description', e.target.value)}
+                        onChange={(e) =>
+                          handleCampaignChange("description", e.target.value)
+                        }
                         rows={4}
                         placeholder="Descreva o objetivo da campanha..."
                       />
@@ -731,8 +889,14 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                         Período da Campanha *
                       </label>
                       <RangePicker
-                        value={campaignData.startDate && campaignData.endDate ? 
-                          [dayjs(campaignData.startDate), dayjs(campaignData.endDate)] : null}
+                        value={
+                          campaignData.startDate && campaignData.endDate
+                            ? [
+                                dayjs(campaignData.startDate),
+                                dayjs(campaignData.endDate),
+                              ]
+                            : null
+                        }
                         onChange={handleDateRangeChange}
                         className="w-full"
                         size="large"
@@ -745,7 +909,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       </label>
                       <Select
                         value={campaignData.sourceSystem}
-                        onChange={(value) => handleCampaignChange('sourceSystem', value)}
+                        onChange={(value) =>
+                          handleCampaignChange("sourceSystem", value)
+                        }
                         className="w-full"
                         placeholder="Selecione o sistema"
                         size="large"
@@ -766,7 +932,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Arquivo de Contatos *
                       </label>
-                      <AntUpload.Dragger {...uploadProps} className="border-2 border-dashed border-gray-300 hover:border-red-400">
+                      <AntUpload.Dragger
+                        {...uploadProps}
+                        className="border-2 border-dashed border-gray-300 hover:border-red-400"
+                      >
                         <p className="ant-upload-drag-icon">
                           <Upload className="w-12 h-12 text-gray-400 mx-auto" />
                         </p>
@@ -774,7 +943,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                           Clique ou arraste arquivo para esta área
                         </p>
                         <p className="ant-upload-hint text-gray-500">
-                          Suporta arquivos .xlsx, .csv. O sistema processará automaticamente os contatos.
+                          Suporta arquivos .xlsx, .csv. O sistema processará
+                          automaticamente os contatos.
                         </p>
                       </AntUpload.Dragger>
                     </div>
@@ -782,7 +952,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                     {duplicateUsers.length > 0 && (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <h4 className="text-sm font-medium text-yellow-800 mb-2">
-                          ⚠️ Usuários que responderam negativamente em campanhas anteriores:
+                          ⚠️ Usuários que responderam negativamente em campanhas
+                          anteriores:
                         </h4>
                         <ul className="text-sm text-yellow-700">
                           {duplicateUsers.map((user, index) => (
@@ -798,19 +969,24 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="sticky top-6">
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-gray-800">Templates de Conversa</h3>
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        Templates de Conversa
+                      </h3>
                       <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                        {templates.filter(t => t.selected).length} selecionados
+                        {templates.filter((t) => t.selected).length}{" "}
+                        selecionados
                       </div>
                     </div>
 
-                    {templates.filter(t => t.selected).length > 0 && (
+                    {templates.filter((t) => t.selected).length > 0 && (
                       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <h4 className="font-medium text-blue-800 mb-2 text-sm">
                           💡 Como funcionam os templates
                         </h4>
                         <p className="text-xs text-blue-700">
-                          Os templates selecionados serão distribuídos automaticamente entre os contatos importados para diversificar as abordagens.
+                          Os templates selecionados serão distribuídos
+                          automaticamente entre os contatos importados para
+                          diversificar as abordagens.
                         </p>
                       </div>
                     )}
@@ -821,21 +997,25 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                           key={template.id}
                           onClick={() => handleTemplateToggle(template.id)}
                           className={`cursor-pointer p-4 rounded-lg border-2 transition-all hover:shadow-md ${
-                            template.selected 
-                              ? 'border-red-300 bg-red-50' 
-                              : 'border-gray-200 hover:border-gray-300'
+                            template.selected
+                              ? "border-red-300 bg-red-50"
+                              : "border-gray-200 hover:border-gray-300"
                           }`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h5 className="font-medium text-gray-800 text-sm flex-1 pr-3">
                               {template.title}
                             </h5>
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                              template.selected 
-                                ? 'bg-red-500 border-red-500' 
-                                : 'border-gray-300'
-                            }`}>
-                              {template.selected && <Check className="w-3 h-3 text-white" />}
+                            <div
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                template.selected
+                                  ? "bg-red-500 border-red-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {template.selected && (
+                                <Check className="w-3 h-3 text-white" />
+                              )}
                             </div>
                           </div>
                           <p className="text-xs text-gray-600 line-clamp-2">
@@ -851,15 +1031,22 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                     </div>
 
                     {/* Resumo da seleção */}
-                    {templates.filter(t => t.selected).length > 0 && (
+                    {templates.filter((t) => t.selected).length > 0 && (
                       <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Templates Selecionados:</h4>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                          Templates Selecionados:
+                        </h4>
                         <div className="space-y-1">
-                          {templates.filter(t => t.selected).map((template) => (
-                            <div key={template.id} className="text-xs text-gray-600">
-                              • {template.title}
-                            </div>
-                          ))}
+                          {templates
+                            .filter((t) => t.selected)
+                            .map((template) => (
+                              <div
+                                key={template.id}
+                                className="text-xs text-gray-600"
+                              >
+                                • {template.title}
+                              </div>
+                            ))}
                         </div>
                       </div>
                     )}
@@ -875,21 +1062,23 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                   onClick={handleImportCampaign}
                   loading={isUploading}
                   disabled={
-                    !campaignData.name || 
-                    !campaignData.file || 
-                    !campaignData.startDate || 
-                    !campaignData.endDate || 
-                    templates.filter(t => t.selected).length === 0
+                    !campaignData.name ||
+                    !campaignData.file ||
+                    !campaignData.startDate ||
+                    !campaignData.endDate ||
+                    templates.filter((t) => t.selected).length === 0
                   }
                   className="px-12 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                 >
-                  {isUploading ? 'Processando Arquivo e Aplicando Templates...' : 'Criar Campanha'}
+                  {isUploading
+                    ? "Processando Arquivo e Aplicando Templates..."
+                    : "Criar Campanha"}
                 </Button>
               </div>
             </div>
           )}
 
-          {activeTab === 'templates' && (
+          {activeTab === "templates" && (
             <div className="max-w-6xl mx-auto p-8">
               {/* Header da seção */}
               <div className="flex items-center justify-between mb-8">
@@ -898,21 +1087,26 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                     <Edit3 className="w-6 h-6 text-red-600" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Templates de Conversa</h2>
-                    <p className="text-gray-600">Gerencie e personalize as mensagens automáticas</p>
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      Templates de Conversa
+                    </h2>
+                    <p className="text-gray-600">
+                      Gerencie e personalize as mensagens automáticas
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-lg">
-                    {templates.filter(t => t.selected).length} de {templates.length} selecionados
+                    {templates.filter((t) => t.selected).length} de{" "}
+                    {templates.length} selecionados
                   </div>
                   {user?.companyId && (
                     <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
                       Empresa: {user.companySlug || user.companyId}
                     </div>
                   )}
-                  <Button 
-                    type="primary" 
+                  <Button
+                    type="primary"
                     icon={<Plus />}
                     onClick={() => setShowTemplateModal(true)}
                     size="large"
@@ -934,21 +1128,25 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
                       <span className="text-red-500 mt-1">•</span>
-                      Os templates selecionados serão distribuídos automaticamente entre os contatos
+                      Os templates selecionados serão distribuídos
+                      automaticamente entre os contatos
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-red-500 mt-1">•</span>
-                      Cada contato receberá uma mensagem inicial baseada em um dos templates escolhidos
+                      Cada contato receberá uma mensagem inicial baseada em um
+                      dos templates escolhidos
                     </li>
                   </ul>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
-                      <span className="text-red-500 mt-1">•</span>
-                      O sistema alternará entre os templates para diversificar as abordagens
+                      <span className="text-red-500 mt-1">•</span>O sistema
+                      alternará entre os templates para diversificar as
+                      abordagens
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-red-500 mt-1">•</span>
-                      Contatos duplicados não receberão mensagens automaticamente
+                      Contatos duplicados não receberão mensagens
+                      automaticamente
                     </li>
                   </ul>
                 </div>
@@ -964,9 +1162,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       handleTemplateToggle(template.id);
                     }}
                     className={`cursor-pointer p-6 rounded-xl border-2 transition-all hover:shadow-lg ${
-                      template.selected 
-                        ? 'border-red-300 bg-red-50 shadow-md' 
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                      template.selected
+                        ? "border-red-300 bg-red-50 shadow-md"
+                        : "border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
                     <div className="flex items-start justify-between mb-4">
@@ -975,56 +1173,62 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                       </h4>
                       <div className="flex items-center gap-2">
                         <Dropdown
-                          trigger={['click']}
+                          trigger={["click"]}
                           menu={{
                             items: [
                               {
-                                key: 'edit',
-                                label: 'Editar',
+                                key: "edit",
+                                label: "Editar",
                                 icon: <Edit3 className="w-4 h-4" />,
-                                onClick: () => handleEditTemplate(template.id)
+                                onClick: () => handleEditTemplate(template.id),
                               },
                               {
-                                key: 'enhance',
-                                label: 'Melhorar com IA',
+                                key: "enhance",
+                                label: "Melhorar com IA",
                                 icon: <Sparkles className="w-4 h-4" />,
-                                onClick: () => handleEnhanceTemplate(template.id)
+                                onClick: () =>
+                                  handleEnhanceTemplate(template.id),
                               },
                               {
-                                key: 'delete',
-                                label: 'Excluir',
+                                key: "delete",
+                                label: "Excluir",
                                 icon: <Trash2 className="w-4 h-4" />,
                                 danger: true,
-                                onClick: () => handleDeleteTemplate(template.id)
-                              }
-                            ]
+                                onClick: () =>
+                                  handleDeleteTemplate(template.id),
+                              },
+                            ],
                           }}
                         >
-                          <Button 
-                            size="small" 
-                            type="text" 
+                          <Button
+                            size="small"
+                            type="text"
                             icon={<MoreVertical className="w-4 h-4" />}
                             onClick={(e) => e.stopPropagation()}
                             className="hover:bg-gray-100"
                           />
                         </Dropdown>
-                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
-                          template.selected 
-                            ? 'bg-red-500 border-red-500' 
-                            : 'border-gray-300'
-                        }`}>
-                          {template.selected && <Check className="w-4 h-4 text-white" />}
+                        <div
+                          className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
+                            template.selected
+                              ? "bg-red-500 border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {template.selected && (
+                            <Check className="w-4 h-4 text-white" />
+                          )}
                         </div>
                       </div>
                     </div>
-                    
+
                     <p className="text-sm text-gray-600 line-clamp-4 mb-4 leading-relaxed">
                       {template.content}
                     </p>
-                    
+
                     <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                       <span className="text-xs text-gray-500 font-medium">
-                        {template.category || 'Geral'}
+                        {template.category || "Geral"}
                       </span>
                       {template.isCustom && (
                         <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
@@ -1039,10 +1243,11 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
               {/* Ações finais */}
               <div className="mt-8 flex items-center justify-between pt-8 border-t border-gray-200">
                 <div className="text-sm text-gray-500">
-                  {templates.filter(t => t.selected).length} templates selecionados para campanhas
+                  {templates.filter((t) => t.selected).length} templates
+                  selecionados para campanhas
                 </div>
-                <Button 
-                  type="primary" 
+                <Button
+                  type="primary"
                   size="large"
                   className="px-8 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                 >
@@ -1053,7 +1258,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
           )}
         </div>
       </div>
-      
+
       <TemplateModal
         show={showTemplateModal}
         template={editingTemplate}
