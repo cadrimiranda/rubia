@@ -116,7 +116,9 @@ export const messageTemplateService = {
 
   async getDeleted(): Promise<MessageTemplateResponse[]> {
     try {
-      const response = await apiClient.get<MessageTemplateResponse[]>('/api/message-templates/deleted');
+      const response = await apiClient.get<MessageTemplateResponse[]>('/api/message-templates', { 
+        deleted: 'true' 
+      });
       return response;
     } catch (error) {
       console.error('Error fetching deleted message templates:', error);
