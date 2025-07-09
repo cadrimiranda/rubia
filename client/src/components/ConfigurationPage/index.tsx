@@ -1202,22 +1202,23 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
           setRevisionHistory([]);
         }}
         footer={null}
-        width={800}
-        bodyStyle={{ padding: "24px" }}
+        width={900}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: "24px", maxHeight: "70vh", overflow: "hidden" }}
       >
         {isLoadingHistory ? (
           <div className="flex justify-center items-center py-8">
             <Spin size="large" />
           </div>
         ) : (
-          <div className="max-h-96 overflow-y-auto">
+          <div style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: "8px" }}>
             {revisionHistory.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 Nenhum histórico encontrado para este template.
               </div>
             ) : (
               <Timeline>
-                {revisionHistory.map((revision, index) => {
+                {revisionHistory.map((revision) => {
                   const revisionInfo = getRevisionTypeInfo(revision.revisionType);
                   return (
                     <Timeline.Item
@@ -1262,7 +1263,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                           </span>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg border">
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
                             {revision.content}
                           </p>
                         </div>
