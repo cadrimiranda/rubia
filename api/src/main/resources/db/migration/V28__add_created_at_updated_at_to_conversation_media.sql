@@ -1,0 +1,4 @@
+-- Add created_at and updated_at columns to conversation_media table
+ALTER TABLE conversation_media 
+ADD COLUMN created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;
