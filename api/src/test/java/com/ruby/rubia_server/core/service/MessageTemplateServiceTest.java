@@ -226,7 +226,7 @@ class MessageTemplateServiceTest {
     @Test
     void getMessageTemplateById_ShouldReturnMessageTemplate_WhenExists() {
         // Given
-        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(messageTemplateRepository.findByIdAndNotDeleted(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
 
         // When
         Optional<MessageTemplate> result = messageTemplateService.findById(messageTemplateId);
@@ -236,20 +236,20 @@ class MessageTemplateServiceTest {
         assertEquals(messageTemplate.getId(), result.get().getId());
         assertEquals(messageTemplate.getName(), result.get().getName());
         
-        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository).findByIdAndNotDeleted(messageTemplateId);
     }
 
     @Test
     void getMessageTemplateById_ShouldReturnEmpty_WhenNotExists() {
         // Given
-        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.empty());
+        when(messageTemplateRepository.findByIdAndNotDeleted(messageTemplateId)).thenReturn(Optional.empty());
 
         // When
         Optional<MessageTemplate> result = messageTemplateService.findById(messageTemplateId);
 
         // Then
         assertTrue(result.isEmpty());
-        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository).findByIdAndNotDeleted(messageTemplateId);
     }
 
     @Test
@@ -277,7 +277,7 @@ class MessageTemplateServiceTest {
     void getMessageTemplatesByCompanyId_ShouldReturnMessageTemplatesForCompany() {
         // Given
         List<MessageTemplate> messageTemplates = List.of(messageTemplate);
-        when(messageTemplateRepository.findByCompanyId(companyId)).thenReturn(messageTemplates);
+        when(messageTemplateRepository.findByCompanyIdAndNotDeleted(companyId)).thenReturn(messageTemplates);
 
         // When
         List<MessageTemplate> result = messageTemplateService.findByCompanyId(companyId);
@@ -288,7 +288,7 @@ class MessageTemplateServiceTest {
         assertEquals(messageTemplate.getId(), result.get(0).getId());
         assertEquals(companyId, result.get(0).getCompany().getId());
         
-        verify(messageTemplateRepository).findByCompanyId(companyId);
+        verify(messageTemplateRepository).findByCompanyIdAndNotDeleted(companyId);
     }
 
     @Test
@@ -359,21 +359,21 @@ class MessageTemplateServiceTest {
     @Test
     void countByCompanyId_ShouldReturnCorrectCount() {
         // Given
-        when(messageTemplateRepository.countByCompanyId(companyId)).thenReturn(5L);
+        when(messageTemplateRepository.countByCompanyIdAndNotDeleted(companyId)).thenReturn(5L);
 
         // When
         long count = messageTemplateService.countByCompanyId(companyId);
 
         // Then
         assertEquals(5L, count);
-        verify(messageTemplateRepository).countByCompanyId(companyId);
+        verify(messageTemplateRepository).countByCompanyIdAndNotDeleted(companyId);
     }
 
     @Test
     void findByIsAiGenerated_ShouldReturnMessageTemplatesWithSpecificFlag() {
         // Given
         List<MessageTemplate> messageTemplates = List.of(messageTemplate);
-        when(messageTemplateRepository.findByIsAiGenerated(true)).thenReturn(messageTemplates);
+        when(messageTemplateRepository.findByIsAiGeneratedAndNotDeleted(true)).thenReturn(messageTemplates);
 
         // When
         List<MessageTemplate> result = messageTemplateService.findByIsAiGenerated(true);
@@ -382,14 +382,14 @@ class MessageTemplateServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(messageTemplate.getId(), result.get(0).getId());
-        verify(messageTemplateRepository).findByIsAiGenerated(true);
+        verify(messageTemplateRepository).findByIsAiGeneratedAndNotDeleted(true);
     }
 
     @Test
     void findByCreatedByUserId_ShouldReturnMessageTemplatesForUser() {
         // Given
         List<MessageTemplate> messageTemplates = List.of(messageTemplate);
-        when(messageTemplateRepository.findByCreatedById(userId)).thenReturn(messageTemplates);
+        when(messageTemplateRepository.findByCreatedByIdAndNotDeleted(userId)).thenReturn(messageTemplates);
 
         // When
         List<MessageTemplate> result = messageTemplateService.findByCreatedByUserId(userId);
@@ -399,14 +399,14 @@ class MessageTemplateServiceTest {
         assertEquals(1, result.size());
         assertEquals(messageTemplate.getId(), result.get(0).getId());
         assertEquals(userId, result.get(0).getCreatedBy().getId());
-        verify(messageTemplateRepository).findByCreatedById(userId);
+        verify(messageTemplateRepository).findByCreatedByIdAndNotDeleted(userId);
     }
 
     @Test
     void findByCompanyIdAndIsAiGenerated_ShouldReturnFilteredMessageTemplates() {
         // Given
         List<MessageTemplate> messageTemplates = List.of(messageTemplate);
-        when(messageTemplateRepository.findByCompanyIdAndIsAiGenerated(companyId, false)).thenReturn(messageTemplates);
+        when(messageTemplateRepository.findByCompanyIdAndIsAiGeneratedAndNotDeleted(companyId, false)).thenReturn(messageTemplates);
 
         // When
         List<MessageTemplate> result = messageTemplateService.findByCompanyIdAndIsAiGenerated(companyId, false);
@@ -415,7 +415,7 @@ class MessageTemplateServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(messageTemplate.getId(), result.get(0).getId());
-        verify(messageTemplateRepository).findByCompanyIdAndIsAiGenerated(companyId, false);
+        verify(messageTemplateRepository).findByCompanyIdAndIsAiGeneratedAndNotDeleted(companyId, false);
     }
 
     @Test
@@ -423,7 +423,7 @@ class MessageTemplateServiceTest {
         // Given
         String searchTerm = "Test";
         List<MessageTemplate> messageTemplates = List.of(messageTemplate);
-        when(messageTemplateRepository.findByNameContainingIgnoreCase(searchTerm)).thenReturn(messageTemplates);
+        when(messageTemplateRepository.findByNameContainingIgnoreCaseAndNotDeleted(searchTerm)).thenReturn(messageTemplates);
 
         // When
         List<MessageTemplate> result = messageTemplateService.findByNameContaining(searchTerm);
@@ -432,20 +432,20 @@ class MessageTemplateServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(messageTemplate.getId(), result.get(0).getId());
-        verify(messageTemplateRepository).findByNameContainingIgnoreCase(searchTerm);
+        verify(messageTemplateRepository).findByNameContainingIgnoreCaseAndNotDeleted(searchTerm);
     }
 
     @Test
     void existsByNameAndCompanyId_ShouldReturnTrue_WhenExists() {
         // Given
-        when(messageTemplateRepository.existsByNameAndCompanyId("Test Template", companyId)).thenReturn(true);
+        when(messageTemplateRepository.existsByNameAndCompanyIdAndNotDeleted("Test Template", companyId)).thenReturn(true);
 
         // When
         boolean result = messageTemplateService.existsByNameAndCompanyId("Test Template", companyId);
 
         // Then
         assertTrue(result);
-        verify(messageTemplateRepository).existsByNameAndCompanyId("Test Template", companyId);
+        verify(messageTemplateRepository).existsByNameAndCompanyIdAndNotDeleted("Test Template", companyId);
     }
 
     @Test
@@ -731,6 +731,141 @@ class MessageTemplateServiceTest {
         );
         
         verify(companyRepository).findById(companyId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+    
+    @Test
+    void softDeleteById_ShouldMarkTemplateAsDeletedAndCreateRevision_WhenValidData() {
+        // Given
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+        
+        // When
+        boolean result = messageTemplateService.softDeleteById(messageTemplateId, userId);
+        
+        // Then
+        assertTrue(result);
+        
+        // Verify that deletion revision is created
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplateId),
+            eq("[TEMPLATE DELETED] " + messageTemplate.getContent()),
+            eq(userId)
+        );
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+    
+    @Test
+    void softDeleteById_ShouldReturnFalse_WhenTemplateNotFound() {
+        // Given
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.empty());
+        
+        // When
+        boolean result = messageTemplateService.softDeleteById(messageTemplateId, userId);
+        
+        // Then
+        assertFalse(result);
+        
+        // Verify that no revision is created
+        verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository, never()).save(any(MessageTemplate.class));
+    }
+    
+    @Test
+    void softDeleteById_ShouldReturnFalse_WhenTemplateAlreadyDeleted() {
+        // Given
+        messageTemplate.setDeletedAt(LocalDateTime.now());
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        
+        // When
+        boolean result = messageTemplateService.softDeleteById(messageTemplateId, userId);
+        
+        // Then
+        assertFalse(result);
+        
+        // Verify that no revision is created
+        verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository, never()).save(any(MessageTemplate.class));
+    }
+    
+    @Test
+    void restoreById_ShouldRestoreTemplateAndCreateRevision_WhenValidData() {
+        // Given
+        messageTemplate.setDeletedAt(LocalDateTime.now());
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+        
+        // When
+        boolean result = messageTemplateService.restoreById(messageTemplateId, userId);
+        
+        // Then
+        assertTrue(result);
+        
+        // Verify that restoration revision is created
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplateId),
+            eq("[TEMPLATE RESTORED] " + messageTemplate.getContent()),
+            eq(userId)
+        );
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+    
+    @Test
+    void restoreById_ShouldReturnFalse_WhenTemplateNotDeleted() {
+        // Given
+        messageTemplate.setDeletedAt(null);
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        
+        // When
+        boolean result = messageTemplateService.restoreById(messageTemplateId, userId);
+        
+        // Then
+        assertFalse(result);
+        
+        // Verify that no revision is created
+        verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository, never()).save(any(MessageTemplate.class));
+    }
+    
+    @Test
+    void softDeleteById_ShouldRollbackTransaction_WhenRevisionCreationFails() {
+        // Given
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        
+        // Mock revision service to throw exception
+        doThrow(new RuntimeException("Revision creation failed")).when(messageTemplateRevisionService)
+                .createRevisionFromTemplate(any(), any(), any());
+        
+        // When & Then
+        MessageTemplateTransactionException exception = assertThrows(MessageTemplateTransactionException.class,
+            () -> messageTemplateService.softDeleteById(messageTemplateId, userId));
+        
+        assertEquals("Failed to create revision for template deletion", exception.getMessage());
+        
+        // Verify that revision creation was attempted
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplateId),
+            eq("[TEMPLATE DELETED] " + messageTemplate.getContent()),
+            eq(userId)
+        );
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
         verify(userRepository).findById(userId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
     }

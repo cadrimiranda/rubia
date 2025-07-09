@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -154,83 +155,124 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
         return validateAndGetCompany(createDTO.getCompanyId());
     }
 
-    // Métodos específicos da entidade
+    // Métodos específicos da entidade (filtram templates deletados por padrão)
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByIsAiGenerated(Boolean isAiGenerated) {
         log.debug("Finding MessageTemplates by AI generated flag: {}", isAiGenerated);
-        return messageTemplateRepository.findByIsAiGenerated(isAiGenerated);
+        return messageTemplateRepository.findByIsAiGeneratedAndNotDeleted(isAiGenerated);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByCompanyIdAndIsAiGenerated(UUID companyId, Boolean isAiGenerated) {
         log.debug("Finding MessageTemplates by company: {} and AI generated flag: {}", companyId, isAiGenerated);
-        return messageTemplateRepository.findByCompanyIdAndIsAiGenerated(companyId, isAiGenerated);
+        return messageTemplateRepository.findByCompanyIdAndIsAiGeneratedAndNotDeleted(companyId, isAiGenerated);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByCreatedByUserId(UUID createdByUserId) {
         log.debug("Finding MessageTemplates by created by user id: {}", createdByUserId);
-        return messageTemplateRepository.findByCreatedById(createdByUserId);
+        return messageTemplateRepository.findByCreatedByIdAndNotDeleted(createdByUserId);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByAiAgentId(UUID aiAgentId) {
         log.debug("Finding MessageTemplates by AI agent id: {}", aiAgentId);
-        return messageTemplateRepository.findByAiAgentId(aiAgentId);
+        return messageTemplateRepository.findByAiAgentIdAndNotDeleted(aiAgentId);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByTone(String tone) {
         log.debug("Finding MessageTemplates by tone: {}", tone);
-        return messageTemplateRepository.findByTone(tone);
+        return messageTemplateRepository.findByToneAndNotDeleted(tone);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByNameContaining(String name) {
         log.debug("Finding MessageTemplates by name containing: {}", name);
-        return messageTemplateRepository.findByNameContainingIgnoreCase(name);
+        return messageTemplateRepository.findByNameContainingIgnoreCaseAndNotDeleted(name);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByContentContaining(String content) {
         log.debug("Finding MessageTemplates by content containing: {}", content);
-        return messageTemplateRepository.findByContentContainingIgnoreCase(content);
+        return messageTemplateRepository.findByContentContainingIgnoreCaseAndNotDeleted(content);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByCompanyIdAndTone(UUID companyId, String tone) {
         log.debug("Finding MessageTemplates by company: {} and tone: {}", companyId, tone);
-        return messageTemplateRepository.findByCompanyIdAndTone(companyId, tone);
+        return messageTemplateRepository.findByCompanyIdAndToneAndNotDeleted(companyId, tone);
     }
 
     @Transactional(readOnly = true)
     public boolean existsByNameAndCompanyId(String name, UUID companyId) {
         log.debug("Checking if MessageTemplate exists by name: {} and company: {}", name, companyId);
-        return messageTemplateRepository.existsByNameAndCompanyId(name, companyId);
+        return messageTemplateRepository.existsByNameAndCompanyIdAndNotDeleted(name, companyId);
     }
 
     @Transactional(readOnly = true)
     public long countByIsAiGenerated(Boolean isAiGenerated) {
         log.debug("Counting MessageTemplates by AI generated flag: {}", isAiGenerated);
-        return messageTemplateRepository.countByIsAiGenerated(isAiGenerated);
+        return messageTemplateRepository.countByIsAiGeneratedAndNotDeleted(isAiGenerated);
     }
 
     @Transactional(readOnly = true)
     public long countByCompanyIdAndIsAiGenerated(UUID companyId, Boolean isAiGenerated) {
         log.debug("Counting MessageTemplates by company: {} and AI generated flag: {}", companyId, isAiGenerated);
-        return messageTemplateRepository.countByCompanyIdAndIsAiGenerated(companyId, isAiGenerated);
+        return messageTemplateRepository.countByCompanyIdAndIsAiGeneratedAndNotDeleted(companyId, isAiGenerated);
     }
 
     @Transactional(readOnly = true)
     public long countByCreatedByUserId(UUID createdByUserId) {
         log.debug("Counting MessageTemplates by created by user id: {}", createdByUserId);
-        return messageTemplateRepository.countByCreatedById(createdByUserId);
+        return messageTemplateRepository.countByCreatedByIdAndNotDeleted(createdByUserId);
     }
 
     @Transactional(readOnly = true)
     public long countByAiAgentId(UUID aiAgentId) {
         log.debug("Counting MessageTemplates by AI agent id: {}", aiAgentId);
-        return messageTemplateRepository.countByAiAgentId(aiAgentId);
+        return messageTemplateRepository.countByAiAgentIdAndNotDeleted(aiAgentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MessageTemplate> findByCompanyId(UUID companyId) {
+        log.debug("Finding MessageTemplates by company id: {}", companyId);
+        return messageTemplateRepository.findByCompanyIdAndNotDeleted(companyId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MessageTemplate> findById(UUID id) {
+        log.debug("Finding MessageTemplate by id: {}", id);
+        return messageTemplateRepository.findByIdAndNotDeleted(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByCompanyId(UUID companyId) {
+        log.debug("Counting MessageTemplates by company id: {}", companyId);
+        return messageTemplateRepository.countByCompanyIdAndNotDeleted(companyId);
+    }
+
+    // Métodos para acessar templates deletados
+    @Transactional(readOnly = true)
+    public List<MessageTemplate> findDeletedByCompanyId(UUID companyId) {
+        log.debug("Finding deleted MessageTemplates by company id: {}", companyId);
+        return messageTemplateRepository.findDeletedByCompanyId(companyId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MessageTemplate> findAllDeleted() {
+        log.debug("Finding all deleted MessageTemplates");
+        return messageTemplateRepository.findAllDeleted();
+    }
+
+    // Métodos que incluem templates deletados (para casos especiais)
+    @Transactional(readOnly = true)
+    public Optional<MessageTemplate> findByIdIncludingDeleted(UUID id) {
+        log.debug("Finding MessageTemplate by id including deleted: {}", id);
+        return messageTemplateRepository.findById(id);
     }
 
     @Transactional
@@ -291,20 +333,20 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     @Transactional(readOnly = true)
     public List<MessageTemplate> getHumanCreatedTemplates(UUID companyId) {
         log.debug("Getting human-created templates for company: {}", companyId);
-        return messageTemplateRepository.findByCompanyIdAndIsAiGenerated(companyId, false);
+        return messageTemplateRepository.findByCompanyIdAndIsAiGeneratedAndNotDeleted(companyId, false);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> getAiGeneratedTemplates(UUID companyId) {
         log.debug("Getting AI-generated templates for company: {}", companyId);
-        return messageTemplateRepository.findByCompanyIdAndIsAiGenerated(companyId, true);
+        return messageTemplateRepository.findByCompanyIdAndIsAiGeneratedAndNotDeleted(companyId, true);
     }
 
     @Transactional(readOnly = true)
     public List<MessageTemplate> searchTemplates(String searchTerm) {
         log.debug("Searching templates for term: {}", searchTerm);
-        List<MessageTemplate> nameMatches = messageTemplateRepository.findByNameContainingIgnoreCase(searchTerm);
-        List<MessageTemplate> contentMatches = messageTemplateRepository.findByContentContainingIgnoreCase(searchTerm);
+        List<MessageTemplate> nameMatches = messageTemplateRepository.findByNameContainingIgnoreCaseAndNotDeleted(searchTerm);
+        List<MessageTemplate> contentMatches = messageTemplateRepository.findByContentContainingIgnoreCaseAndNotDeleted(searchTerm);
         
         // Combine and deduplicate results
         nameMatches.addAll(contentMatches);
@@ -347,5 +389,134 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
         } else {
             log.warn("Failed to create revision for template: {}, continuing without revision", templateId, cause);
         }
+    }
+    
+    /**
+     * Soft delete a MessageTemplate and create a revision for the deletion.
+     * @param id The template ID to delete
+     * @param deletedByUserId The user who is deleting the template
+     * @return true if the template was successfully deleted, false if not found
+     */
+    @Transactional
+    public boolean softDeleteById(UUID id, UUID deletedByUserId) {
+        log.info("Soft deleting MessageTemplate with id: {} by user: {}", id, deletedByUserId);
+        
+        Optional<MessageTemplate> optionalTemplate = messageTemplateRepository.findById(id);
+        if (optionalTemplate.isEmpty()) {
+            log.warn("MessageTemplate not found with id: {}", id);
+            return false;
+        }
+        
+        MessageTemplate template = optionalTemplate.get();
+        
+        // Check if already deleted
+        if (template.getDeletedAt() != null) {
+            log.warn("MessageTemplate with id: {} is already deleted", id);
+            return false;
+        }
+        
+        // Mark as deleted
+        template.setDeletedAt(LocalDateTime.now());
+        
+        // Set the user who deleted it
+        if (deletedByUserId != null) {
+            User deletedByUser = userRepository.findById(deletedByUserId)
+                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + deletedByUserId));
+            template.setLastEditedBy(deletedByUser);
+        }
+        
+        // Save the soft-deleted template
+        messageTemplateRepository.save(template);
+        
+        // Create a revision for the deletion
+        if (deletedByUserId != null) {
+            try {
+                messageTemplateRevisionService.createRevisionFromTemplate(
+                    template.getId(),
+                    "[TEMPLATE DELETED] " + template.getContent(),
+                    deletedByUserId
+                );
+                log.debug("Deletion revision created for template: {}", template.getId());
+            } catch (Exception e) {
+                handleRevisionCreationFailureUpdate(
+                    template.getId().toString(),
+                    "DELETE",
+                    "Failed to create revision for template deletion",
+                    e
+                );
+            }
+        }
+        
+        log.info("MessageTemplate soft deleted successfully with id: {}", id);
+        return true;
+    }
+    
+    /**
+     * Restore a soft-deleted MessageTemplate.
+     * @param id The template ID to restore
+     * @param restoredByUserId The user who is restoring the template
+     * @return true if the template was successfully restored, false if not found or not deleted
+     */
+    @Transactional
+    public boolean restoreById(UUID id, UUID restoredByUserId) {
+        log.info("Restoring MessageTemplate with id: {} by user: {}", id, restoredByUserId);
+        
+        Optional<MessageTemplate> optionalTemplate = messageTemplateRepository.findById(id);
+        if (optionalTemplate.isEmpty()) {
+            log.warn("MessageTemplate not found with id: {}", id);
+            return false;
+        }
+        
+        MessageTemplate template = optionalTemplate.get();
+        
+        // Check if not deleted
+        if (template.getDeletedAt() == null) {
+            log.warn("MessageTemplate with id: {} is not deleted, cannot restore", id);
+            return false;
+        }
+        
+        // Restore the template
+        template.setDeletedAt(null);
+        
+        // Set the user who restored it
+        if (restoredByUserId != null) {
+            User restoredByUser = userRepository.findById(restoredByUserId)
+                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + restoredByUserId));
+            template.setLastEditedBy(restoredByUser);
+        }
+        
+        // Save the restored template
+        messageTemplateRepository.save(template);
+        
+        // Create a revision for the restoration
+        if (restoredByUserId != null) {
+            try {
+                messageTemplateRevisionService.createRevisionFromTemplate(
+                    template.getId(),
+                    "[TEMPLATE RESTORED] " + template.getContent(),
+                    restoredByUserId
+                );
+                log.debug("Restoration revision created for template: {}", template.getId());
+            } catch (Exception e) {
+                handleRevisionCreationFailureUpdate(
+                    template.getId().toString(),
+                    "RESTORE",
+                    "Failed to create revision for template restoration",
+                    e
+                );
+            }
+        }
+        
+        log.info("MessageTemplate restored successfully with id: {}", id);
+        return true;
+    }
+    
+    /**
+     * Override the parent deleteById to use soft delete instead of hard delete.
+     */
+    @Override
+    public boolean deleteById(UUID id) {
+        log.warn("Hard delete called on MessageTemplate with id: {}. Consider using softDeleteById instead.", id);
+        return super.deleteById(id);
     }
 }
