@@ -7,7 +7,7 @@ import { TemplateModal } from "../TemplateModal";
 import type { ConversationTemplate, CampaignData } from "../../types/types";
 import { createMockCampaign, syncCampaignConversationsWithStore, simulateContactStatusChanges, getAllCampaignConversations } from "../../mocks/campaignMock";
 import { useChatStore } from "../../store/useChatStore";
-import { messageTemplateService, type CreateMessageTemplateRequest } from "../../services/messageTemplateService";
+import { messageTemplateService, type CreateMessageTemplateRequest, type UpdateMessageTemplateRequest } from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
 
 const { Option } = Select;
@@ -251,10 +251,11 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
         // Editar template existente
         if (editingTemplate.isCustom) {
           // Apenas templates customizados (da API) podem ser editados
-          const updateData = {
+          const updateData: UpdateMessageTemplateRequest = {
             name: templateData.title,
             content: templateData.content,
-            tone: templateData.category
+            tone: templateData.category,
+            lastEditedByUserId: user.id
           };
           await messageTemplateService.update(editingTemplate.id, updateData);
           message.success('Template atualizado com sucesso!');
@@ -274,7 +275,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
           name: templateData.title,
           content: templateData.content,
           isAiGenerated: false,
-          tone: templateData.category
+          tone: templateData.category,
+          createdByUserId: user.id
         };
         
         await messageTemplateService.create(createData);

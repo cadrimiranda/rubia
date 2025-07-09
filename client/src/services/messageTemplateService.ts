@@ -10,6 +10,13 @@ export interface CreateMessageTemplateRequest {
   tone?: string;
 }
 
+export interface UpdateMessageTemplateRequest {
+  name?: string;
+  content?: string;
+  tone?: string;
+  lastEditedByUserId?: string;
+}
+
 export interface MessageTemplateResponse {
   id: string;
   companyId: string;
@@ -60,7 +67,7 @@ export const messageTemplateService = {
     }
   },
 
-  async update(id: string, data: Partial<CreateMessageTemplateRequest>): Promise<MessageTemplateResponse> {
+  async update(id: string, data: UpdateMessageTemplateRequest): Promise<MessageTemplateResponse> {
     try {
       const response = await apiClient.put<MessageTemplateResponse>(`/api/message-templates/${id}`, data);
       return response;
@@ -97,5 +104,27 @@ export const messageTemplateService = {
       console.error('Error searching message templates:', error);
       throw error;
     }
+  },
+
+  async getRevisionHistory(templateId: string): Promise<MessageTemplateRevision[]> {
+    try {
+      const response = await apiClient.get<MessageTemplateRevision[]>(`/api/message-template-revisions/template/${templateId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching template revision history:', error);
+      throw error;
+    }
   }
 };
+
+export interface MessageTemplateRevision {
+  id: string;
+  templateId: string;
+  revisionNumber: number;
+  content: string;
+  editedByUserId?: string;
+  editedByUserName?: string;
+  revisionTimestamp: string;
+  createdAt: string;
+  updatedAt: string;
+}
