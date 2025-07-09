@@ -1261,8 +1261,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               </div>
             </div>
           )}
-        </div>
-      </div>
 
           {activeTab === "deleted" && (
             <div className="max-w-6xl mx-auto p-8">
@@ -1364,6 +1362,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               </div>
             </div>
           )}
+        </div>
+      </div>
 
       {/* Modal de Histórico */}
       <Modal
