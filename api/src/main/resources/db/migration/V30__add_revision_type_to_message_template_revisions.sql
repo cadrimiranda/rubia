@@ -1,6 +1,3 @@
--- Create RevisionType enum
-CREATE TYPE RevisionType AS ENUM ('CREATE', 'EDIT', 'DELETE', 'RESTORE');
-
 -- Add revision_type column to message_template_revisions table
 ALTER TABLE message_template_revisions
 ADD COLUMN revision_type RevisionType NOT NULL DEFAULT 'EDIT';

@@ -8,11 +8,13 @@ import com.ruby.rubia_server.core.entity.CompanyGroup;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageTemplateRevision;
 import com.ruby.rubia_server.core.entity.User;
+import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.enums.CompanyPlanType;
 import com.ruby.rubia_server.core.enums.RevisionType;
 import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRevisionRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
@@ -63,6 +65,9 @@ class MessageTemplateServiceTransactionIntegrationTest extends AbstractIntegrati
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
     @MockBean
     private CompanyContextUtil companyContextUtil;
 
@@ -71,6 +76,7 @@ class MessageTemplateServiceTransactionIntegrationTest extends AbstractIntegrati
 
     private CompanyGroup companyGroup;
     private Company company;
+    private Department department;
     private User user;
     private CreateMessageTemplateDTO createDTO;
 
@@ -101,11 +107,22 @@ class MessageTemplateServiceTransactionIntegrationTest extends AbstractIntegrati
         company.setUpdatedAt(LocalDateTime.now());
         company = companyRepository.save(company);
 
+        // Create department
+        department = new Department();
+        department.setName("Test Department");
+        department.setDescription("Test Department Description");
+        department.setAutoAssign(true);
+        department.setCompany(company);
+        department.setCreatedAt(LocalDateTime.now());
+        department.setUpdatedAt(LocalDateTime.now());
+        department = departmentRepository.save(department);
+
         // Create user
         user = new User();
         user.setName("Test User");
         user.setEmail("test@example.com");
         user.setCompany(company);
+        user.setDepartment(department);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         user = userRepository.save(user);

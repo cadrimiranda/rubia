@@ -9,6 +9,7 @@ import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageTemplateRevision;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.CompanyPlanType;
+import com.ruby.rubia_server.core.enums.RevisionType;
 import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
@@ -33,6 +34,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -122,16 +124,31 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         );
         company = companyRepository.findById(companyId).orElseThrow();
 
+        // Create department first (required for user)
+        UUID departmentId = UUID.randomUUID();
+        jdbcTemplate.update(
+            "INSERT INTO departments (id, name, description, auto_assign, company_id, created_at, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            departmentId,
+            "Test Department",
+            "Test Department Description",
+            true,
+            company.getId(),
+            LocalDateTime.now(),
+            LocalDateTime.now()
+        );
+
         // Create user using SQL to avoid enum issues in TestContainers
         UUID userId = UUID.randomUUID();
         jdbcTemplate.update(
-            "INSERT INTO users (id, name, email, password_hash, company_id, role, is_online, is_whatsapp_active, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?::userrole, ?, ?, ?, ?)",
+            "INSERT INTO users (id, name, email, password_hash, company_id, department_id, role, is_online, is_whatsapp_active, created_at, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?::userrole, ?, ?, ?, ?)",
             userId,
             "Test User",
             "test@example.com",
             "test-hash",
             company.getId(),
+            departmentId,
             "AGENT",
             false,
             false,
@@ -159,7 +176,7 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         // Given - Configure revision service to fail
         doThrow(new RuntimeException("Revision creation failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.CREATE));
 
         // When - Create template (should not throw exception)
         MessageTemplate result = messageTemplateService.create(createDTO);
@@ -190,7 +207,7 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         // Configure revision service to fail on update
         doThrow(new RuntimeException("Revision update failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.EDIT));
 
         UpdateMessageTemplateDTO updateDTO = UpdateMessageTemplateDTO.builder()
                 .content("Updated content")
@@ -218,7 +235,7 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         // Configure revision service to fail on delete
         doThrow(new RuntimeException("Revision delete failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.DELETE));
 
         // When - Soft delete template (should not throw exception)
         boolean result = messageTemplateService.softDeleteById(template.getId());
@@ -244,7 +261,7 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         // Configure revision service to fail on restore
         doThrow(new RuntimeException("Revision restore failed"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), eq(RevisionType.RESTORE));
 
         // When - Restore template (should not throw exception)
         boolean result = messageTemplateService.restoreById(template.getId());
@@ -260,10 +277,10 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
 
     @Test
     void multipleOperationsWithRevisionFailures_ShouldAllContinue_WhenFailOnErrorIsFalse() {
-        // Given - Configure revision service to always fail
+        // Given - Configure revision service to always fail for all operations
         doThrow(new RuntimeException("Revision service consistently fails"))
                 .when(messageTemplateRevisionService)
-                .createRevisionFromTemplate(any(), any(), any());
+                .createRevisionFromTemplate(any(UUID.class), any(String.class), any(UUID.class), any(RevisionType.class));
 
         // When - Perform multiple operations (none should throw exceptions)
         MessageTemplate template = messageTemplateService.create(createDTO);
