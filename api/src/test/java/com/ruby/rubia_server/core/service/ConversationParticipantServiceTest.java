@@ -298,16 +298,15 @@ class ConversationParticipantServiceTest {
         createDTO.setCustomerId(null);
         createDTO.setUserId(null);
         createDTO.setAiAgentId(null);
-        
-        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
 
         // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, 
             () -> conversationParticipantService.create(createDTO));
         
         assertEquals("Exactly one participant (customer, user, or AI agent) must be provided", exception.getMessage());
-        verify(companyRepository).findById(companyId);
-        verify(conversationRepository, never()).findById(conversationId);
+        // Since validation fails early, repository methods should not be called
+        verify(companyRepository, never()).findById(any());
+        verify(conversationRepository, never()).findById(any());
         verify(conversationParticipantRepository, never()).save(any(ConversationParticipant.class));
     }
 
