@@ -117,7 +117,8 @@ export const messageTemplateService = {
   async getDeleted(): Promise<MessageTemplateResponse[]> {
     try {
       const response = await apiClient.get<{content: MessageTemplateResponse[], page: any}>('/api/message-templates', { 
-        deleted: 'true' 
+        deleted: 'true',
+        lastRevisionType: 'DELETE' // Apenas templates onde a última revisão é DELETE
       });
       return response.content;
     } catch (error) {
