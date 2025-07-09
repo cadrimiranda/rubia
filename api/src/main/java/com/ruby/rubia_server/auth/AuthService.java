@@ -86,7 +86,7 @@ public class AuthService {
                     .isOnline(user.getIsOnline() != null ? user.getIsOnline() : false)
                     .build())
                 .expiresIn(3600)
-                .companyId(company.getId().toString())
+                .companyGroupId(company.getCompanyGroup().getId().toString())
                 .companySlug(company.getSlug())
                 .build();
                 
@@ -125,7 +125,7 @@ public class AuthService {
                         .isOnline(user.getIsOnline() != null ? user.getIsOnline() : false)
                         .build())
                     .expiresIn(3600)
-                    .companyId(user.getCompany().getId().toString())
+                    .companyGroupId(user.getCompany().getCompanyGroup().getId().toString())
                     .companySlug(user.getCompany().getSlug())
                     .build();
             }

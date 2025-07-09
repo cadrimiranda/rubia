@@ -179,7 +179,7 @@ export interface LoginResponse {
     isOnline: boolean
   }
   expiresIn: number
-  companyId: string
+  companyGroupId: string
   companySlug: string
 }
 
