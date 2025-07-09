@@ -43,8 +43,8 @@ public class MessageTemplateRevision implements BaseEntity {
     @JoinColumn(name = "edited_by_user_id")
     private User editedBy; // Quem criou/editou esta revisão
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "revision_type", nullable = false, columnDefinition = "RevisionType")
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "revision_type", nullable = false)
     @Builder.Default
     private RevisionType revisionType = RevisionType.EDIT; // Tipo da revisão (CREATE, EDIT, DELETE, RESTORE)
 
