@@ -128,11 +128,21 @@ export const messageTemplateService = {
 
   async restore(id: string): Promise<MessageTemplateResponse> {
     try {
-      const response = await apiClient.post<MessageTemplateResponse>(`/api/message-templates/${id}/restore`);
+      // Primeira tentativa: endpoint específico de restore
+      const response = await apiClient.put<MessageTemplateResponse>(`/api/message-templates/${id}/restore`);
       return response;
     } catch (error) {
-      console.error('Error restoring message template:', error);
-      throw error;
+      console.error('Error restoring message template with specific endpoint:', error);
+      try {
+        // Segunda tentativa: usar endpoint de update com flag
+        const response = await apiClient.put<MessageTemplateResponse>(`/api/message-templates/${id}`, {
+          restore: true
+        });
+        return response;
+      } catch (updateError) {
+        console.error('Error restoring message template with update endpoint:', updateError);
+        throw updateError;
+      }
     }
   }
 };
