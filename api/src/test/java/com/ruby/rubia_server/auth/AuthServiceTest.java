@@ -109,7 +109,7 @@ class AuthServiceTest {
             // Then
             assertNotNull(response);
             assertEquals("jwt-token", response.getToken());
-            assertEquals(companyGroup.getId().toString(), response.getCompanyGroupId());
+            assertEquals(company.getId().toString(), response.getCompanyId());
             assertEquals(company.getSlug(), response.getCompanySlug());
             assertNotNull(response.getUser());
             assertEquals(user.getId(), response.getUser().getId());
@@ -194,7 +194,7 @@ class AuthServiceTest {
         // Then
         assertNotNull(response);
         assertEquals("new-jwt-token", response.getToken());
-        assertEquals(companyGroup.getId().toString(), response.getCompanyGroupId());
+        assertEquals(company.getId().toString(), response.getCompanyId());
         assertEquals(company.getSlug(), response.getCompanySlug());
         assertNotNull(response.getUser());
         assertEquals(companyGroup.getId(), response.getUser().getCompanyGroupId());
