@@ -9,6 +9,7 @@ import {
   Sparkles,
   Trash2,
   MoreVertical,
+  History,
 } from "lucide-react";
 import {
   Button,
@@ -19,6 +20,10 @@ import {
   message,
   Radio,
   Dropdown,
+  Modal,
+  Timeline,
+  Badge,
+  Spin,
 } from "antd";
 import type { UploadProps, RadioChangeEvent } from "antd";
 import dayjs from "dayjs";
@@ -35,6 +40,8 @@ import {
   messageTemplateService,
   type CreateMessageTemplateRequest,
   type UpdateMessageTemplateRequest,
+  type MessageTemplateRevision,
+  type RevisionType,
 } from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
 
@@ -83,6 +90,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const [editingTemplate, setEditingTemplate] =
     useState<ConversationTemplate | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [revisionHistory, setRevisionHistory] = useState<MessageTemplateRevision[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Carregar templates da API
   const loadTemplates = async () => {
@@ -118,6 +128,42 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       loadTemplates();
     }
   }, [user?.companyId]);
+
+  // Função para obter ícone e cor do tipo de revisão
+  const getRevisionTypeInfo = (type: RevisionType) => {
+    switch (type) {
+      case 'CREATE':
+        return { icon: <Plus className="w-3 h-3" />, color: 'green', label: 'Criado' };
+      case 'EDIT':
+        return { icon: <Edit3 className="w-3 h-3" />, color: 'blue', label: 'Editado' };
+      case 'DELETE':
+        return { icon: <Trash2 className="w-3 h-3" />, color: 'red', label: 'Excluído' };
+      case 'RESTORE':
+        return { icon: <History className="w-3 h-3" />, color: 'orange', label: 'Restaurado' };
+      default:
+        return { icon: <Edit3 className="w-3 h-3" />, color: 'gray', label: 'Modificado' };
+    }
+  };
+
+  // Carregar histórico de revisões
+  const loadTemplateHistory = async (templateId: string) => {
+    setIsLoadingHistory(true);
+    try {
+      const history = await messageTemplateService.getRevisionHistory(templateId);
+      setRevisionHistory(history);
+    } catch (error) {
+      console.error("Erro ao carregar histórico:", error);
+      message.error("Erro ao carregar histórico do template");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Abrir modal de histórico
+  const handleViewHistory = async (templateId: string) => {
+    setShowHistoryModal(true);
+    await loadTemplateHistory(templateId);
+  };
 
   const handleAgentConfigChange = (field: keyof AgentConfig, value: string) => {
     setAgentConfig((prev) => ({
@@ -1060,6 +1106,12 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                                 onClick: () => handleEditTemplate(template.id),
                               },
                               {
+                                key: "history",
+                                label: "Ver Histórico",
+                                icon: <History className="w-4 h-4" />,
+                                onClick: () => handleViewHistory(template.id),
+                              },
+                              {
                                 key: "enhance",
                                 label: "Melhorar com IA",
                                 icon: <Sparkles className="w-4 h-4" />,
@@ -1135,6 +1187,94 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
           )}
         </div>
       </div>
+
+      {/* Modal de Histórico */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-blue-600" />
+            <span>Histórico do Template</span>
+          </div>
+        }
+        open={showHistoryModal}
+        onCancel={() => {
+          setShowHistoryModal(false);
+          setRevisionHistory([]);
+        }}
+        footer={null}
+        width={800}
+        bodyStyle={{ padding: "24px" }}
+      >
+        {isLoadingHistory ? (
+          <div className="flex justify-center items-center py-8">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            {revisionHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Nenhum histórico encontrado para este template.
+              </div>
+            ) : (
+              <Timeline>
+                {revisionHistory.map((revision, index) => {
+                  const revisionInfo = getRevisionTypeInfo(revision.revisionType);
+                  return (
+                    <Timeline.Item
+                      key={revision.id}
+                      color={revisionInfo.color}
+                      dot={
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white border-2 border-current">
+                          {revisionInfo.icon}
+                        </div>
+                      }
+                    >
+                      <div className="pb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-800">
+                              Revisão #{revision.revisionNumber}
+                            </span>
+                            <Badge
+                              count={revisionInfo.label}
+                              style={{
+                                backgroundColor: 
+                                  revisionInfo.color === 'green' ? '#52c41a' :
+                                  revisionInfo.color === 'blue' ? '#1890ff' :
+                                  revisionInfo.color === 'red' ? '#ff4d4f' :
+                                  revisionInfo.color === 'orange' ? '#fa8c16' : '#8c8c8c',
+                                fontSize: "10px",
+                                height: "18px",
+                                lineHeight: "18px",
+                                minWidth: "50px",
+                              }}
+                            />
+                            {revision.editedByUserName && (
+                              <span className="text-sm text-gray-500">
+                                por {revision.editedByUserName}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {dayjs(revision.revisionTimestamp).format(
+                              "DD/MM/YYYY HH:mm"
+                            )}
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg border">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {revision.content}
+                          </p>
+                        </div>
+                      </div>
+                    </Timeline.Item>
+                  );
+                })}
+              </Timeline>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <TemplateModal
         show={showTemplateModal}

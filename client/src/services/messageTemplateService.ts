@@ -115,6 +115,8 @@ export const messageTemplateService = {
   }
 };
 
+export type RevisionType = 'CREATE' | 'EDIT' | 'DELETE' | 'RESTORE';
+
 export interface MessageTemplateRevision {
   id: string;
   templateId: string;
@@ -122,6 +124,7 @@ export interface MessageTemplateRevision {
   content: string;
   editedByUserId?: string;
   editedByUserName?: string;
+  revisionType: RevisionType;
   revisionTimestamp: string;
   createdAt: string;
   updatedAt: string;
