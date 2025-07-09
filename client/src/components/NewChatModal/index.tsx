@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Search, X, User, Circle, Plus, UserPlus, Loader } from "lucide-react";
+import { Search, X, User, Circle, Plus, UserPlus, Loader, AlertCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
 import type { Donor } from "../../types/types";
 import { getStatusColor } from "../../utils";
 import { customerApi } from "../../api/services/customerApi";
 import { customerAdapter } from "../../adapters/customerAdapter";
 
-interface NewContactData {
+interface FormData {
   name: string;
   phone: string;
   profileUrl?: string;
@@ -13,14 +14,19 @@ interface NewContactData {
   lastDonationDate?: string;
   nextEligibleDonationDate?: string;
   bloodType?: string;
-  height?: string;
-  weight?: string;
+  height?: number;
+  weight?: number;
   addressStreet?: string;
   addressNumber?: string;
   addressComplement?: string;
   addressPostalCode?: string;
   addressCity?: string;
   addressState?: string;
+}
+
+interface NewContactData {
+  name: string;
+  phone: string;
   donor?: Donor;
 }
 
@@ -46,43 +52,43 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
   isLoadingContacts = false,
 }) => {
   const [activeTab, setActiveTab] = useState<"existing" | "new">("existing");
-  const [newContactData, setNewContactData] = useState<NewContactData>({
-    name: "",
-    phone: "",
-    profileUrl: "",
-    birthDate: "",
-    lastDonationDate: "",
-    nextEligibleDonationDate: "",
-    bloodType: "",
-    height: "",
-    weight: "",
-    addressStreet: "",
-    addressNumber: "",
-    addressComplement: "",
-    addressPostalCode: "",
-    addressCity: "",
-    addressState: "",
-  });
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleNewContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newContactData.name.trim() || !newContactData.phone.trim()) {
-      return;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+    watch
+  } = useForm<FormData>({
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      phone: "",
+      profileUrl: "",
+      birthDate: "",
+      lastDonationDate: "",
+      nextEligibleDonationDate: "",
+      bloodType: "",
+      height: undefined,
+      weight: undefined,
+      addressStreet: "",
+      addressNumber: "",
+      addressComplement: "",
+      addressPostalCode: "",
+      addressCity: "",
+      addressState: "",
     }
+  });
 
+  const onSubmit = async (data: FormData) => {
     setIsCreating(true);
     setError(null);
 
     try {
-      // Validar formato do telefone
-      if (!customerAdapter.validateBrazilianPhone(newContactData.phone)) {
-        throw new Error("Formato de telefone inválido. Use o formato brasileiro (11) 99999-9999");
-      }
-
       // Verificar se já existe um cliente com este telefone
-      const normalizedPhone = customerAdapter.normalizePhone(newContactData.phone);
+      const normalizedPhone = customerAdapter.normalizePhone(data.phone);
       const existingCustomer = await customerApi.findByPhone(normalizedPhone);
       
       if (existingCustomer) {
@@ -95,7 +101,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           timestamp: "",
           unread: 0,
           status: "offline" as const,
-          bloodType: "O+", // Valor padrão, será atualizado pelo backend
+          bloodType: "O+",
           email: "",
           lastDonation: "Sem registro",
           totalDonations: 0,
@@ -103,52 +109,47 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           birthDate: "",
           weight: 0,
           height: 0,
-          hasActiveConversation: false, // Assumir que não tem conversa ativa ainda
+          hasActiveConversation: false,
         };
         
-        // Adicionar à lista de doadores se não estiver presente
         onNewContactCreate({
-          name: newContactData.name,
-          phone: newContactData.phone,
+          name: data.name,
+          phone: data.phone,
           donor: donor
         });
         
-        // Selecionar o donor
         onDonorSelect(donor);
       } else {
         // Criar novo cliente
         const createRequest = {
-          phone: customerAdapter.normalizePhone(newContactData.phone),
-          name: newContactData.name,
-          profileUrl: newContactData.profileUrl,
-          birthDate: newContactData.birthDate,
-          lastDonationDate: newContactData.lastDonationDate,
-          nextEligibleDonationDate: newContactData.nextEligibleDonationDate,
-          bloodType: newContactData.bloodType,
-          height: newContactData.height ? parseInt(newContactData.height) : undefined,
-          weight: newContactData.weight ? parseFloat(newContactData.weight) : undefined,
-          addressStreet: newContactData.addressStreet,
-          addressNumber: newContactData.addressNumber,
-          addressComplement: newContactData.addressComplement,
-          addressPostalCode: newContactData.addressPostalCode,
-          addressCity: newContactData.addressCity,
-          addressState: newContactData.addressState,
+          phone: normalizedPhone,
+          name: data.name,
+          profileUrl: data.profileUrl,
+          birthDate: data.birthDate,
+          lastDonationDate: data.lastDonationDate,
+          nextEligibleDonationDate: data.nextEligibleDonationDate,
+          bloodType: data.bloodType,
+          height: data.height,
+          weight: data.weight,
+          addressStreet: data.addressStreet,
+          addressNumber: data.addressNumber,
+          addressComplement: data.addressComplement,
+          addressPostalCode: data.addressPostalCode,
+          addressCity: data.addressCity,
+          addressState: data.addressState,
         };
         
         const newCustomer = await customerApi.create(createRequest);
         
-        // Não criar conversa aqui - será criada quando a primeira mensagem for enviada
-
-        // Converter para Donor e notificar componente pai
         const user = customerAdapter.toUser(newCustomer);
         const donor: Donor = {
           ...user,
-          phone: user.phone || customerAdapter.normalizePhone(newContactData.phone),
-          lastMessage: "", // Vazio pois ainda não há conversa
+          phone: user.phone || normalizedPhone,
+          lastMessage: "",
           timestamp: "",
           unread: 0,
           status: "offline" as const,
-          bloodType: "O+", // Valor padrão
+          bloodType: "O+",
           email: "",
           lastDonation: "Sem registro",
           totalDonations: 0,
@@ -156,38 +157,20 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           birthDate: "",
           weight: 0,
           height: 0,
-          hasActiveConversation: false, // Marcar que não tem conversa ativa ainda
+          hasActiveConversation: false,
         };
         
-        // Primeiro adicionar à lista de doadores via callback
         onNewContactCreate({
-          name: newContactData.name,
-          phone: newContactData.phone,
-          donor: donor // Passar o donor criado para ser adicionado à lista
+          name: data.name,
+          phone: data.phone,
+          donor: donor
         });
         
-        // Depois selecionar o donor
         onDonorSelect(donor);
       }
 
       // Resetar formulário e fechar modal
-      setNewContactData({ 
-        name: "", 
-        phone: "",
-        profileUrl: "",
-        birthDate: "",
-        lastDonationDate: "",
-        nextEligibleDonationDate: "",
-        bloodType: "",
-        height: "",
-        weight: "",
-        addressStreet: "",
-        addressNumber: "",
-        addressComplement: "",
-        addressPostalCode: "",
-        addressCity: "",
-        addressState: "",
-      });
+      reset();
       setActiveTab("existing");
       onClose();
 
@@ -199,31 +182,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     }
   };
 
-  const resetForm = () => {
-    setNewContactData({ 
-      name: "", 
-      phone: "",
-      profileUrl: "",
-      birthDate: "",
-      lastDonationDate: "",
-      nextEligibleDonationDate: "",
-      bloodType: "",
-      height: "",
-      weight: "",
-      addressStreet: "",
-      addressNumber: "",
-      addressComplement: "",
-      addressPostalCode: "",
-      addressCity: "",
-      addressState: "",
-    });
+  const resetFormAndState = () => {
+    reset();
     setActiveTab("existing");
     setError(null);
     setIsCreating(false);
   };
 
   const handleClose = () => {
-    resetForm();
+    resetFormAndState();
     onClose();
   };
 
@@ -231,7 +198,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-[550px] max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-white rounded-2xl w-[750px] max-h-[90vh] flex flex-col shadow-2xl">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">Nova Conversa</h2>
           <button
@@ -337,295 +304,374 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           </>
         ) : (
           <div className="p-6 flex-1 overflow-y-auto">
-            <form onSubmit={handleNewContactSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  Nome completo *
-                </label>
-                <input
-                  type="text"
-                  value={newContactData.name}
-                  onChange={(e) =>
-                    setNewContactData((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="Digite o nome do contato"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                  required
-                />
-              </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Informações Básicas */}
+              <div className="bg-gray-50 rounded-xl p-5">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nome completo *
+                    </label>
+                    <input
+                      {...register("name", {
+                        required: "Nome é obrigatório",
+                        minLength: { value: 2, message: "Nome deve ter pelo menos 2 caracteres" },
+                        maxLength: { value: 255, message: "Nome não pode exceder 255 caracteres" },
+                        pattern: { 
+                          value: /^[a-zA-ZÀ-ÿ\s]+$/, 
+                          message: "Nome deve conter apenas letras e espaços" 
+                        }
+                      })}
+                      placeholder="Digite o nome completo"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
+                    />
+                    {errors.name && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.name.message}</span>
+                      </div>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  Número de telefone *
-                </label>
-                <input
-                  type="tel"
-                  value={newContactData.phone}
-                  onChange={(e) =>
-                    setNewContactData((prev) => ({
-                      ...prev,
-                      phone: e.target.value,
-                    }))
-                  }
-                  placeholder="(11) 99999-9999"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                  required
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Telefone *
+                    </label>
+                    <input
+                      {...register("phone", {
+                        required: "Telefone é obrigatório",
+                        validate: (value) => {
+                          if (!customerAdapter.validateBrazilianPhone(value)) {
+                            return "Formato inválido. Use: (11) 99999-9999";
+                          }
+                          return true;
+                        }
+                      })}
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
+                    />
+                    {errors.phone && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.phone.message}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  URL da foto de perfil
-                </label>
-                <input
-                  type="url"
-                  value={newContactData.profileUrl}
-                  onChange={(e) =>
-                    setNewContactData((prev) => ({
-                      ...prev,
-                      profileUrl: e.target.value,
-                    }))
-                  }
-                  placeholder="https://exemplo.com/foto.jpg"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  Data de nascimento
-                </label>
-                <input
-                  type="date"
-                  value={newContactData.birthDate}
-                  onChange={(e) =>
-                    setNewContactData((prev) => ({
-                      ...prev,
-                      birthDate: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Última doação
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    URL da foto de perfil
                   </label>
                   <input
-                    type="date"
-                    value={newContactData.lastDonationDate}
-                    onChange={(e) =>
-                      setNewContactData((prev) => ({
-                        ...prev,
-                        lastDonationDate: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                    {...register("profileUrl", {
+                      pattern: {
+                        value: /^https?:\/\/.+\..+/,
+                        message: "URL inválida"
+                      }
+                    })}
+                    type="url"
+                    placeholder="https://exemplo.com/foto.jpg"
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                      errors.profileUrl ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                    }`}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Próxima doação elegível
-                  </label>
-                  <input
-                    type="date"
-                    value={newContactData.nextEligibleDonationDate}
-                    onChange={(e) =>
-                      setNewContactData((prev) => ({
-                        ...prev,
-                        nextEligibleDonationDate: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                  />
+                  {errors.profileUrl && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-sm text-red-600">{errors.profileUrl.message}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Tipo sanguíneo
-                  </label>
-                  <select
-                    value={newContactData.bloodType}
-                    onChange={(e) =>
-                      setNewContactData((prev) => ({
-                        ...prev,
-                        bloodType: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                  >
-                    <option value="">Selecione</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
+              {/* Informações Médicas */}
+              <div className="bg-red-50 rounded-xl p-5">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Médicas</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data de nascimento
+                    </label>
+                    <input
+                      {...register("birthDate", {
+                        validate: (value) => {
+                          if (value) {
+                            const birthDate = new Date(value);
+                            const today = new Date();
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff = today.getMonth() - birthDate.getMonth();
+                            const dayDiff = today.getDate() - birthDate.getDate();
+                            
+                            // Ajuste para idade exata
+                            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                              age--;
+                            }
+                            
+                            if (age < 16) {
+                              return "Idade deve ser maior de 16 anos";
+                            }
+                          }
+                          return true;
+                        }
+                      })}
+                      type="date"
+                      min={(() => {
+                        const date = new Date();
+                        date.setFullYear(date.getFullYear() - 16);
+                        return date.toISOString().split('T')[0];
+                      })()}
+                      max={new Date().toISOString().split('T')[0]}
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.birthDate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
+                    />
+                    {errors.birthDate && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.birthDate.message}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tipo sanguíneo
+                    </label>
+                    <select
+                      {...register("bloodType")}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Última doação
+                    </label>
+                    <input
+                      {...register("lastDonationDate")}
+                      type="date"
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Altura (cm)
-                  </label>
-                  <input
-                    type="number"
-                    min="100"
-                    max="250"
-                    value={newContactData.height}
-                    onChange={(e) =>
-                      setNewContactData((prev) => ({
-                        ...prev,
-                        height: e.target.value,
-                      }))
-                    }
-                    placeholder="170"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Próxima doação elegível
+                    </label>
+                    <input
+                      {...register("nextEligibleDonationDate")}
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Peso (kg)
-                  </label>
-                  <input
-                    type="number"
-                    min="30"
-                    max="200"
-                    step="0.1"
-                    value={newContactData.weight}
-                    onChange={(e) =>
-                      setNewContactData((prev) => ({
-                        ...prev,
-                        weight: e.target.value,
-                      }))
-                    }
-                    placeholder="70.5"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Altura (cm)
+                    </label>
+                    <input
+                      {...register("height", {
+                        min: { value: 100, message: "Altura mínima: 100cm" },
+                        max: { value: 250, message: "Altura máxima: 250cm" }
+                      })}
+                      type="number"
+                      min="100"
+                      max="250"
+                      placeholder="170"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.height ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
+                    />
+                    {errors.height && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.height.message}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Peso (kg)
+                    </label>
+                    <input
+                      {...register("weight", {
+                        min: { value: 30, message: "Peso mínimo: 30kg" },
+                        max: { value: 200, message: "Peso máximo: 200kg" }
+                      })}
+                      type="number"
+                      min="30"
+                      max="200"
+                      step="0.1"
+                      placeholder="70.5"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.weight ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
+                    />
+                    {errors.weight && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.weight.message}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div>
+              {/* Endereço */}
+              <div className="bg-green-50 rounded-xl p-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Endereço</h3>
                 
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Rua/Avenida
                     </label>
                     <input
+                      {...register("addressStreet", {
+                        maxLength: { value: 255, message: "Máximo 255 caracteres" }
+                      })}
                       type="text"
-                      value={newContactData.addressStreet}
-                      onChange={(e) =>
-                        setNewContactData((prev) => ({
-                          ...prev,
-                          addressStreet: e.target.value,
-                        }))
-                      }
                       placeholder="Rua das Flores"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.addressStreet ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
                     />
+                    {errors.addressStreet && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.addressStreet.message}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Número
                     </label>
                     <input
+                      {...register("addressNumber", {
+                        maxLength: { value: 20, message: "Máximo 20 caracteres" }
+                      })}
                       type="text"
-                      value={newContactData.addressNumber}
-                      onChange={(e) =>
-                        setNewContactData((prev) => ({
-                          ...prev,
-                          addressNumber: e.target.value,
-                        }))
-                      }
                       placeholder="123"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.addressNumber ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
                     />
+                    {errors.addressNumber && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.addressNumber.message}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Complemento
                   </label>
                   <input
+                    {...register("addressComplement", {
+                      maxLength: { value: 255, message: "Máximo 255 caracteres" }
+                    })}
                     type="text"
-                    value={newContactData.addressComplement}
-                    onChange={(e) =>
-                      setNewContactData((prev) => ({
-                        ...prev,
-                        addressComplement: e.target.value,
-                      }))
-                    }
                     placeholder="Apartamento 45, Bloco B"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                      errors.addressComplement ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                    }`}
                   />
+                  {errors.addressComplement && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-sm text-red-600">{errors.addressComplement.message}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       CEP
                     </label>
                     <input
+                      {...register("addressPostalCode", {
+                        pattern: {
+                          value: /^\d{5}-?\d{3}$/,
+                          message: "Formato: 12345-678"
+                        }
+                      })}
                       type="text"
-                      value={newContactData.addressPostalCode}
-                      onChange={(e) =>
-                        setNewContactData((prev) => ({
-                          ...prev,
-                          addressPostalCode: e.target.value,
-                        }))
-                      }
                       placeholder="01234-567"
-                      pattern="[0-9]{5}-?[0-9]{3}"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.addressPostalCode ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
                     />
+                    {errors.addressPostalCode && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.addressPostalCode.message}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Cidade
                     </label>
                     <input
+                      {...register("addressCity", {
+                        maxLength: { value: 100, message: "Máximo 100 caracteres" },
+                        pattern: {
+                          value: /^[a-zA-ZÀ-ÿ\s]+$/,
+                          message: "Apenas letras e espaços"
+                        }
+                      })}
                       type="text"
-                      value={newContactData.addressCity}
-                      onChange={(e) =>
-                        setNewContactData((prev) => ({
-                          ...prev,
-                          addressCity: e.target.value,
-                        }))
-                      }
                       placeholder="São Paulo"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                        errors.addressCity ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      }`}
                     />
+                    {errors.addressCity && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-600">{errors.addressCity.message}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Estado
                     </label>
                     <select
-                      value={newContactData.addressState}
-                      onChange={(e) =>
-                        setNewContactData((prev) => ({
-                          ...prev,
-                          addressState: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                      {...register("addressState")}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
                     >
                       <option value="">Selecione</option>
                       <option value="AC">AC</option>
@@ -662,7 +708,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-sm text-red-700 font-medium">{error}</p>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  </div>
                 </div>
               )}
 
@@ -677,11 +726,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    !newContactData.name.trim() || 
-                    !newContactData.phone.trim() || 
-                    isCreating
-                  }
+                  disabled={isCreating || !isValid}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:shadow-none"
                 >
                   {isCreating ? (
