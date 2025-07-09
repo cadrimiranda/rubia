@@ -93,7 +93,7 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
     @Transactional(readOnly = true)
     public List<MessageTemplateRevision> findByEditedByUserId(UUID editedByUserId) {
         log.debug("Finding MessageTemplateRevisions by edited by user id: {}", editedByUserId);
-        return messageTemplateRevisionRepository.findByEditedByUserId(editedByUserId);
+        return messageTemplateRevisionRepository.findByEditedById(editedByUserId);
     }
 
     @Transactional(readOnly = true)

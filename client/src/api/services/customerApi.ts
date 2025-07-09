@@ -6,24 +6,12 @@ import type {
   UpdateCustomerRequest,
   PageResponse
 } from '../types'
-import { mockGetAllCustomers, mockFindCustomerByPhone, mockCreateCustomer } from '../../mocks/authMock'
 
 export class CustomerAPI {
   private basePath = '/api/customers'
   
-  /**
-   * Verifica se deve usar mock baseado na variável de ambiente
-   */
-  private get useMockData(): boolean {
-    return import.meta.env.VITE_USE_MOCK_DATA === 'true'
-  }
 
   async getAll(filters?: CustomerFilters): Promise<PageResponse<CustomerDTO>> {
-    if (this.useMockData) {
-      console.log('🎭 Usando mock para getAll customers');
-      return mockGetAllCustomers({ size: filters?.size, search: filters?.search });
-    }
-
     const params: Record<string, string> = {}
     
     if (filters?.page !== undefined) params.page = filters.page.toString()
@@ -40,11 +28,6 @@ export class CustomerAPI {
   }
 
   async create(data: CreateCustomerRequest): Promise<CustomerDTO> {
-    if (this.useMockData) {
-      console.log('🎭 Usando mock para create customer');
-      return mockCreateCustomer(data);
-    }
-
     return apiClient.post<CustomerDTO>(this.basePath, data)
   }
 
@@ -65,11 +48,6 @@ export class CustomerAPI {
   }
 
   async findByPhone(phone: string): Promise<CustomerDTO | null> {
-    if (this.useMockData) {
-      console.log('🎭 Usando mock para findByPhone customer');
-      return mockFindCustomerByPhone(phone);
-    }
-
     try {
       return await apiClient.get<CustomerDTO>(`${this.basePath}/phone/${encodeURIComponent(phone)}`)
     } catch (error: unknown) {

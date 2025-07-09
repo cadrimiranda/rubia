@@ -16,4 +16,6 @@ public interface CampaignRepository extends BaseCompanyEntityRepository<Campaign
     List<Campaign> findByCompanyIdAndStatus(UUID companyId, CampaignStatus status);
     
     long countByCompanyIdAndStatus(UUID companyId, CampaignStatus status);
+    
+    boolean existsByNameAndCompanyId(String name, UUID companyId);
 }

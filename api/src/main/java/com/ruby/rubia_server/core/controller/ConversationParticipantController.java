@@ -1,6 +1,5 @@
 package com.ruby.rubia_server.core.controller;
 
-import com.ruby.rubia_server.core.base.BaseCompanyEntityController;
 import com.ruby.rubia_server.core.dto.ConversationParticipantDTO;
 import com.ruby.rubia_server.core.dto.CreateConversationParticipantDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationParticipantDTO;
@@ -8,6 +7,8 @@ import com.ruby.rubia_server.core.entity.ConversationParticipant;
 import com.ruby.rubia_server.core.service.ConversationParticipantService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,22 +20,17 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/conversation-participants")
 @Slf4j
-public class ConversationParticipantController extends BaseCompanyEntityController<ConversationParticipant, CreateConversationParticipantDTO, UpdateConversationParticipantDTO, ConversationParticipantDTO> {
+public class ConversationParticipantController {
 
     private final ConversationParticipantService conversationParticipantService;
+    private final CompanyContextUtil companyContextUtil;
 
     public ConversationParticipantController(ConversationParticipantService conversationParticipantService, CompanyContextUtil companyContextUtil) {
-        super(conversationParticipantService, companyContextUtil);
         this.conversationParticipantService = conversationParticipantService;
+        this.companyContextUtil = companyContextUtil;
     }
 
-    @Override
-    protected String getEntityName() {
-        return "ConversationParticipant";
-    }
-
-    @Override
-    protected ConversationParticipantDTO convertToDTO(ConversationParticipant conversationParticipant) {
+    private ConversationParticipantDTO convertToDTO(ConversationParticipant conversationParticipant) {
         return ConversationParticipantDTO.builder()
                 .id(conversationParticipant.getId())
                 .companyId(conversationParticipant.getCompany().getId())
@@ -54,9 +50,85 @@ public class ConversationParticipantController extends BaseCompanyEntityControll
                 .build();
     }
 
-    @Override
-    protected UUID getCompanyIdFromDTO(CreateConversationParticipantDTO createDTO) {
-        return createDTO.getCompanyId();
+    @PostMapping
+    public ResponseEntity<ConversationParticipantDTO> create(@RequestBody CreateConversationParticipantDTO createDTO) {
+        log.debug("Creating ConversationParticipant via API with data: {}", createDTO);
+        
+        companyContextUtil.ensureCompanyAccess(createDTO.getCompanyId());
+        
+        ConversationParticipant entity = conversationParticipantService.create(createDTO);
+        ConversationParticipantDTO responseDTO = convertToDTO(entity);
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ConversationParticipantDTO> findById(@PathVariable UUID id) {
+        log.debug("Finding ConversationParticipant by id via API: {}", id);
+        
+        Optional<ConversationParticipant> entity = conversationParticipantService.findById(id);
+        if (entity.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        ConversationParticipantDTO responseDTO = convertToDTO(entity.get());
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<ConversationParticipantDTO>> findAll(Pageable pageable) {
+        log.debug("Finding all ConversationParticipant via API with pageable: {}", pageable);
+        
+        Page<ConversationParticipant> entities = conversationParticipantService.findAll(pageable);
+        Page<ConversationParticipantDTO> responseDTOs = entities.map(this::convertToDTO);
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @GetMapping("/company/{companyId}")
+    public ResponseEntity<List<ConversationParticipantDTO>> findByCompanyId(@PathVariable UUID companyId) {
+        log.debug("Finding ConversationParticipant by company id via API: {}", companyId);
+        
+        companyContextUtil.ensureCompanyAccess(companyId);
+        
+        List<ConversationParticipant> entities = conversationParticipantService.findByCompanyId(companyId);
+        List<ConversationParticipantDTO> responseDTOs = entities.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ConversationParticipantDTO> update(@PathVariable UUID id, @RequestBody UpdateConversationParticipantDTO updateDTO) {
+        log.debug("Updating ConversationParticipant via API with id: {} and data: {}", id, updateDTO);
+        
+        Optional<ConversationParticipant> updated = conversationParticipantService.update(id, updateDTO);
+        if (updated.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        ConversationParticipantDTO responseDTO = convertToDTO(updated.get());
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable UUID id) {
+        log.debug("Deleting ConversationParticipant via API with id: {}", id);
+        
+        boolean deleted = conversationParticipantService.deleteById(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/company/{companyId}/count")
+    public ResponseEntity<Long> countByCompanyId(@PathVariable UUID companyId) {
+        log.debug("Counting ConversationParticipant by company id via API: {}", companyId);
+        
+        companyContextUtil.ensureCompanyAccess(companyId);
+        
+        long count = conversationParticipantService.countByCompanyId(companyId);
+        return ResponseEntity.ok(count);
     }
 
     // Endpoints específicos da entidade

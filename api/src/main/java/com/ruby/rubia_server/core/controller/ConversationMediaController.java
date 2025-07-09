@@ -1,6 +1,5 @@
 package com.ruby.rubia_server.core.controller;
 
-import com.ruby.rubia_server.core.base.BaseCompanyEntityController;
 import com.ruby.rubia_server.core.dto.ConversationMediaDTO;
 import com.ruby.rubia_server.core.dto.CreateConversationMediaDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationMediaDTO;
@@ -9,32 +8,30 @@ import com.ruby.rubia_server.core.enums.MediaType;
 import com.ruby.rubia_server.core.service.ConversationMediaService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/conversation-media")
 @Slf4j
-public class ConversationMediaController extends BaseCompanyEntityController<ConversationMedia, CreateConversationMediaDTO, UpdateConversationMediaDTO, ConversationMediaDTO> {
+public class ConversationMediaController {
 
     private final ConversationMediaService conversationMediaService;
+    private final CompanyContextUtil companyContextUtil;
 
     public ConversationMediaController(ConversationMediaService conversationMediaService, CompanyContextUtil companyContextUtil) {
-        super(conversationMediaService, companyContextUtil);
         this.conversationMediaService = conversationMediaService;
+        this.companyContextUtil = companyContextUtil;
     }
 
-    @Override
-    protected String getEntityName() {
-        return "ConversationMedia";
-    }
-
-    @Override
-    protected ConversationMediaDTO convertToDTO(ConversationMedia conversationMedia) {
+    private ConversationMediaDTO convertToDTO(ConversationMedia conversationMedia) {
         return ConversationMediaDTO.builder()
                 .id(conversationMedia.getId())
                 .companyId(conversationMedia.getCompany().getId())
@@ -54,9 +51,85 @@ public class ConversationMediaController extends BaseCompanyEntityController<Con
                 .build();
     }
 
-    @Override
-    protected UUID getCompanyIdFromDTO(CreateConversationMediaDTO createDTO) {
-        return createDTO.getCompanyId();
+    @PostMapping
+    public ResponseEntity<ConversationMediaDTO> create(@RequestBody CreateConversationMediaDTO createDTO) {
+        log.debug("Creating ConversationMedia via API with data: {}", createDTO);
+        
+        companyContextUtil.ensureCompanyAccess(createDTO.getCompanyId());
+        
+        ConversationMedia entity = conversationMediaService.create(createDTO);
+        ConversationMediaDTO responseDTO = convertToDTO(entity);
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ConversationMediaDTO> findById(@PathVariable UUID id) {
+        log.debug("Finding ConversationMedia by id via API: {}", id);
+        
+        Optional<ConversationMedia> entity = conversationMediaService.findById(id);
+        if (entity.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        ConversationMediaDTO responseDTO = convertToDTO(entity.get());
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<ConversationMediaDTO>> findAll(Pageable pageable) {
+        log.debug("Finding all ConversationMedia via API with pageable: {}", pageable);
+        
+        Page<ConversationMedia> entities = conversationMediaService.findAll(pageable);
+        Page<ConversationMediaDTO> responseDTOs = entities.map(this::convertToDTO);
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @GetMapping("/company/{companyId}")
+    public ResponseEntity<List<ConversationMediaDTO>> findByCompanyId(@PathVariable UUID companyId) {
+        log.debug("Finding ConversationMedia by company id via API: {}", companyId);
+        
+        companyContextUtil.ensureCompanyAccess(companyId);
+        
+        List<ConversationMedia> entities = conversationMediaService.findByCompanyId(companyId);
+        List<ConversationMediaDTO> responseDTOs = entities.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ConversationMediaDTO> update(@PathVariable UUID id, @RequestBody UpdateConversationMediaDTO updateDTO) {
+        log.debug("Updating ConversationMedia via API with id: {} and data: {}", id, updateDTO);
+        
+        Optional<ConversationMedia> updated = conversationMediaService.update(id, updateDTO);
+        if (updated.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        ConversationMediaDTO responseDTO = convertToDTO(updated.get());
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable UUID id) {
+        log.debug("Deleting ConversationMedia via API with id: {}", id);
+        
+        boolean deleted = conversationMediaService.deleteById(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/company/{companyId}/count")
+    public ResponseEntity<Long> countByCompanyId(@PathVariable UUID companyId) {
+        log.debug("Counting ConversationMedia by company id via API: {}", companyId);
+        
+        companyContextUtil.ensureCompanyAccess(companyId);
+        
+        long count = conversationMediaService.countByCompanyId(companyId);
+        return ResponseEntity.ok(count);
     }
 
     // Endpoints específicos da entidade

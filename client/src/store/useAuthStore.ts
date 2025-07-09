@@ -149,8 +149,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         isAuthenticated, 
         hasAccess, 
         userCompany: user?.companySlug,
-        currentSlug: getCurrentCompanySlug(),
-        useMockAuth: import.meta.env.VITE_USE_MOCK_AUTH
+        currentSlug: getCurrentCompanySlug()
       })
       
       const finalAuthenticated = isAuthenticated && hasAccess
@@ -171,15 +170,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       if (!isAuthenticated) {
         set({ showLoginModal: true })
       } else if (!hasAccess) {
-        // Só redirecionar se não estiver em modo mock e não for desenvolvimento local
+        // Só redirecionar se não for desenvolvimento local
         const companyInfo = getCompanyFromSubdomain()
-        const useMockAuth = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
         const isLocalDev = companyInfo.isLocalDevelopment
         
-        if (!useMockAuth && !isLocalDev && user) {
+        if (!isLocalDev && user) {
           get().redirectToCompany(user.companySlug)
         } else {
-          // Em modo development/mock, apenas mostrar modal de login
+          // Em modo development, apenas mostrar modal de login
           set({ showLoginModal: true })
         }
       } else {

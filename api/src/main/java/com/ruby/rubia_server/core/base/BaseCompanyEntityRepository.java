@@ -16,8 +16,6 @@ public interface BaseCompanyEntityRepository<T extends BaseEntity> extends JpaRe
     
     long countByCompanyId(UUID companyId);
     
-    boolean existsByNameAndCompanyId(String name, UUID companyId);
-    
     @Query("SELECT e FROM #{#entityName} e WHERE e.company.id = :companyId AND e.createdAt BETWEEN :startDate AND :endDate")
     List<T> findByCompanyIdAndDateRange(@Param("companyId") UUID companyId, 
                                        @Param("startDate") LocalDateTime startDate, 

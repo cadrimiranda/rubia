@@ -14,7 +14,7 @@ public interface MessageTemplateRepository extends BaseCompanyEntityRepository<M
     
     List<MessageTemplate> findByCompanyIdAndIsAiGenerated(UUID companyId, Boolean isAiGenerated);
     
-    List<MessageTemplate> findByCreatedByUserId(UUID createdByUserId);
+    List<MessageTemplate> findByCreatedById(UUID createdById);
     
     List<MessageTemplate> findByAiAgentId(UUID aiAgentId);
     
@@ -32,7 +32,7 @@ public interface MessageTemplateRepository extends BaseCompanyEntityRepository<M
     
     long countByCompanyIdAndIsAiGenerated(UUID companyId, Boolean isAiGenerated);
     
-    long countByCreatedByUserId(UUID createdByUserId);
+    long countByCreatedById(UUID createdById);
     
     long countByAiAgentId(UUID aiAgentId);
 }

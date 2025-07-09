@@ -108,7 +108,7 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     @Transactional(readOnly = true)
     public List<MessageTemplate> findByCreatedByUserId(UUID createdByUserId) {
         log.debug("Finding MessageTemplates by created by user id: {}", createdByUserId);
-        return messageTemplateRepository.findByCreatedByUserId(createdByUserId);
+        return messageTemplateRepository.findByCreatedById(createdByUserId);
     }
 
     @Transactional(readOnly = true)
@@ -162,7 +162,7 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     @Transactional(readOnly = true)
     public long countByCreatedByUserId(UUID createdByUserId) {
         log.debug("Counting MessageTemplates by created by user id: {}", createdByUserId);
-        return messageTemplateRepository.countByCreatedByUserId(createdByUserId);
+        return messageTemplateRepository.countByCreatedById(createdByUserId);
     }
 
     @Transactional(readOnly = true)

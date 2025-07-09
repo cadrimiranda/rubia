@@ -15,7 +15,7 @@ public interface MessageTemplateRevisionRepository extends BaseCompanyEntityRepo
     
     List<MessageTemplateRevision> findByTemplateId(UUID templateId);
     
-    List<MessageTemplateRevision> findByEditedByUserId(UUID editedByUserId);
+    List<MessageTemplateRevision> findByEditedById(UUID editedById);
     
     Optional<MessageTemplateRevision> findByTemplateIdAndRevisionNumber(UUID templateId, Integer revisionNumber);
     

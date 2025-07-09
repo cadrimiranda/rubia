@@ -165,9 +165,21 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string
-  user: UserDTO
+  user: {
+    id: string
+    name: string
+    email: string
+    role: UserRole
+    companyGroupId: string
+    companyGroupName: string
+    companySlug: string
+    departmentId?: string
+    departmentName?: string
+    avatarUrl?: string
+    isOnline: boolean
+  }
   expiresIn: number
-  companyId: string
+  companyGroupId: string
   companySlug: string
 }
 
