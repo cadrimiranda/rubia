@@ -5,8 +5,11 @@ import com.ruby.rubia_server.core.base.EntityRelationshipValidator;
 import com.ruby.rubia_server.core.dto.CreateMessageTemplateDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageTemplateDTO;
 import com.ruby.rubia_server.core.entity.*;
+import com.ruby.rubia_server.core.exception.MessageTemplateRevisionException;
+import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 import com.ruby.rubia_server.core.repository.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,16 +25,22 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     private final MessageTemplateRepository messageTemplateRepository;
     private final UserRepository userRepository;
     private final AIAgentRepository aiAgentRepository;
+    private final MessageTemplateRevisionService messageTemplateRevisionService;
+    
+    @Value("${app.message-template.revision.fail-on-error:true}")
+    private boolean failOnRevisionError;
 
     public MessageTemplateService(MessageTemplateRepository messageTemplateRepository,
                                  CompanyRepository companyRepository,
                                  UserRepository userRepository,
                                  AIAgentRepository aiAgentRepository,
+                                 MessageTemplateRevisionService messageTemplateRevisionService,
                                  EntityRelationshipValidator relationshipValidator) {
         super(messageTemplateRepository, companyRepository, relationshipValidator);
         this.messageTemplateRepository = messageTemplateRepository;
         this.userRepository = userRepository;
         this.aiAgentRepository = aiAgentRepository;
+        this.messageTemplateRevisionService = messageTemplateRevisionService;
     }
 
     @Override
@@ -65,12 +74,46 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
     }
 
     @Override
+    public MessageTemplate create(CreateMessageTemplateDTO createDTO) {
+        log.debug("Creating MessageTemplate: {}", createDTO.getName());
+        
+        // Create the template using the parent method
+        MessageTemplate createdTemplate = super.create(createDTO);
+        
+        // Create the initial revision (revision number 1)
+        if (createDTO.getCreatedByUserId() != null) {
+            try {
+                messageTemplateRevisionService.createRevisionFromTemplate(
+                    createdTemplate.getId(), 
+                    createdTemplate.getContent(), 
+                    createDTO.getCreatedByUserId()
+                );
+                log.debug("Initial revision created for template: {}", createdTemplate.getId());
+            } catch (Exception e) {
+                return handleRevisionCreationFailure(
+                    createdTemplate.getId().toString(),
+                    "CREATE",
+                    "Failed to create initial revision for template",
+                    e,
+                    createdTemplate
+                );
+            }
+        }
+        
+        return createdTemplate;
+    }
+
+    @Override
     protected void updateEntityFromDTO(MessageTemplate messageTemplate, UpdateMessageTemplateDTO updateDTO) {
+        boolean contentChanged = false;
+        String oldContent = messageTemplate.getContent();
+        
         if (updateDTO.getName() != null) {
             messageTemplate.setName(updateDTO.getName());
         }
         if (updateDTO.getContent() != null) {
             messageTemplate.setContent(updateDTO.getContent());
+            contentChanged = !oldContent.equals(updateDTO.getContent());
         }
         if (updateDTO.getTone() != null) {
             messageTemplate.setTone(updateDTO.getTone());
@@ -84,6 +127,25 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
             
             // Increment edit count
             messageTemplate.setEditCount(messageTemplate.getEditCount() + 1);
+            
+            // Create revision if content changed
+            if (contentChanged) {
+                try {
+                    messageTemplateRevisionService.createRevisionFromTemplate(
+                        messageTemplate.getId(), 
+                        messageTemplate.getContent(), 
+                        updateDTO.getLastEditedByUserId()
+                    );
+                    log.debug("Revision created for template: {} after content change", messageTemplate.getId());
+                } catch (Exception e) {
+                    handleRevisionCreationFailureUpdate(
+                        messageTemplate.getId().toString(),
+                        "UPDATE",
+                        "Failed to create revision for template update",
+                        e
+                    );
+                }
+            }
         }
     }
 
@@ -247,5 +309,43 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
         // Combine and deduplicate results
         nameMatches.addAll(contentMatches);
         return nameMatches.stream().distinct().toList();
+    }
+    
+    /**
+     * Handles revision creation failure for create operations.
+     * Based on configuration, either throws exception (rollback) or returns the template (continue).
+     */
+    private MessageTemplate handleRevisionCreationFailure(
+            String templateId, 
+            String operation, 
+            String message, 
+            Exception cause,
+            MessageTemplate template) {
+        
+        if (failOnRevisionError) {
+            log.error("Failed to create revision for template: {}, rolling back transaction", templateId, cause);
+            throw new MessageTemplateTransactionException(templateId, operation, message, cause);
+        } else {
+            log.warn("Failed to create revision for template: {}, continuing without revision", templateId, cause);
+            return template;
+        }
+    }
+    
+    /**
+     * Handles revision creation failure for update operations.
+     * Based on configuration, either throws exception (rollback) or continues silently.
+     */
+    private void handleRevisionCreationFailureUpdate(
+            String templateId, 
+            String operation, 
+            String message, 
+            Exception cause) {
+        
+        if (failOnRevisionError) {
+            log.error("Failed to create revision for template: {}, rolling back transaction", templateId, cause);
+            throw new MessageTemplateTransactionException(templateId, operation, message, cause);
+        } else {
+            log.warn("Failed to create revision for template: {}, continuing without revision", templateId, cause);
+        }
     }
 }

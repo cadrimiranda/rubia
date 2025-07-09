@@ -23,7 +23,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import com.ruby.rubia_server.core.exception.MessageTemplateTransactionException;
 
 @ExtendWith(MockitoExtension.class)
 class MessageTemplateServiceTest {
@@ -43,9 +45,12 @@ class MessageTemplateServiceTest {
     @Mock
     private EntityRelationshipValidator relationshipValidator;
 
+    @Mock
+    private MessageTemplateRevisionService messageTemplateRevisionService;
+
     @InjectMocks
     private MessageTemplateService messageTemplateService;
-
+    
     private Company company;
     private User user;
     private AIAgent aiAgent;
@@ -59,6 +64,14 @@ class MessageTemplateServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Set the failOnRevisionError field to true by default for tests
+        try {
+            java.lang.reflect.Field field = MessageTemplateService.class.getDeclaredField("failOnRevisionError");
+            field.setAccessible(true);
+            field.set(messageTemplateService, true);
+        } catch (Exception e) {
+            fail("Failed to set failOnRevisionError field");
+        }
         companyId = UUID.randomUUID();
         userId = UUID.randomUUID();
         aiAgentId = UUID.randomUUID();
@@ -465,6 +478,260 @@ class MessageTemplateServiceTest {
         // Then
         assertTrue(result.isPresent());
         verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void createMessageTemplate_ShouldCreateInitialRevision_WhenCreatedByUserIdProvided() {
+        // Given
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+
+        // When
+        MessageTemplate result = messageTemplateService.create(createDTO);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(messageTemplate.getId(), result.getId());
+        
+        // Verify that initial revision is created
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplate.getId()),
+            eq(createDTO.getContent()),
+            eq(userId)
+        );
+        
+        verify(companyRepository).findById(companyId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void createMessageTemplate_ShouldNotCreateInitialRevision_WhenCreatedByUserIdNotProvided() {
+        // Given
+        CreateMessageTemplateDTO dtoWithoutUser = CreateMessageTemplateDTO.builder()
+                .companyId(companyId)
+                .name("Test Template")
+                .content("Hello there!")
+                .isAiGenerated(false)
+                .build();
+        
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+
+        // When
+        MessageTemplate result = messageTemplateService.create(dtoWithoutUser);
+
+        // Then
+        assertNotNull(result);
+        
+        // Verify that no revision is created when user ID is not provided
+        verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
+        
+        verify(companyRepository).findById(companyId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void updateMessageTemplate_ShouldCreateRevision_WhenContentChangesAndUserProvided() {
+        // Given
+        String originalContent = "Original content";
+        String newContent = "Updated content";
+        
+        messageTemplate.setContent(originalContent);
+        
+        UpdateMessageTemplateDTO updateWithContentChange = UpdateMessageTemplateDTO.builder()
+                .name("Updated Template")
+                .content(newContent)
+                .lastEditedByUserId(userId)
+                .build();
+        
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+
+        // When
+        Optional<MessageTemplate> result = messageTemplateService.update(messageTemplateId, updateWithContentChange);
+
+        // Then
+        assertTrue(result.isPresent());
+        
+        // Verify that revision is created when content changes
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplateId),
+            eq(newContent),
+            eq(userId)
+        );
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void updateMessageTemplate_ShouldNotCreateRevision_WhenContentDoesNotChange() {
+        // Given
+        String originalContent = "Original content";
+        
+        messageTemplate.setContent(originalContent);
+        
+        UpdateMessageTemplateDTO updateWithoutContentChange = UpdateMessageTemplateDTO.builder()
+                .name("Updated Template Name Only")
+                .content(originalContent) // Same content
+                .lastEditedByUserId(userId)
+                .build();
+        
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+
+        // When
+        Optional<MessageTemplate> result = messageTemplateService.update(messageTemplateId, updateWithoutContentChange);
+
+        // Then
+        assertTrue(result.isPresent());
+        
+        // Verify that no revision is created when content doesn't change
+        verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void updateMessageTemplate_ShouldNotCreateRevision_WhenUserNotProvided() {
+        // Given
+        String originalContent = "Original content";
+        String newContent = "Updated content";
+        
+        messageTemplate.setContent(originalContent);
+        
+        UpdateMessageTemplateDTO updateWithoutUser = UpdateMessageTemplateDTO.builder()
+                .name("Updated Template")
+                .content(newContent)
+                .build(); // No lastEditedByUserId
+        
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+
+        // When
+        Optional<MessageTemplate> result = messageTemplateService.update(messageTemplateId, updateWithoutUser);
+
+        // Then
+        assertTrue(result.isPresent());
+        
+        // Verify that no revision is created when user is not provided
+        verify(messageTemplateRevisionService, never()).createRevisionFromTemplate(any(), any(), any());
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void createMessageTemplate_ShouldRollbackTransaction_WhenRevisionCreationFails() {
+        // Given
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+        
+        // Mock revision service to throw exception
+        doThrow(new RuntimeException("Revision creation failed")).when(messageTemplateRevisionService)
+                .createRevisionFromTemplate(any(), any(), any());
+
+        // When & Then
+        MessageTemplateTransactionException exception = assertThrows(MessageTemplateTransactionException.class, 
+            () -> messageTemplateService.create(createDTO));
+        
+        assertEquals("Failed to create initial revision for template", exception.getMessage());
+        
+        // Verify that revision creation was attempted
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplate.getId()),
+            eq(createDTO.getContent()),
+            eq(userId)
+        );
+        
+        verify(companyRepository).findById(companyId);
+        verify(userRepository).findById(userId);
+        verify(messageTemplateRepository).save(any(MessageTemplate.class));
+    }
+
+    @Test
+    void updateMessageTemplate_ShouldRollbackTransaction_WhenRevisionCreationFails() {
+        // Given
+        String originalContent = "Original content";
+        String newContent = "Updated content";
+        
+        messageTemplate.setContent(originalContent);
+        
+        UpdateMessageTemplateDTO updateWithContentChange = UpdateMessageTemplateDTO.builder()
+                .content(newContent)
+                .lastEditedByUserId(userId)
+                .build();
+        
+        when(messageTemplateRepository.findById(messageTemplateId)).thenReturn(Optional.of(messageTemplate));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        
+        // Mock revision service to throw exception
+        doThrow(new RuntimeException("Revision creation failed")).when(messageTemplateRevisionService)
+                .createRevisionFromTemplate(any(), any(), any());
+
+        // When & Then
+        MessageTemplateTransactionException exception = assertThrows(MessageTemplateTransactionException.class, 
+            () -> messageTemplateService.update(messageTemplateId, updateWithContentChange));
+        
+        assertEquals("Failed to create revision for template update", exception.getMessage());
+        
+        // Verify that revision creation was attempted
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplateId),
+            eq(newContent),
+            eq(userId)
+        );
+        
+        verify(messageTemplateRepository).findById(messageTemplateId);
+        verify(userRepository).findById(userId);
+        // Note: save should not be called due to rollback
+    }
+    
+    @Test
+    void createMessageTemplate_ShouldContinueCreation_WhenRevisionCreationFailsAndConfigDisabled() {
+        // Given
+        // Use reflection to set the failOnRevisionError field to false
+        try {
+            java.lang.reflect.Field field = MessageTemplateService.class.getDeclaredField("failOnRevisionError");
+            field.setAccessible(true);
+            field.set(messageTemplateService, false);
+        } catch (Exception e) {
+            fail("Failed to set failOnRevisionError field");
+        }
+        
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(messageTemplateRepository.save(any(MessageTemplate.class))).thenReturn(messageTemplate);
+        
+        // Mock revision service to throw exception
+        doThrow(new RuntimeException("Revision creation failed")).when(messageTemplateRevisionService)
+                .createRevisionFromTemplate(any(), any(), any());
+
+        // When
+        MessageTemplate result = messageTemplateService.create(createDTO);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(messageTemplate.getId(), result.getId());
+        
+        // Verify that revision creation was attempted but template was still created
+        verify(messageTemplateRevisionService).createRevisionFromTemplate(
+            eq(messageTemplate.getId()),
+            eq(createDTO.getContent()),
+            eq(userId)
+        );
+        
+        verify(companyRepository).findById(companyId);
+        verify(userRepository).findById(userId);
         verify(messageTemplateRepository).save(any(MessageTemplate.class));
     }
 }
