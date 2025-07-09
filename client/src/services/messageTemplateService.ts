@@ -114,40 +114,16 @@ export const messageTemplateService = {
     }
   },
 
-  async getDeleted(): Promise<MessageTemplateResponse[]> {
+  async getDeleted(companyId?: string): Promise<MessageTemplateResponse[]> {
     try {
-      // Primeira tentativa: usar parâmetro lastRevisionType se o backend suportar
-      try {
-        const response = await apiClient.get<{content: MessageTemplateResponse[], page: any}>('/api/message-templates', { 
-          deleted: 'true',
-          lastRevisionType: 'DELETE'
-        });
-        return response.content;
-      } catch (paramError) {
-        console.warn('Backend não suporta lastRevisionType, usando fallback');
-        
-        // Fallback: buscar todos os templates excluídos e filtrar no frontend
-        const response = await apiClient.get<{content: MessageTemplateResponse[], page: any}>('/api/message-templates', { 
-          deleted: 'true'
-        });
-        
-        const deletedTemplates = response.content;
-        
-        // Filtrar apenas templates onde a última revisão é DELETE
-        const filteredTemplates = await Promise.all(
-          deletedTemplates.map(async (template) => {
-            try {
-              const history = await this.getRevisionHistory(template.id);
-              const lastRevision = history[0]; // Assumindo que vem ordenado por mais recente
-              return lastRevision?.revisionType === 'DELETE' ? template : null;
-            } catch (error) {
-              console.warn(`Erro ao buscar histórico do template ${template.id}:`, error);
-              return template; // Se não conseguir buscar histórico, mantém o template
-            }
-          })
-        );
-        
-        return filteredTemplates.filter(Boolean) as MessageTemplateResponse[];
+      if (companyId) {
+        // Usar endpoint específico da empresa
+        const response = await apiClient.get<MessageTemplateResponse[]>(`/api/message-templates/company/${companyId}/deleted`);
+        return response;
+      } else {
+        // Fallback para buscar todos os templates excluídos
+        const response = await apiClient.get<MessageTemplateResponse[]>('/api/message-templates/deleted');
+        return response;
       }
     } catch (error) {
       console.error('Error fetching deleted message templates:', error);
@@ -157,21 +133,12 @@ export const messageTemplateService = {
 
   async restore(id: string): Promise<MessageTemplateResponse> {
     try {
-      // Primeira tentativa: endpoint específico de restore
+      // O backend tem o método restoreById que usa PUT /api/message-templates/{id}/restore
       const response = await apiClient.put<MessageTemplateResponse>(`/api/message-templates/${id}/restore`);
       return response;
     } catch (error) {
-      console.error('Error restoring message template with specific endpoint:', error);
-      try {
-        // Segunda tentativa: usar endpoint de update com flag
-        const response = await apiClient.put<MessageTemplateResponse>(`/api/message-templates/${id}`, {
-          restore: true
-        });
-        return response;
-      } catch (updateError) {
-        console.error('Error restoring message template with update endpoint:', updateError);
-        throw updateError;
-      }
+      console.error('Error restoring message template:', error);
+      throw error;
     }
   }
 };

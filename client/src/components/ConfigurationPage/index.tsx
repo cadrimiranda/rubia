@@ -130,7 +130,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const loadDeletedTemplates = async () => {
     setIsLoadingDeletedTemplates(true);
     try {
-      const apiTemplates = await messageTemplateService.getDeleted();
+      const apiTemplates = await messageTemplateService.getDeleted(user?.companyId);
       const convertedTemplates: ConversationTemplate[] = apiTemplates.map(
         (template) => ({
           id: template.id,
