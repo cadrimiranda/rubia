@@ -45,6 +45,7 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
                 .orElseThrow(() -> new RuntimeException("MessageTemplate not found with ID: " + createDTO.getTemplateId()));
 
         MessageTemplateRevision.MessageTemplateRevisionBuilder builder = MessageTemplateRevision.builder()
+                .company(template.getCompany()) // Set the company from the template
                 .template(template)
                 .revisionNumber(createDTO.getRevisionNumber())
                 .content(createDTO.getContent());
@@ -152,6 +153,7 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
         Integer nextRevisionNumber = getNextRevisionNumber(templateId);
 
         MessageTemplateRevision revision = MessageTemplateRevision.builder()
+                .company(template.getCompany()) // Set the company from the template
                 .template(template)
                 .revisionNumber(nextRevisionNumber)
                 .content(content)
