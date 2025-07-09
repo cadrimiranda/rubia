@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Upload, User, Check, Plus, Edit3, Sparkles, Trash2, MoreVertical } from "lucide-react";
 import { Button, Select, Input, Upload as AntUpload, DatePicker, message, Radio, Dropdown } from "antd";
 import type { UploadProps, RadioChangeEvent } from "antd";
@@ -7,6 +7,8 @@ import { TemplateModal } from "../TemplateModal";
 import type { ConversationTemplate, CampaignData } from "../../types/types";
 import { createMockCampaign, syncCampaignConversationsWithStore, simulateContactStatusChanges, getAllCampaignConversations } from "../../mocks/campaignMock";
 import { useChatStore } from "../../store/useChatStore";
+import { messageTemplateService, type CreateMessageTemplateRequest } from "../../services/messageTemplateService";
+import { useAuthStore } from "../../store/useAuthStore";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -118,6 +120,7 @@ const defaultTemplates: ConversationTemplate[] = [
 
 export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) => {
   const { refreshConversations } = useChatStore();
+  const { user } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState<'agent' | 'campaign' | 'templates'>('agent');
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
@@ -138,6 +141,40 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
   const [duplicateUsers, setDuplicateUsers] = useState<string[]>([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ConversationTemplate | null>(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+
+  // Carregar templates da API
+  const loadTemplates = async () => {
+    setIsLoadingTemplates(true);
+    try {
+      // Carregar todos os templates ou apenas da empresa do usuário
+      const apiTemplates = user?.companyId 
+        ? await messageTemplateService.getByCompany(user.companyId)
+        : await messageTemplateService.getAll();
+        
+      const convertedTemplates: ConversationTemplate[] = apiTemplates.map(template => ({
+        id: template.id,
+        title: template.name,
+        content: template.content,
+        selected: false,
+        category: template.tone || 'geral',
+        isCustom: !template.isAiGenerated
+      }));
+      setTemplates([...defaultTemplates, ...convertedTemplates]);
+    } catch (error) {
+      console.error('Erro ao carregar templates:', error);
+      message.error('Erro ao carregar templates da API');
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  // Carregar templates ao montar o componente ou quando o usuário mudar
+  useEffect(() => {
+    if (user?.companyId) {
+      loadTemplates();
+    }
+  }, [user?.companyId]);
 
   const handleAgentConfigChange = (field: keyof AgentConfig, value: string) => {
     setAgentConfig(prev => ({
@@ -189,32 +226,67 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
     }
   };
 
-  const handleDeleteTemplate = (templateId: string) => {
-    setTemplates(prev => prev.filter(t => t.id !== templateId));
-    message.success('Template excluído com sucesso!');
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      const template = templates.find(t => t.id === templateId);
+      if (template?.isCustom) {
+        // Apenas templates customizados (da API) podem ser deletados
+        await messageTemplateService.delete(templateId);
+        message.success('Template excluído com sucesso!');
+        // Recarregar templates da API
+        await loadTemplates();
+      } else {
+        // Templates padrão não podem ser deletados
+        message.warning('Templates padrão não podem ser excluídos');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir template:', error);
+      message.error('Erro ao excluir template');
+    }
   };
 
-  const handleSaveTemplate = (templateData: { title: string; content: string; category: string }) => {
-    if (editingTemplate) {
-      // Editar template existente
-      setTemplates(prev => 
-        prev.map(t => 
-          t.id === editingTemplate.id 
-            ? { ...t, ...templateData, isCustom: true }
-            : t
-        )
-      );
-      message.success('Template atualizado com sucesso!');
-    } else {
-      // Criar novo template
-      const newTemplate: ConversationTemplate = {
-        id: Date.now().toString(),
-        ...templateData,
-        selected: false,
-        isCustom: true
-      };
-      setTemplates(prev => [...prev, newTemplate]);
-      message.success('Template criado com sucesso!');
+  const handleSaveTemplate = async (templateData: { title: string; content: string; category: string }) => {
+    try {
+      if (editingTemplate) {
+        // Editar template existente
+        if (editingTemplate.isCustom) {
+          // Apenas templates customizados (da API) podem ser editados
+          const updateData = {
+            name: templateData.title,
+            content: templateData.content,
+            tone: templateData.category
+          };
+          await messageTemplateService.update(editingTemplate.id, updateData);
+          message.success('Template atualizado com sucesso!');
+        } else {
+          // Templates padrão não podem ser editados, apenas clonar
+          message.info('Templates padrão não podem ser editados. Criando uma nova versão...');
+        }
+      } else {
+        // Criar novo template
+        if (!user?.companyId) {
+          message.error('Erro: Usuário não possui empresa associada');
+          return;
+        }
+        
+        const createData: CreateMessageTemplateRequest = {
+          companyId: user.companyId,
+          name: templateData.title,
+          content: templateData.content,
+          isAiGenerated: false,
+          tone: templateData.category
+        };
+        
+        await messageTemplateService.create(createData);
+        message.success('Template criado com sucesso!');
+      }
+      
+      // Recarregar templates da API
+      await loadTemplates();
+      
+    } catch (error) {
+      console.error('Erro ao salvar template:', error);
+      message.error('Erro ao salvar template');
     }
     
     setShowTemplateModal(false);
@@ -832,11 +904,18 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({ onBack }) 
                   <div className="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-lg">
                     {templates.filter(t => t.selected).length} de {templates.length} selecionados
                   </div>
+                  {user?.companyId && (
+                    <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                      Empresa: {user.companySlug || user.companyId}
+                    </div>
+                  )}
                   <Button 
                     type="primary" 
                     icon={<Plus />}
                     onClick={() => setShowTemplateModal(true)}
                     size="large"
+                    loading={isLoadingTemplates}
+                    disabled={!user?.companyId}
                     className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                   >
                     Novo Template
