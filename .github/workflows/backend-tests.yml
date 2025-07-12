@@ -20,6 +20,10 @@ jobs:
   test:
     name: Run Unit and Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write
 
     services:
       postgres:
