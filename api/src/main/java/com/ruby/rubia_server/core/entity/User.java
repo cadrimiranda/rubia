@@ -46,7 +46,7 @@ public class User {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
     
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(nullable = false)
     private UserRole role;
     

@@ -5,12 +5,15 @@ import com.ruby.rubia_server.core.dto.CreateMessageTemplateDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageTemplateDTO;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.CompanyGroup;
+import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageTemplateRevision;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.CompanyPlanType;
+import com.ruby.rubia_server.core.enums.UserRole;
 import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRevisionRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
@@ -55,6 +58,9 @@ class MessageTemplateServiceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
     @MockBean
     private CompanyContextUtil companyContextUtil;
 
@@ -88,11 +94,23 @@ class MessageTemplateServiceIntegrationTest extends AbstractIntegrationTest {
                 .build();
         company = companyRepository.save(company);
 
+        // Create and save a department
+        Department department = Department.builder()
+                .name("Test Department")
+                .description("Test Description")
+                .company(company)
+                .autoAssign(true)
+                .build();
+        department = departmentRepository.save(department);
+
         // Create and save a user
         user = User.builder()
                 .name("Test User")
                 .email("test@example.com")
+                .passwordHash("$2a$10$abc123")
+                .role(UserRole.ADMIN)
                 .company(company)
+                .department(department)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();

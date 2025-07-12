@@ -36,7 +36,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u WHERE u.department.id = :departmentId AND u.isOnline = true AND u.company.id = :companyId")
     List<User> findAvailableAgentsByDepartmentAndCompany(@Param("departmentId") UUID departmentId, @Param("companyId") UUID companyId);
     
-    @Query("SELECT u FROM User u WHERE u.role = 'AGENT' AND u.isOnline = true AND u.company.id = :companyId")
+    @Query("SELECT u FROM User u WHERE u.role = 2 AND u.isOnline = true AND u.company.id = :companyId")
     List<User> findAvailableAgentsByCompany(@Param("companyId") UUID companyId);
     
     @Query("SELECT u FROM User u WHERE u.company.id = :companyId ORDER BY u.name ASC")

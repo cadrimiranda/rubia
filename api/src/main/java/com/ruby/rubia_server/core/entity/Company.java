@@ -47,7 +47,7 @@ public class Company {
     @Builder.Default
     private Boolean isActive = true;
     
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(name = "plan_type")
     @Builder.Default
     private CompanyPlanType planType = CompanyPlanType.BASIC;
