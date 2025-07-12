@@ -107,7 +107,7 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         UUID companyId = UUID.randomUUID();
         jdbcTemplate.update(
             "INSERT INTO companies (id, name, slug, description, contact_email, contact_phone, is_active, plan_type, max_users, max_whatsapp_numbers, company_group_id, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?::companyplantype, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             companyId,
             "Test Company",
             "test-company-" + UUID.randomUUID().toString().substring(0, 8),
@@ -115,7 +115,7 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
             "test@example.com",
             "(11) 99999-9999",
             true,
-            "BASIC",
+            0, // BASIC = 0 (ORDINAL)
             10,
             1,
             companyGroup.getId(),
@@ -142,14 +142,14 @@ class MessageTemplateServiceContinueOnErrorIntegrationTest extends AbstractInteg
         UUID userId = UUID.randomUUID();
         jdbcTemplate.update(
             "INSERT INTO users (id, name, email, password_hash, company_id, department_id, role, is_online, is_whatsapp_active, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?::userrole, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             userId,
             "Test User",
             "test@example.com",
             "test-hash",
             company.getId(),
             departmentId,
-            "AGENT",
+            2, // AGENT = 2 (ORDINAL)
             false,
             false,
             LocalDateTime.now(),

@@ -444,18 +444,23 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     template.getId(),
-                    template.getContent(),
+                    "[TEMPLATE DELETED] " + template.getContent(),
                     authenticatedUser.getId(),
                     RevisionType.DELETE
                 );
                 log.debug("Deletion revision created for template: {}", template.getId());
             } catch (Exception e) {
-                handleRevisionCreationFailureUpdate(
-                    template.getId().toString(),
-                    "DELETE",
-                    "Failed to create revision for template deletion",
-                    e
-                );
+                try {
+                    handleRevisionCreationFailureUpdate(
+                        template.getId().toString(),
+                        "DELETE",
+                        "Failed to create revision for template deletion",
+                        e
+                    );
+                } catch (MessageTemplateTransactionException ex) {
+                    // Re-throw the exception to trigger transaction rollback
+                    throw ex;
+                }
             }
         } catch (Exception e) {
             log.warn("Could not set deleted by user: {}", e.getMessage());
@@ -519,18 +524,23 @@ public class MessageTemplateService extends BaseCompanyEntityService<MessageTemp
             try {
                 messageTemplateRevisionService.createRevisionFromTemplate(
                     template.getId(),
-                    template.getContent(),
+                    "[TEMPLATE RESTORED] " + template.getContent(),
                     authenticatedUser.getId(),
                     RevisionType.RESTORE
                 );
                 log.debug("Restoration revision created for template: {}", template.getId());
             } catch (Exception e) {
-                handleRevisionCreationFailureUpdate(
-                    template.getId().toString(),
-                    "RESTORE",
-                    "Failed to create revision for template restoration",
-                    e
-                );
+                try {
+                    handleRevisionCreationFailureUpdate(
+                        template.getId().toString(),
+                        "RESTORE",
+                        "Failed to create revision for template restoration",
+                        e
+                    );
+                } catch (MessageTemplateTransactionException ex) {
+                    // Re-throw the exception to trigger transaction rollback
+                    throw ex;
+                }
             }
         } catch (Exception e) {
             log.warn("Could not set restored by user: {}", e.getMessage());
