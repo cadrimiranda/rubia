@@ -16,7 +16,8 @@ import { MessageEnhancerModal } from "./MessageEnhancerModal";
 import { conversationApi } from "../api/services/conversationApi";
 import { customerApi } from "../api/services/customerApi";
 import { customerAdapter } from "../adapters/customerAdapter";
-// import type { ConversationDTO } from "../api/types";
+import { conversationAdapter } from "../adapters/conversationAdapter";
+import type { ConversationDTO } from "../api/types";
 import { getMessagesForDonor } from "../mocks/data";
 import { getDonorsByCampaignAndStatus, getMessagesByCampaign, getAllDonorsByStatus } from "../mocks/campaignData";
 import { mockCampaigns } from "../mocks/campaigns";
@@ -58,6 +59,7 @@ export const BloodCenterChat: React.FC = () => {
   const [allContacts, setAllContacts] = useState<Donor[]>([]); // TODOS os contatos
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<ChatStatus>('ativos');
   const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
@@ -649,7 +651,8 @@ export const BloodCenterChat: React.FC = () => {
   const handleSendMessage = async () => {
     if (
       (!state.messageInput.trim() && state.attachments.length === 0) ||
-      !state.selectedDonor
+      !state.selectedDonor ||
+      isCreatingConversation
     )
       return;
 
@@ -657,12 +660,19 @@ export const BloodCenterChat: React.FC = () => {
     const isFirstMessage = !state.selectedDonor.hasActiveConversation && !state.selectedDonor.lastMessage;
 
     if (isFirstMessage) {
+      setIsCreatingConversation(true);
+      
       try {
-        // Criar conversa para este cliente
-        await conversationApi.create({
-          customerId: state.selectedDonor.id,
-          channel: 'WEB'
-        });
+        console.log('🚀 Criando conversa para:', state.selectedDonor.name);
+        
+        // Criar conversa para este cliente usando o adapter
+        const createRequest = conversationAdapter.toCreateRequest(
+          state.selectedDonor.id,
+          'WEB_CHAT'
+        );
+        
+        const newConversation = await conversationApi.create(createRequest);
+        console.log('✅ Conversa criada:', newConversation.id);
 
         // Atualizar o donor para marcar que agora tem conversa ativa
         const updatedDonor = {
@@ -683,7 +693,30 @@ export const BloodCenterChat: React.FC = () => {
         console.log('✅ Conversa criada para novo contato:', updatedDonor.name);
       } catch (error) {
         console.error('❌ Erro ao criar conversa:', error);
-        // Continuar enviando a mensagem mesmo se falhar
+        
+        // Mostrar feedback de erro ao usuário
+        updateState({
+          showConfirmationModal: true,
+          confirmationData: {
+            title: 'Erro ao Criar Conversa',
+            message: 'Não foi possível criar a conversa. Deseja tentar novamente?',
+            type: 'warning',
+            confirmText: 'Tentar Novamente',
+            onConfirm: () => {
+              updateState({
+                showConfirmationModal: false,
+                confirmationData: null
+              });
+              // Tentar novamente após fechar o modal
+              setTimeout(() => handleSendMessage(), 100);
+            }
+          }
+        });
+        
+        setIsCreatingConversation(false);
+        return; // Não enviar a mensagem se falhou ao criar conversa
+      } finally {
+        setIsCreatingConversation(false);
       }
     }
 
@@ -858,6 +891,7 @@ export const BloodCenterChat: React.FC = () => {
               }
               onKeyPress={handleKeyPress}
               onEnhanceMessage={handleEnhanceMessage}
+              isLoading={isCreatingConversation}
             />
           </>
         ) : (

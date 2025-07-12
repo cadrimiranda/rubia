@@ -9,19 +9,19 @@ class ConversationAdapter {
   toChat(dto: ConversationDTO): Chat {
     return {
       id: dto.id,
-      contact: dto.customer ? this.convertCustomer(dto.customer) : {
+      contact: {
         id: dto.customerId,
-        name: 'Cliente Desconhecido',
-        avatar: '',
+        name: dto.customerName || this.formatPhoneAsName(dto.customerPhone || ''),
+        avatar: this.generateAvatarUrl(dto.customerName || dto.customerPhone || ''),
         isOnline: false,
-        phone: ''
+        phone: dto.customerPhone || ''
       },
       messages: dto.lastMessage ? [this.convertMessage(dto.lastMessage)] : [],
       lastMessage: dto.lastMessage ? this.convertMessage(dto.lastMessage) : undefined,
       unreadCount: this.calculateUnreadCount(),
-      isPinned: dto.isPinned,
+      isPinned: dto.isPinned || false,
       status: this.mapStatus(dto.status),
-      assignedAgent: dto.assignedUser?.name,
+      assignedAgent: dto.assignedUserName,
       tags: [],
       priority: dto.priority || 0,
       channel: dto.channel || 'WHATSAPP',
@@ -183,10 +183,16 @@ class ConversationAdapter {
   updateChat(existingChat: Chat, dto: ConversationDTO): Chat {
     return {
       ...existingChat,
-      contact: dto.customer ? this.convertCustomer(dto.customer) : existingChat.contact,
-      isPinned: dto.isPinned,
+      contact: {
+        id: dto.customerId,
+        name: dto.customerName || this.formatPhoneAsName(dto.customerPhone || ''),
+        avatar: this.generateAvatarUrl(dto.customerName || dto.customerPhone || ''),
+        isOnline: false,
+        phone: dto.customerPhone || ''
+      },
+      isPinned: dto.isPinned || false,
       status: this.mapStatus(dto.status),
-      assignedAgent: dto.assignedUser?.name,
+      assignedAgent: dto.assignedUserName,
       updatedAt: new Date(dto.updatedAt),
       // Manter mensagens existentes se não houver novas
       lastMessage: dto.lastMessage ? this.convertMessage(dto.lastMessage) : existingChat.lastMessage
@@ -196,12 +202,12 @@ class ConversationAdapter {
   /**
    * Cria um request DTO para criar nova conversa
    */
-  toCreateRequest(customerId: string, departmentId?: string, priority?: number) {
+  toCreateRequest(customerId: string, channel: 'WHATSAPP' | 'WEB_CHAT' = 'WEB_CHAT', departmentId?: string, priority?: number) {
     return {
       customerId,
       departmentId,
-      channel: 'WHATSAPP' as const,
-      priority: priority || 0
+      channel,
+      priority: priority || 1
     }
   }
 
@@ -230,7 +236,7 @@ class ConversationAdapter {
       chat.updatedAt.getTime() !== new Date(dto.updatedAt).getTime() ||
       chat.isPinned !== dto.isPinned ||
       chat.status !== this.mapStatus(dto.status) ||
-      chat.assignedAgent !== dto.assignedUser?.name
+      chat.assignedAgent !== dto.assignedUserName
     )
   }
 

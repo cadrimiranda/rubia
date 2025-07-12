@@ -49,32 +49,16 @@ export class ConversationAPI {
   }
 
   async changeStatus(id: string, status: ConversationStatus): Promise<ConversationDTO> {
-    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/status`, { status })
+    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/status?status=${status}`)
   }
 
-  async assignToUser(id: string, userId: string): Promise<ConversationAssignResponse> {
-    return apiClient.put<ConversationAssignResponse>(`${this.basePath}/${id}/assign`, { 
-      assignedUserId: userId 
-    })
+  async assignToUser(id: string, userId: string): Promise<ConversationDTO> {
+    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/assign/${userId}`)
   }
 
   async unassign(id: string): Promise<ConversationDTO> {
-    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/assign`, { 
-      assignedUserId: null 
-    })
-  }
-
-  async pin(id: string): Promise<ConversationDTO> {
-    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/pin`, { isPinned: true })
-  }
-
-  async unpin(id: string): Promise<ConversationDTO> {
-    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/pin`, { isPinned: false })
-  }
-
-  async getByCustomer(customerId: string): Promise<ConversationDTO[]> {
-    const response = await this.getAll({ customerId, size: 100 })
-    return response.content
+    // TODO: Implementar endpoint de unassign no backend se necessário
+    return this.update(id, { assignedUserId: undefined })
   }
 
   async getAssignedToUser(userId: string, status?: ConversationStatus): Promise<PageResponse<ConversationDTO>> {
@@ -89,16 +73,16 @@ export class ConversationAPI {
     return this.getAll({ ...filters, search: query })
   }
 
-  async transferToDepartment(id: string, departmentId: string): Promise<ConversationDTO> {
-    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/transfer`, { 
-      departmentId,
-      assignedUserId: null // Remove atribuição atual
-    })
+  async getByCustomer(customerId: string): Promise<ConversationDTO[]> {
+    return apiClient.get<ConversationDTO[]>(`${this.basePath}/customer/${customerId}`)
   }
 
-  async getPinned(): Promise<ConversationDTO[]> {
-    const response = await this.getAll({ isPinned: true, size: 50 })
-    return response.content
+  async getByAssignedUser(userId: string): Promise<ConversationDTO[]> {
+    return apiClient.get<ConversationDTO[]>(`${this.basePath}/user/${userId}`)
+  }
+
+  async getUnassigned(): Promise<ConversationDTO[]> {
+    return apiClient.get<ConversationDTO[]>(`${this.basePath}/unassigned`)
   }
 
   async getStats(): Promise<{
@@ -107,12 +91,18 @@ export class ConversationAPI {
     finalizados: number
     total: number
   }> {
-    return apiClient.get<{
-      entrada: number
-      esperando: number
-      finalizados: number
-      total: number
-    }>(`${this.basePath}/stats`)
+    const [entrada, esperando, finalizados] = await Promise.all([
+      apiClient.get<number>(`${this.basePath}/stats/count?status=ENTRADA`),
+      apiClient.get<number>(`${this.basePath}/stats/count?status=ESPERANDO`),
+      apiClient.get<number>(`${this.basePath}/stats/count?status=FINALIZADOS`)
+    ])
+    
+    return {
+      entrada,
+      esperando,
+      finalizados,
+      total: entrada + esperando + finalizados
+    }
   }
 }
 

@@ -15,9 +15,9 @@ export interface PageResponse<T> {
   last: boolean
 }
 
-// Enums do backend
+// Enums do backend (mapeados como ordinal no PostgreSQL)
 export type ConversationStatus = 'ENTRADA' | 'ESPERANDO' | 'FINALIZADOS'
-export type ConversationChannel = 'WHATSAPP' | 'WEB' | 'TELEGRAM'
+export type ConversationChannel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'WEB_CHAT' | 'EMAIL'
 export type MessageType = 'TEXT' | 'IMAGE' | 'AUDIO' | 'FILE' | 'LOCATION' | 'CONTACT'
 export type MessageStatus = 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
 export type SenderType = 'CUSTOMER' | 'AGENT' | 'AI' | 'SYSTEM'
@@ -81,16 +81,18 @@ export interface CustomerDTO {
 
 export interface ConversationDTO {
   id: string
+  companyId: string
   customerId: string
-  customer?: CustomerDTO
+  customerName?: string
+  customerPhone?: string
   assignedUserId?: string
-  assignedUser?: UserDTO
+  assignedUserName?: string
   departmentId?: string
-  department?: DepartmentDTO
+  departmentName?: string
   status: ConversationStatus
   channel: ConversationChannel
   priority: number
-  isPinned: boolean
+  isPinned?: boolean
   createdAt: string
   updatedAt: string
   closedAt?: string
@@ -118,8 +120,12 @@ export interface MessageDTO {
 // Request DTOs
 export interface CreateConversationRequest {
   customerId: string
+  assignedUserId?: string
   departmentId?: string
+  status?: ConversationStatus
   channel?: ConversationChannel
+  priority?: number
+  isPinned?: boolean
 }
 
 export interface UpdateConversationRequest {
