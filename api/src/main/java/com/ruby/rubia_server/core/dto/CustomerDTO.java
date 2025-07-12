@@ -28,6 +28,15 @@ public class CustomerDTO {
     private LocalDate birthDate;
     private LocalDate lastDonationDate;
     private LocalDate nextEligibleDonationDate;
+    private String bloodType;
+    private Integer height;
+    private Double weight;
+    private String addressStreet;
+    private String addressNumber;
+    private String addressComplement;
+    private String addressPostalCode;
+    private String addressCity;
+    private String addressState;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

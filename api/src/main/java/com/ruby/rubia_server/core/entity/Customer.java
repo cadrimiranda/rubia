@@ -62,6 +62,34 @@ public class Customer {
     @Column(name = "next_eligible_donation_date")
     private LocalDate nextEligibleDonationDate; // Próxima data elegível para doação
 
+    @Column(name = "blood_type", length = 10)
+    private String bloodType; // Tipo sanguíneo (A+, B+, AB+, O+, A-, B-, AB-, O-)
+
+    @Column(name = "height")
+    private Integer height; // Altura em centímetros
+
+    @Column(name = "weight")
+    private Double weight; // Peso em quilogramas
+
+    // CAMPOS DE ENDEREÇO
+    @Column(name = "address_street")
+    private String addressStreet; // Rua/Avenida
+
+    @Column(name = "address_number")
+    private String addressNumber; // Número
+
+    @Column(name = "address_complement")
+    private String addressComplement; // Complemento (apartamento, bloco, etc.)
+
+    @Column(name = "address_postal_code", length = 10)
+    private String addressPostalCode; // CEP
+
+    @Column(name = "address_city")
+    private String addressCity; // Cidade
+
+    @Column(name = "address_state", length = 2)
+    private String addressState; // Estado (UF)
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // Timestamp de criação do registro (para clientes orgânicos)

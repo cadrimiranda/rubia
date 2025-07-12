@@ -431,6 +431,31 @@ export const BloodCenterChat: React.FC = () => {
     });
   }, [updateState]);
 
+  // Função para carregar dados completos do customer e abrir modal
+  const handleDonorInfoClick = React.useCallback(async () => {
+    if (!state.selectedDonor) return;
+    
+    try {
+      console.log('📋 Carregando dados completos do customer:', state.selectedDonor.id);
+      
+      // Buscar dados completos do customer na API
+      const customerData = await customerApi.getById(state.selectedDonor.id);
+      console.log('📋 Dados do customer recebidos:', customerData);
+      
+      // Atualizar o donor selecionado com os dados completos
+      const updatedDonor = customerAdapter.updateDonorWithCustomerData(state.selectedDonor, customerData);
+      
+      updateState({
+        selectedDonor: updatedDonor,
+        showDonorInfo: true
+      });
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do customer:', error);
+      // Abrir modal mesmo com erro, mostrando dados que já temos
+      updateState({ showDonorInfo: true });
+    }
+  }, [state.selectedDonor, updateState]);
+
   const createDonorFromContact = (contactData: NewContactData): Donor => {
     return {
       id: Date.now().toString(),
@@ -806,7 +831,7 @@ export const BloodCenterChat: React.FC = () => {
           <>
             <ChatHeader
               donor={state.selectedDonor}
-              onDonorInfoClick={() => updateState({ showDonorInfo: true })}
+              onDonorInfoClick={handleDonorInfoClick}
               currentStatus={currentStatus}
               onStatusChange={handleConversationStatusChange}
               onScheduleClick={handleDirectSchedule}

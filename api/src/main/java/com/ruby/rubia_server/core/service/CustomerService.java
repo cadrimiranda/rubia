@@ -51,6 +51,15 @@ public class CustomerService {
                 .importedAt(createDTO.getImportedAt())
                 .birthDate(createDTO.getBirthDate())
                 .lastDonationDate(createDTO.getLastDonationDate())
+                .bloodType(createDTO.getBloodType())
+                .height(createDTO.getHeight())
+                .weight(createDTO.getWeight())
+                .addressStreet(createDTO.getAddressStreet())
+                .addressNumber(createDTO.getAddressNumber())
+                .addressComplement(createDTO.getAddressComplement())
+                .addressPostalCode(createDTO.getAddressPostalCode())
+                .addressCity(createDTO.getAddressCity())
+                .addressState(createDTO.getAddressState())
                 .company(company)
                 .build();
         
@@ -89,9 +98,10 @@ public class CustomerService {
         }
         
         if (updateDTO.getPhone() != null) {
-            if (!updateDTO.getPhone().equals(customer.getPhone()) && 
-                customerRepository.existsByPhoneAndCompanyId(updateDTO.getPhone(), companyId)) {
-                throw new IllegalArgumentException("Cliente com telefone '" + updateDTO.getPhone() + "' já existe nesta empresa");
+            if (!updateDTO.getPhone().equals(customer.getPhone())) {
+                if (customerRepository.existsByPhoneAndCompanyId(updateDTO.getPhone(), companyId)) {
+                    throw new IllegalArgumentException("Cliente com telefone '" + updateDTO.getPhone() + "' já existe nesta empresa");
+                }
             }
             customer.setPhone(updateDTO.getPhone());
         }
@@ -101,9 +111,10 @@ public class CustomerService {
         }
         
         if (updateDTO.getWhatsappId() != null) {
-            if (!updateDTO.getWhatsappId().equals(customer.getWhatsappId()) && 
-                customerRepository.existsByWhatsappIdAndCompanyId(updateDTO.getWhatsappId(), companyId)) {
-                throw new IllegalArgumentException("Cliente com WhatsApp ID '" + updateDTO.getWhatsappId() + "' já existe nesta empresa");
+            if (!updateDTO.getWhatsappId().equals(customer.getWhatsappId())) {
+                if (customerRepository.existsByWhatsappIdAndCompanyId(updateDTO.getWhatsappId(), companyId)) {
+                    throw new IllegalArgumentException("Cliente com WhatsApp ID '" + updateDTO.getWhatsappId() + "' já existe nesta empresa");
+                }
             }
             customer.setWhatsappId(updateDTO.getWhatsappId());
         }
@@ -122,6 +133,15 @@ public class CustomerService {
         Optional.ofNullable(updateDTO.getBirthDate()).ifPresent(customer::setBirthDate);
         Optional.ofNullable(updateDTO.getLastDonationDate()).ifPresent(customer::setLastDonationDate);
         Optional.ofNullable(updateDTO.getNextEligibleDonationDate()).ifPresent(customer::setNextEligibleDonationDate);
+        Optional.ofNullable(updateDTO.getBloodType()).ifPresent(customer::setBloodType);
+        Optional.ofNullable(updateDTO.getHeight()).ifPresent(customer::setHeight);
+        Optional.ofNullable(updateDTO.getWeight()).ifPresent(customer::setWeight);
+        Optional.ofNullable(updateDTO.getAddressStreet()).ifPresent(customer::setAddressStreet);
+        Optional.ofNullable(updateDTO.getAddressNumber()).ifPresent(customer::setAddressNumber);
+        Optional.ofNullable(updateDTO.getAddressComplement()).ifPresent(customer::setAddressComplement);
+        Optional.ofNullable(updateDTO.getAddressPostalCode()).ifPresent(customer::setAddressPostalCode);
+        Optional.ofNullable(updateDTO.getAddressCity()).ifPresent(customer::setAddressCity);
+        Optional.ofNullable(updateDTO.getAddressState()).ifPresent(customer::setAddressState);
         
         Customer updated = customerRepository.save(customer);
         log.info("Customer updated successfully");
@@ -274,6 +294,15 @@ public class CustomerService {
                 .birthDate(customer.getBirthDate())
                 .lastDonationDate(customer.getLastDonationDate())
                 .nextEligibleDonationDate(customer.getNextEligibleDonationDate())
+                .bloodType(customer.getBloodType())
+                .height(customer.getHeight())
+                .weight(customer.getWeight())
+                .addressStreet(customer.getAddressStreet())
+                .addressNumber(customer.getAddressNumber())
+                .addressComplement(customer.getAddressComplement())
+                .addressPostalCode(customer.getAddressPostalCode())
+                .addressCity(customer.getAddressCity())
+                .addressState(customer.getAddressState())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())
                 .build();
