@@ -38,7 +38,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     Page<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId, Pageable pageable);
     
-    @Query("SELECT c FROM Conversation c WHERE c.status = 'ENTRADA' AND c.assignedUser IS NULL AND c.company.id = :companyId")
+    @Query("SELECT c FROM Conversation c WHERE c.status = 0 AND c.assignedUser IS NULL AND c.company.id = :companyId")
     List<Conversation> findUnassignedEntranceConversationsByCompany(@Param("companyId") UUID companyId);
     
     @Query("SELECT COUNT(c) FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId")
