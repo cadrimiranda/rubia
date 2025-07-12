@@ -6,11 +6,13 @@ import com.ruby.rubia_server.core.dto.CreateConversationDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationDTO;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.Conversation;
+import com.ruby.rubia_server.core.entity.ConversationParticipant;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.repository.ConversationParticipantRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.CustomerRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
@@ -33,6 +35,7 @@ import java.util.UUID;
 public class ConversationService {
     
     private final ConversationRepository conversationRepository;
+    private final ConversationParticipantRepository participantRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
@@ -82,6 +85,20 @@ public class ConversationService {
         
         Conversation saved = conversationRepository.save(conversation);
         log.info("Conversation created successfully with id: {}", saved.getId());
+        
+        // Criar ConversationParticipant para o customer
+        ConversationParticipant customerParticipant = ConversationParticipant.builder()
+                .conversation(saved)
+                .customer(customer)
+                .company(company)
+                .isActive(true)
+                .build();
+        
+        participantRepository.save(customerParticipant);
+        log.info("Customer participant created for conversation: {}", saved.getId());
+        
+        // Recarregar conversation com participants para o toDTO
+        saved = conversationRepository.findById(saved.getId()).orElse(saved);
         
         return toDTO(saved);
     }
@@ -274,11 +291,15 @@ public class ConversationService {
     }
 
     private ConversationDTO toDTO(Conversation conversation) {
-        Customer customer = conversation.getParticipants().stream()
-                .filter(p -> p.getCustomer() != null)
-                .map(p -> p.getCustomer())
-                .findFirst()
-                .orElse(null);
+        // Proteção defensiva para participants null
+        Customer customer = null;
+        if (conversation.getParticipants() != null) {
+            customer = conversation.getParticipants().stream()
+                    .filter(p -> p.getCustomer() != null)
+                    .map(p -> p.getCustomer())
+                    .findFirst()
+                    .orElse(null);
+        }
 
         return ConversationDTO.builder()
                 .id(conversation.getId())
