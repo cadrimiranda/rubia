@@ -19,7 +19,6 @@ import { customerAdapter } from "../adapters/customerAdapter";
 import { conversationAdapter } from "../adapters/conversationAdapter";
 import { getMessagesForDonor } from "../mocks/data";
 import { mockCampaigns } from "../mocks/campaigns";
-import { getAllCampaignConversations, getContactsByCampaign } from "../mocks/campaignMock";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
 
@@ -75,87 +74,6 @@ export const BloodCenterChat: React.FC = () => {
     return () => clearInterval(interval)
   }, []);
 
-  // Converter conversas de campanha em Donors para compatibilidade
-  const convertCampaignConversationsToDonors = React.useCallback((campaignId?: string, status?: ChatStatus): Donor[] => {
-    const campaignConversations = getAllCampaignConversations()
-    console.log('📞 Conversas de campanha encontradas:', campaignConversations.length)
-    
-    if (campaignConversations.length === 0) {
-      return []
-    }
-
-    // Filtrar por campanha se especificada
-    let filteredConversations = campaignConversations
-    if (campaignId) {
-      const campaignContacts = getContactsByCampaign(campaignId)
-      const campaignConversationIds = campaignContacts
-        .filter(c => c.conversation)
-        .map(c => c.conversation!.id)
-      
-      filteredConversations = campaignConversations.filter(conv => 
-        campaignConversationIds.includes(conv.id)
-      )
-    }
-
-    // Filtrar por status se especificado
-    if (status) {
-      filteredConversations = filteredConversations.filter(conv => {
-        switch (status) {
-          case 'ativos':
-            return conv.status === 'ENTRADA'
-          case 'aguardando':
-            return conv.status === 'ESPERANDO'
-          case 'inativo':
-            return conv.status === 'FINALIZADOS'
-          default:
-            return true
-        }
-      })
-    }
-
-    // Converter para Donors
-    return filteredConversations.map(conv => {
-      // Usar dados básicos da conversação
-      const customerId = conv.customerId
-      const customerName = conv.customerName || 'Cliente'
-      const customerPhone = conv.customerPhone || ''
-      return {
-        id: customerId,
-        name: customerName,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(customerName)}&background=random&size=150`,
-        lastMessage: conv.lastMessage?.content || 'Mensagem inicial enviada',
-        timestamp: new Date(conv.updatedAt).toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        unread: conv.status === 'ESPERANDO' ? 1 : 0,
-        status: 'offline' as const,
-        bloodType: 'N/I',
-        phone: customerPhone,
-        email: '',
-        lastDonation: 'Sem registro',
-        totalDonations: 0,
-        address: '',
-        birthDate: '',
-        weight: 0,
-        height: 0,
-        hasActiveConversation: true,
-        conversationStatus: conv.status,
-        campaignId: findCampaignIdForConversation(conv.id)
-      }
-    })
-  }, []);
-
-  // Encontrar ID da campanha para uma conversa
-  const findCampaignIdForConversation = (conversationId: string): string | undefined => {
-    for (const campaign of campaigns) {
-      const contacts = getContactsByCampaign(campaign.id)
-      if (contacts.some(c => c.conversation?.id === conversationId)) {
-        return campaign.id
-      }
-    }
-    return undefined
-  };
 
   const updateState = React.useCallback((updates: Partial<ChatState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -198,7 +116,7 @@ export const BloodCenterChat: React.FC = () => {
   */
 
   // Carregar conversas da API real
-  const loadConversations = React.useCallback(async (status?: ChatStatus, campaignId?: string) => {
+  const loadConversations = React.useCallback(async (status?: ChatStatus) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -247,19 +165,12 @@ export const BloodCenterChat: React.FC = () => {
       
     } catch (err) {
       console.error('❌ Erro ao carregar conversas da API:', err);
-      
-      // Fallback para dados mock se a API falhar
-      console.log('🔄 Usando fallback para dados mock...');
-      const campaignDonors = convertCampaignConversationsToDonors(campaignId, status || currentStatus);
-      setDonors(campaignDonors);
-      
-      if (campaignDonors.length === 0) {
-        setError('Erro ao carregar conversas. Tente novamente.');
-      }
+      setError('Erro ao carregar conversas. Tente novamente.');
+      setDonors([]);
     } finally {
       setIsLoading(false);
     }
-  }, [currentStatus, conversationAdapter, conversationApi, convertCampaignConversationsToDonors]);
+  }, [currentStatus, conversationAdapter, conversationApi]);
 
   // Carregar todos os contatos (customers) da API
   const loadAllContacts = React.useCallback(async () => {
@@ -318,15 +229,15 @@ export const BloodCenterChat: React.FC = () => {
   // Função para trocar de status da aba
   const handleStatusChange = React.useCallback((newStatus: ChatStatus) => {
     setCurrentStatus(newStatus);
-    loadConversations(newStatus, selectedCampaign?.id);
+    loadConversations(newStatus);
     updateState({ selectedDonor: null }); // Limpar seleção ao trocar status
-  }, [loadConversations, updateState, selectedCampaign]);
+  }, [loadConversations, updateState]);
 
   // Função para trocar de campanha
   const handleCampaignChange = React.useCallback((campaign: Campaign | null) => {
     setSelectedCampaign(campaign);
     updateState({ selectedDonor: null, selectedCampaign: campaign }); // Limpar seleção ao trocar campanha
-    loadConversations(currentStatus, campaign?.id);
+    loadConversations(currentStatus);
   }, [loadConversations, updateState, currentStatus]);
 
   // Função para trocar modo de visualização
