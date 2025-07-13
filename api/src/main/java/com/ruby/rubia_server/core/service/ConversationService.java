@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -97,25 +99,68 @@ public class ConversationService {
         participantRepository.save(customerParticipant);
         log.info("Customer participant created for conversation: {}", saved.getId());
         
-        // Recarregar conversation com participants para o toDTO
-        saved = conversationRepository.findById(saved.getId()).orElse(saved);
-        
-        return toDTO(saved);
+        // Alternative approach: manually build the DTO with the known customer
+        return ConversationDTO.builder()
+                .id(saved.getId())
+                .companyId(saved.getCompany() != null ? saved.getCompany().getId() : null)
+                .customerId(customer.getId())
+                .customerName(customer.getName())
+                .customerPhone(customer.getPhone())
+                .assignedUserId(saved.getAssignedUser() != null ? saved.getAssignedUser().getId() : null)
+                .assignedUserName(saved.getAssignedUser() != null ? saved.getAssignedUser().getName() : null)
+                .status(saved.getStatus())
+                .channel(saved.getChannel())
+                .priority(saved.getPriority())
+                .createdAt(saved.getCreatedAt())
+                .updatedAt(saved.getUpdatedAt())
+                .unreadCount(0L)
+                .build();
     }
     
     @Transactional(readOnly = true)
     public ConversationDTO findById(UUID id, UUID companyId) {
         log.debug("Finding conversation by id: {} for company: {}", id, companyId);
         
-        Conversation conversation = conversationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
+        // Try alternative approach: get conversation and customer separately
+        List<Object[]> results = conversationRepository.findConversationWithCustomer(id);
+        
+        if (results.isEmpty()) {
+            // Fallback to regular query
+            Conversation conversation = conversationRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
+            
+            // Validate conversation belongs to company
+            if (!conversation.getCompany().getId().equals(companyId)) {
+                throw new IllegalArgumentException("Conversa não pertence a esta empresa");
+            }
+            
+            return toDTO(conversation);
+        }
+        
+        Object[] result = results.get(0);
+        Conversation conversation = (Conversation) result[0];
+        Customer customer = (Customer) result[1];
         
         // Validate conversation belongs to company
         if (!conversation.getCompany().getId().equals(companyId)) {
             throw new IllegalArgumentException("Conversa não pertence a esta empresa");
         }
         
-        return toDTO(conversation);
+        return ConversationDTO.builder()
+                .id(conversation.getId())
+                .companyId(conversation.getCompany() != null ? conversation.getCompany().getId() : null)
+                .customerId(customer != null ? customer.getId() : null)
+                .customerName(customer != null ? customer.getName() : null)
+                .customerPhone(customer != null ? customer.getPhone() : null)
+                .assignedUserId(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getId() : null)
+                .assignedUserName(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getName() : null)
+                .status(conversation.getStatus())
+                .channel(conversation.getChannel())
+                .priority(conversation.getPriority())
+                .createdAt(conversation.getCreatedAt())
+                .updatedAt(conversation.getUpdatedAt())
+                .unreadCount(0L)
+                .build();
     }
     
     
@@ -242,8 +287,29 @@ public class ConversationService {
     public Page<ConversationDTO> findByStatusAndCompanyWithPagination(ConversationStatus status, UUID companyId, Pageable pageable) {
         log.debug("Finding conversations by status: {} for company: {} with pagination", status, companyId);
         
-        return conversationRepository.findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(status, companyId, pageable)
-                .map(this::toDTO);
+        Page<Conversation> conversationPage = conversationRepository.findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(status, companyId, pageable);
+        
+        // Get IDs and fetch with participants
+        List<UUID> conversationIds = conversationPage.getContent().stream()
+                .map(Conversation::getId)
+                .toList();
+        
+        if (conversationIds.isEmpty()) {
+            return conversationPage.map(this::toDTO);
+        }
+        
+        // Fetch conversations with participants
+        List<Conversation> conversationsWithParticipants = conversationRepository.findByIdsWithParticipants(conversationIds);
+        
+        // Create a map for easy lookup
+        Map<UUID, Conversation> conversationMap = conversationsWithParticipants.stream()
+                .collect(Collectors.toMap(Conversation::getId, c -> c));
+        
+        // Map page content with participants loaded
+        return conversationPage.map(conversation -> {
+            Conversation withParticipants = conversationMap.get(conversation.getId());
+            return toDTO(withParticipants != null ? withParticipants : conversation);
+        });
     }
     
     @Transactional(readOnly = true)

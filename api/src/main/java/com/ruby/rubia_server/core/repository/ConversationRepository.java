@@ -32,11 +32,14 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     
     List<Conversation> findByAssignedUserIdAndCompanyId(UUID assignedUserId, UUID companyId);
     
-    @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
+    @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     List<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId);
     
     @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     Page<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId, Pageable pageable);
+    
+    @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.id IN :ids")
+    List<Conversation> findByIdsWithParticipants(@Param("ids") List<UUID> ids);
     
     @Query("SELECT c FROM Conversation c WHERE c.status = 0 AND c.assignedUser IS NULL AND c.company.id = :companyId")
     List<Conversation> findUnassignedEntranceConversationsByCompany(@Param("companyId") UUID companyId);
@@ -45,4 +48,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     long countByStatusAndCompany(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId);
     
     List<Conversation> findByCompanyId(UUID companyId);
+    
+    @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.id = :id")
+    Optional<Conversation> findByIdWithParticipants(@Param("id") UUID id);
+    
+    @Query("SELECT c, p.customer FROM Conversation c " +
+           "LEFT JOIN c.participants p " +
+           "WHERE c.id = :id AND p.customer IS NOT NULL")
+    List<Object[]> findConversationWithCustomer(@Param("id") UUID id);
 }
