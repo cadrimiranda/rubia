@@ -51,4 +51,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     
     @Query("SELECT COUNT(u) FROM User u WHERE u.company.id = :companyId")
     long countByCompanyId(@Param("companyId") UUID companyId);
+    
+    @Query("SELECT u FROM User u WHERE u.whatsappNumber = :whatsappNumber AND u.isWhatsappActive = true")
+    Optional<User> findActiveByWhatsappNumber(@Param("whatsappNumber") String whatsappNumber);
 }

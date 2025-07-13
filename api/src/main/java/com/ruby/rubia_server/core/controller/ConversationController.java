@@ -4,10 +4,26 @@ import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.ConversationSummaryDTO;
 import com.ruby.rubia_server.core.dto.CreateConversationDTO;
 import com.ruby.rubia_server.core.dto.UpdateConversationDTO;
+import com.ruby.rubia_server.core.dto.CreateMessageDTO;
+import com.ruby.rubia_server.core.dto.MessageDTO;
+import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.service.ConversationService;
+import com.ruby.rubia_server.core.service.MessageService;
+import com.ruby.rubia_server.core.service.CustomerService;
+import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.messaging.service.MessagingService;
+import com.ruby.rubia_server.messaging.model.MessageResult;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +43,9 @@ import java.util.UUID;
 public class ConversationController {
     
     private final ConversationService conversationService;
+    private final MessageService messageService;
+    private final CustomerService customerService;
+    private final MessagingService messagingService;
     private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
@@ -194,5 +213,98 @@ public class ConversationController {
             log.warn("Error deleting conversation: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
+    }
+    
+    // Message endpoints for conversations
+    
+    @GetMapping("/{conversationId}/messages")
+    public ResponseEntity<List<MessageDTO>> getMessages(@PathVariable UUID conversationId) {
+        log.debug("Getting messages for conversation: {}", conversationId);
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            
+            // Validate conversation exists and user has access
+            conversationService.findById(conversationId, currentCompanyId);
+            
+            List<MessageDTO> messages = messageService.findByConversation(conversationId);
+            return ResponseEntity.ok(messages);
+        } catch (IllegalArgumentException e) {
+            log.warn("Error getting messages: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    @PostMapping("/{conversationId}/messages")
+    public ResponseEntity<MessageDTO> sendMessage(
+            @PathVariable UUID conversationId,
+            @Valid @RequestBody SendMessageRequest request) {
+        
+        log.info("Sending message for conversation: {}", conversationId);
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            
+            // Get conversation and validate access
+            ConversationDTO conversation = conversationService.findById(conversationId, currentCompanyId);
+            
+            // Get customer from conversation
+            CustomerDTO customerDTO = customerService.findById(conversation.getCustomerId(), currentCompanyId);
+            
+            // Create message in database first
+            CreateMessageDTO createDTO = CreateMessageDTO.builder()
+                .conversationId(conversationId)
+                .companyId(currentCompanyId)
+                .content(request.getContent())
+                .senderType(SenderType.AGENT)
+                .senderId(request.getSenderId())
+                .messageType(com.ruby.rubia_server.core.enums.MessageType.valueOf(request.getMessageType()))
+                .mediaUrl(request.getMediaUrl())
+                .build();
+            
+            MessageDTO message = messageService.create(createDTO);
+            
+            // Send via WhatsApp if customer has phone and conversation is WhatsApp
+            if (customerDTO.getPhone() != null && !customerDTO.getPhone().trim().isEmpty()) {
+                try {
+                    MessageResult result = messagingService.sendMessage(
+                        customerDTO.getPhone(),
+                        request.getContent(),
+                        currentCompanyId,
+                        request.getSenderId()
+                    );
+                    
+                    if (result.isSuccess()) {
+                        log.info("Message sent successfully via WhatsApp. External ID: {}", result.getMessageId());
+                    } else {
+                        log.warn("Failed to send message via WhatsApp: {}", result.getError());
+                    }
+                } catch (Exception e) {
+                    log.error("Error sending message via WhatsApp: {}", e.getMessage(), e);
+                }
+            }
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(message);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error sending message: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    // Request DTO for sending messages
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SendMessageRequest {
+        @NotBlank(message = "Conteúdo da mensagem é obrigatório")
+        @Size(max = 4000, message = "Conteúdo não pode exceder 4000 caracteres")
+        private String content;
+        
+        private UUID senderId;
+        @Builder.Default
+        private String messageType = "TEXT";
+        private String mediaUrl;
     }
 }

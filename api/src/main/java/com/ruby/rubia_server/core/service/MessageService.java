@@ -215,6 +215,10 @@ public class MessageService {
             message.setAiConfidence(updateDTO.getAiConfidence());
         }
         
+        if (updateDTO.getExternalMessageId() != null) {
+            message.setExternalMessageId(updateDTO.getExternalMessageId());
+        }
+        
         Message updated = messageRepository.save(message);
         log.info("Message updated successfully");
         
