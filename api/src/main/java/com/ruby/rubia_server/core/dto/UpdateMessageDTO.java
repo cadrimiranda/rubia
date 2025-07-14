@@ -25,4 +25,6 @@ public class UpdateMessageDTO {
     private Boolean isAiGenerated;
     
     private Double aiConfidence;
+    
+    private String externalMessageId;
 }

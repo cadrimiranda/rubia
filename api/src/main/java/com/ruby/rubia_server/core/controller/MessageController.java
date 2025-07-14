@@ -3,8 +3,23 @@ package com.ruby.rubia_server.core.controller;
 import com.ruby.rubia_server.core.dto.CreateMessageDTO;
 import com.ruby.rubia_server.core.dto.MessageDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageDTO;
+import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.service.MessageService;
+import com.ruby.rubia_server.core.service.ConversationService;
+import com.ruby.rubia_server.core.service.CustomerService;
+import com.ruby.rubia_server.core.dto.ConversationDTO;
+import com.ruby.rubia_server.core.dto.CustomerDTO;
+import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.messaging.service.MessagingService;
+import com.ruby.rubia_server.messaging.model.MessageResult;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +39,9 @@ import java.util.UUID;
 public class MessageController {
     
     private final MessageService messageService;
+    private final ConversationService conversationService;
+    private final CustomerService customerService;
+    private final MessagingService messagingService;
     
     @PostMapping
     public ResponseEntity<MessageDTO> create(@Valid @RequestBody CreateMessageDTO createDTO) {
@@ -178,5 +196,103 @@ public class MessageController {
             log.warn("Error deleting message: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
+    }
+    
+    @PostMapping("/conversation/{conversationId}/send")
+    public ResponseEntity<MessageDTO> sendMessage(
+            @PathVariable UUID conversationId,
+            @Valid @RequestBody SendMessageRequest request) {
+        
+        log.info("Sending message via WhatsApp for conversation: {}", conversationId);
+        
+        try {
+            // Get conversation and validate access
+            ConversationDTO conversation = conversationService.findById(conversationId, request.getCompanyId());
+            
+            // Get customer from conversation
+            CustomerDTO customerDTO = customerService.findById(conversation.getCustomerId(), request.getCompanyId());
+            
+            // Validate customer has WhatsApp
+            if (customerDTO.getPhone() == null || customerDTO.getPhone().trim().isEmpty()) {
+                log.warn("Customer {} does not have a phone number", customerDTO.getId());
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // Create message in database with SENDING status first
+            CreateMessageDTO createDTO = CreateMessageDTO.builder()
+                .conversationId(conversationId)
+                .companyId(request.getCompanyId())
+                .content(request.getContent())
+                .senderType(SenderType.AGENT)
+                .senderId(request.getSenderId())
+                .build();
+            
+            MessageDTO message = messageService.create(createDTO);
+            
+            try {
+                // Send via Twilio
+                MessageResult result = messagingService.sendMessage(
+                    customerDTO.getPhone(),
+                    request.getContent(),
+                    request.getCompanyId(),
+                    request.getSenderId()
+                );
+                
+                if (result.isSuccess()) {
+                    // Update message with external ID and SENT status
+                    UpdateMessageDTO updateDTO = UpdateMessageDTO.builder()
+                        .status(MessageStatus.SENT)
+                        .externalMessageId(result.getMessageId())
+                        .build();
+                    
+                    MessageDTO updatedMessage = messageService.update(message.getId(), updateDTO);
+                    log.info("Message sent successfully via WhatsApp. External ID: {}", result.getMessageId());
+                    
+                    return ResponseEntity.ok(updatedMessage);
+                } else {
+                    // Mark message as failed
+                    UpdateMessageDTO failedUpdateDTO = UpdateMessageDTO.builder()
+                        .status(MessageStatus.FAILED)
+                        .build();
+                    
+                    messageService.update(message.getId(), failedUpdateDTO);
+                    log.error("Failed to send message via WhatsApp: {}", result.getError());
+                    
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                }
+                
+            } catch (Exception e) {
+                // Mark message as failed
+                UpdateMessageDTO failedUpdateDTO = UpdateMessageDTO.builder()
+                    .status(MessageStatus.FAILED)
+                    .build();
+                
+                messageService.update(message.getId(), failedUpdateDTO);
+                log.error("Error sending message via WhatsApp: {}", e.getMessage(), e);
+                
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error sending message: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    // Inner class for request body
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SendMessageRequest {
+        @NotBlank(message = "Conteúdo da mensagem é obrigatório")
+        @Size(max = 4000, message = "Conteúdo não pode exceder 4000 caracteres")
+        private String content;
+        
+        @NotNull(message = "ID da empresa é obrigatório")
+        private UUID companyId;
+        
+        @NotNull(message = "ID do remetente é obrigatório")
+        private UUID senderId;
     }
 }

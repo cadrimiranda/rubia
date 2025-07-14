@@ -53,7 +53,7 @@ public class MessagingController {
             
             IncomingMessage message = messagingService.parseIncomingMessage(payload);
             
-            processIncomingMessage(message);
+            messagingService.processIncomingMessage(message);
             
             return ResponseEntity.ok("OK");
             
@@ -90,14 +90,4 @@ public class MessagingController {
         );
     }
     
-    private void processIncomingMessage(IncomingMessage message) {
-        String body = message.getBody().toLowerCase();
-        
-        if (body.contains("oi") || body.contains("olá")) {
-            messagingService.sendMessage(
-                message.getFrom(), 
-                "Olá! Como posso ajudar você?"
-            );
-        }
-    }
 }

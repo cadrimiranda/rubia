@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Paperclip, Send, Sparkles } from "lucide-react";
+import { Paperclip, Send, Sparkles, Loader2 } from "lucide-react";
 import type { FileAttachment as FileAttachmentType } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
 
@@ -12,6 +12,7 @@ interface MessageInputProps {
   onRemoveAttachment: (id: string) => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
   onEnhanceMessage?: () => void;
+  isLoading?: boolean;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -23,6 +24,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onRemoveAttachment,
   onKeyPress,
   onEnhanceMessage,
+  isLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -85,10 +87,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
         <button
           onClick={onSendMessage}
-          disabled={!messageInput.trim() && attachments.length === 0}
+          disabled={(!messageInput.trim() && attachments.length === 0) || isLoading}
           className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors self-end"
         >
-          <Send className="w-4 h-4" />
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
         </button>
       </div>
     </div>

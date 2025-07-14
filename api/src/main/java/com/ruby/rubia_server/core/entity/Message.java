@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -36,6 +38,7 @@ public class Message {
     private String content;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "sender_type", nullable = false)
     private SenderType senderType;
 
@@ -44,6 +47,7 @@ public class Message {
 
     // CAMPOS DE STATUS RESTAURADOS PARA A ENTIDADE MESSAGE
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     @Builder.Default
     private MessageStatus status = MessageStatus.SENT;
@@ -79,4 +83,11 @@ public class Message {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

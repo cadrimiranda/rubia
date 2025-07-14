@@ -15,13 +15,11 @@ import { ConfirmationModal } from "./ConfirmationModal";
 import { MessageEnhancerModal } from "./MessageEnhancerModal";
 import { conversationApi } from "../api/services/conversationApi";
 import { customerApi } from "../api/services/customerApi";
+import { messageApi } from "../api/services/messageApi";
 import { customerAdapter } from "../adapters/customerAdapter";
-// import type { ConversationDTO } from "../api/types";
+import { conversationAdapter } from "../adapters/conversationAdapter";
 import { getMessagesForDonor } from "../mocks/data";
-import { getDonorsByCampaignAndStatus, getMessagesByCampaign, getAllDonorsByStatus } from "../mocks/campaignData";
 import { mockCampaigns } from "../mocks/campaigns";
-import { getAllCampaignConversations, getContactsByCampaign } from "../mocks/campaignMock";
-// import { conversationAdapter } from "../adapters/conversationAdapter";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
 
@@ -58,6 +56,7 @@ export const BloodCenterChat: React.FC = () => {
   const [allContacts, setAllContacts] = useState<Donor[]>([]); // TODOS os contatos
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<ChatStatus>('ativos');
   const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
@@ -76,84 +75,6 @@ export const BloodCenterChat: React.FC = () => {
     return () => clearInterval(interval)
   }, []);
 
-  // Converter conversas de campanha em Donors para compatibilidade
-  const convertCampaignConversationsToDonors = React.useCallback((campaignId?: string, status?: ChatStatus): Donor[] => {
-    const campaignConversations = getAllCampaignConversations()
-    console.log('📞 Conversas de campanha encontradas:', campaignConversations.length)
-    
-    if (campaignConversations.length === 0) {
-      return []
-    }
-
-    // Filtrar por campanha se especificada
-    let filteredConversations = campaignConversations
-    if (campaignId) {
-      const campaignContacts = getContactsByCampaign(campaignId)
-      const campaignConversationIds = campaignContacts
-        .filter(c => c.conversation)
-        .map(c => c.conversation!.id)
-      
-      filteredConversations = campaignConversations.filter(conv => 
-        campaignConversationIds.includes(conv.id)
-      )
-    }
-
-    // Filtrar por status se especificado
-    if (status) {
-      filteredConversations = filteredConversations.filter(conv => {
-        switch (status) {
-          case 'ativos':
-            return conv.status === 'ENTRADA'
-          case 'aguardando':
-            return conv.status === 'ESPERANDO'
-          case 'inativo':
-            return conv.status === 'FINALIZADOS'
-          default:
-            return true
-        }
-      })
-    }
-
-    // Converter para Donors
-    return filteredConversations.map(conv => {
-      const customer = conv.customer!
-      return {
-        id: customer.id,
-        name: customer.name || 'Cliente',
-        avatar: customer.profileUrl || '',
-        lastMessage: conv.lastMessage?.content || 'Mensagem inicial enviada',
-        timestamp: new Date(conv.updatedAt).toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        unread: conv.status === 'ESPERANDO' ? 1 : 0,
-        status: 'offline' as const,
-        bloodType: 'N/I',
-        phone: customer.phone,
-        email: '',
-        lastDonation: 'Sem registro',
-        totalDonations: 0,
-        address: '',
-        birthDate: '',
-        weight: 0,
-        height: 0,
-        hasActiveConversation: true,
-        conversationStatus: conv.status,
-        campaignId: findCampaignIdForConversation(conv.id)
-      }
-    })
-  }, []);
-
-  // Encontrar ID da campanha para uma conversa
-  const findCampaignIdForConversation = (conversationId: string): string | undefined => {
-    for (const campaign of campaigns) {
-      const contacts = getContactsByCampaign(campaign.id)
-      if (contacts.some(c => c.conversation?.id === conversationId)) {
-        return campaign.id
-      }
-    }
-    return undefined
-  };
 
   const updateState = React.useCallback((updates: Partial<ChatState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -195,47 +116,63 @@ export const BloodCenterChat: React.FC = () => {
   }, []);
   */
 
-  // Carregar conversas usando dados mock
-  const loadConversations = React.useCallback(async (status?: ChatStatus, campaignId?: string) => {
+  // Carregar conversas da API real
+  const loadConversations = React.useCallback(async (status?: ChatStatus) => {
     try {
       setIsLoading(true);
       setError(null);
 
       const statusToLoad = status || currentStatus;
-      const campaignToLoad = campaignId || selectedCampaign?.id;
       
-      console.log(`🔄 Carregando conversas para status: ${statusToLoad}, campanha: ${campaignToLoad || 'todas'}...`);
+      console.log(`🔄 Carregando conversas para status: ${statusToLoad}...`);
 
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Primeiro tentar carregar conversas de campanha (novas)
-      let campaignDonors = convertCampaignConversationsToDonors(campaignToLoad, statusToLoad);
+      // Mapear status do frontend para backend
+      const backendStatus = conversationAdapter.mapStatusToBackend(statusToLoad);
       
-      // Se não há conversas de campanha, usar dados mock antigos
-      let mockDonors: Donor[];
-      if (campaignDonors.length > 0) {
-        console.log(`✅ Usando ${campaignDonors.length} conversas de campanha`);
-        mockDonors = campaignDonors;
-      } else {
-        console.log('📚 Usando dados mock legacy');
-        if (campaignToLoad) {
-          mockDonors = getDonorsByCampaignAndStatus(campaignToLoad, statusToLoad);
-        } else {
-          mockDonors = getAllDonorsByStatus(statusToLoad);
-        }
-      }
+      // Buscar conversas da API
+      const response = await conversationApi.getByStatus(backendStatus as any);
+      console.log(`📊 API retornou ${response.content.length} conversas`);
+      
+      // Converter ConversationDTO para formato Donor (compatibilidade)
+      const conversationsAsDonors = response.content.map(conv => {
+        return {
+          id: conv.id,
+          conversationId: conv.id, // Incluir o ID da conversa
+          name: conv.customerName || conv.customerPhone || 'Cliente',
+          lastMessage: conv.lastMessage?.content || '',
+          timestamp: conv.lastMessage?.createdAt ? 
+            new Date(conv.lastMessage.createdAt).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : '',
+          unread: statusToLoad === 'aguardando' ? 0 : 1,
+          status: 'offline' as const,
+          bloodType: 'N/I',
+          phone: conv.customerPhone || '',
+          email: '',
+          lastDonation: 'Sem registro',
+          totalDonations: 0,
+          address: '',
+          birthDate: '',
+          weight: 0,
+          height: 0,
+          hasActiveConversation: true,
+          conversationStatus: conv.status,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.customerName || conv.customerPhone || 'C')}&background=random&size=150`
+        };
+      });
 
-      console.log(`✅ Carregadas ${mockDonors.length} conversas para status ${statusToLoad} e campanha ${campaignToLoad || 'todas'}`);
-
-      setDonors(mockDonors);
+      console.log(`✅ Carregadas ${conversationsAsDonors.length} conversas para status ${statusToLoad}`);
+      setDonors(conversationsAsDonors);
+      
     } catch (err) {
-      console.error('❌ Erro ao carregar conversas:', err);
+      console.error('❌ Erro ao carregar conversas da API:', err);
       setError('Erro ao carregar conversas. Tente novamente.');
+      setDonors([]);
     } finally {
       setIsLoading(false);
     }
-  }, [currentStatus, selectedCampaign, convertCampaignConversationsToDonors]);
+  }, [currentStatus, conversationAdapter, conversationApi]);
 
   // Carregar todos os contatos (customers) da API
   const loadAllContacts = React.useCallback(async () => {
@@ -294,15 +231,15 @@ export const BloodCenterChat: React.FC = () => {
   // Função para trocar de status da aba
   const handleStatusChange = React.useCallback((newStatus: ChatStatus) => {
     setCurrentStatus(newStatus);
-    loadConversations(newStatus, selectedCampaign?.id);
+    loadConversations(newStatus);
     updateState({ selectedDonor: null }); // Limpar seleção ao trocar status
-  }, [loadConversations, updateState, selectedCampaign]);
+  }, [loadConversations, updateState]);
 
   // Função para trocar de campanha
   const handleCampaignChange = React.useCallback((campaign: Campaign | null) => {
     setSelectedCampaign(campaign);
     updateState({ selectedDonor: null, selectedCampaign: campaign }); // Limpar seleção ao trocar campanha
-    loadConversations(currentStatus, campaign?.id);
+    loadConversations(currentStatus);
   }, [loadConversations, updateState, currentStatus]);
 
   // Função para trocar modo de visualização
@@ -415,13 +352,8 @@ export const BloodCenterChat: React.FC = () => {
   const handleDonorSelect = React.useCallback((donor: Donor) => {
     console.log('👤 Selecionando donor:', donor.name, 'campanha:', donor.campaignId);
     
-    // Carregar mensagens específicas do doador e campanha
-    let donorMessages;
-    if (donor.campaignId) {
-      donorMessages = getMessagesByCampaign(donor.id, donor.campaignId);
-    } else {
-      donorMessages = getMessagesForDonor(donor.id);
-    }
+    // Carregar mensagens (fallback para mock apenas se necessário)
+    const donorMessages = getMessagesForDonor(donor.id);
     
     updateState({
       selectedDonor: donor,
@@ -647,26 +579,57 @@ export const BloodCenterChat: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if (
-      (!state.messageInput.trim() && state.attachments.length === 0) ||
-      !state.selectedDonor
-    )
-      return;
+    console.log('🔍 handleSendMessage called with:', {
+      messageInput: state.messageInput,
+      messageInputTrimmed: state.messageInput.trim(),
+      messageInputLength: state.messageInput.length,
+      attachments: state.attachments,
+      selectedDonor: state.selectedDonor,
+      selectedDonorId: state.selectedDonor?.id,
+      conversationId: state.selectedDonor?.conversationId,
+      isCreatingConversation
+    });
 
+    if (!state.messageInput.trim() && state.attachments.length === 0) {
+      console.log('❌ Mensagem vazia - early return');
+      return;
+    }
+
+    if (!state.selectedDonor) {
+      console.log('❌ Nenhum donor selecionado - early return');
+      return;
+    }
+
+    if (isCreatingConversation) {
+      console.log('❌ Já criando conversa - early return');
+      return;
+    }
+
+    let conversationId = state.selectedDonor.conversationId;
+    
     // Verificar se é a primeira mensagem de um novo contato
     const isFirstMessage = !state.selectedDonor.hasActiveConversation && !state.selectedDonor.lastMessage;
 
     if (isFirstMessage) {
+      setIsCreatingConversation(true);
+      
       try {
-        // Criar conversa para este cliente
-        await conversationApi.create({
-          customerId: state.selectedDonor.id,
-          channel: 'WEB'
-        });
+        console.log('🚀 Criando conversa para:', state.selectedDonor.name);
+        
+        // Criar conversa para este cliente usando o adapter
+        const createRequest = conversationAdapter.toCreateRequest(
+          state.selectedDonor.id,
+          'WEB_CHAT'
+        );
+        
+        const newConversation = await conversationApi.create(createRequest);
+        console.log('✅ Conversa criada:', newConversation.id);
+        conversationId = newConversation.id;
 
         // Atualizar o donor para marcar que agora tem conversa ativa
         const updatedDonor = {
           ...state.selectedDonor,
+          conversationId: newConversation.id,
           hasActiveConversation: true,
           lastMessage: state.messageInput.trim() || "Anexo enviado",
           timestamp: getCurrentTimestamp(),
@@ -683,25 +646,109 @@ export const BloodCenterChat: React.FC = () => {
         console.log('✅ Conversa criada para novo contato:', updatedDonor.name);
       } catch (error) {
         console.error('❌ Erro ao criar conversa:', error);
-        // Continuar enviando a mensagem mesmo se falhar
+        
+        // Mostrar feedback de erro ao usuário
+        updateState({
+          showConfirmationModal: true,
+          confirmationData: {
+            title: 'Erro ao Criar Conversa',
+            message: 'Não foi possível criar a conversa. Deseja tentar novamente?',
+            type: 'warning',
+            confirmText: 'Tentar Novamente',
+            onConfirm: () => {
+              updateState({
+                showConfirmationModal: false,
+                confirmationData: null
+              });
+              // Tentar novamente após fechar o modal
+              setTimeout(() => handleSendMessage(), 100);
+            }
+          }
+        });
+        
+        setIsCreatingConversation(false);
+        return; // Não enviar a mensagem se falhou ao criar conversa
+      } finally {
+        setIsCreatingConversation(false);
       }
     }
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
+    if (!conversationId) {
+      console.error('❌ ID da conversa não encontrado');
+      return;
+    }
+
+    // Armazenar conteúdo antes de limpar o input
+    const messageContent = state.messageInput;
+
+    // Criar mensagem temporária para UI otimista
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
       senderId: "ai",
-      content: state.messageInput,
+      content: messageContent,
       timestamp: getCurrentTimestamp(),
       isAI: true,
-      attachments:
-        state.attachments.length > 0 ? [...state.attachments] : undefined,
+      attachments: state.attachments.length > 0 ? [...state.attachments] : undefined,
     };
 
+    // Atualizar UI imediatamente
     updateState({
-      messages: [...state.messages, newMessage],
+      messages: [...state.messages, tempMessage],
       messageInput: "",
       attachments: [],
     });
+
+    try {
+      console.log('📤 Enviando mensagem para conversa:', conversationId);
+      
+      // Enviar mensagem para a API
+      const sentMessage = await messageApi.send(conversationId, {
+        content: messageContent,
+        senderId: null, // TODO: Adicionar ID do usuário atual
+        messageType: 'TEXT'
+      });
+
+      console.log('✅ Mensagem enviada com sucesso:', sentMessage.id);
+
+      // Substituir mensagem temporária pela real
+      updateState({
+        messages: state.messages.map(msg => 
+          msg.id === tempMessage.id 
+            ? {
+                ...msg,
+                id: sentMessage.id,
+                timestamp: sentMessage.createdAt || msg.timestamp
+              }
+            : msg
+        )
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar mensagem:', error);
+      
+      // Remover mensagem temporária em caso de erro
+      updateState({
+        messages: state.messages.filter(msg => msg.id !== tempMessage.id)
+      });
+      
+      // Mostrar feedback de erro
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: 'Erro ao Enviar Mensagem',
+          message: 'Não foi possível enviar a mensagem. Deseja tentar novamente?',
+          type: 'warning',
+          confirmText: 'Tentar Novamente',
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null,
+              messageInput: messageContent
+            });
+          }
+        }
+      });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -858,6 +905,7 @@ export const BloodCenterChat: React.FC = () => {
               }
               onKeyPress={handleKeyPress}
               onEnhanceMessage={handleEnhanceMessage}
+              isLoading={isCreatingConversation}
             />
           </>
         ) : (

@@ -5,7 +5,24 @@ import com.ruby.rubia_server.messaging.adapter.impl.TwilioAdapter;
 import com.ruby.rubia_server.messaging.model.MessageResult;
 import com.ruby.rubia_server.messaging.model.IncomingMessage;
 import com.ruby.rubia_server.core.entity.User;
+import com.ruby.rubia_server.core.entity.Customer;
+import com.ruby.rubia_server.core.entity.Conversation;
+import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.enums.Channel;
+import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.core.enums.MessageStatus;
+import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.repository.UserRepository;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.service.CustomerService;
+import com.ruby.rubia_server.core.service.ConversationService;
+import com.ruby.rubia_server.core.service.MessageService;
+import com.ruby.rubia_server.core.dto.CreateConversationDTO;
+import com.ruby.rubia_server.core.dto.ConversationDTO;
+import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
+import com.ruby.rubia_server.core.dto.CustomerDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -13,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 @Service
 public class MessagingService {
@@ -24,6 +42,18 @@ public class MessagingService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private CompanyRepository companyRepository;
+    
+    @Autowired
+    private CustomerService customerService;
+    
+    @Autowired
+    private ConversationService conversationService;
+    
+    @Autowired
+    private MessageService messageService;
     
     @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
@@ -126,5 +156,146 @@ public class MessagingService {
                 .filter(User::getIsWhatsappActive)
                 .map(User::getWhatsappNumber)
                 .orElse(null);
+    }
+    
+    public void processIncomingMessage(IncomingMessage incomingMessage) {
+        try {
+            logger.info("Processing incoming message from: {} to: {}", 
+                incomingMessage.getFrom(), incomingMessage.getTo());
+            
+            // Extract phone numbers
+            String fromNumber = extractPhoneNumber(incomingMessage.getFrom());
+            String toNumber = extractPhoneNumber(incomingMessage.getTo());
+            
+            // Determine company based on destination number
+            Company company = findCompanyByWhatsAppNumber(toNumber);
+            if (company == null) {
+                logger.warn("No company found for WhatsApp number: {}", toNumber);
+                return;
+            }
+            
+            // Find or create customer
+            Customer customer;
+            try {
+                CustomerDTO customerDTO = customerService.findByPhoneAndCompany(fromNumber, company.getId());
+                customer = Customer.builder()
+                    .id(customerDTO.getId())
+                    .phone(customerDTO.getPhone())
+                    .name(customerDTO.getName())
+                    .company(company)
+                    .build();
+            } catch (IllegalArgumentException e) {
+                // Customer not found, create new one
+                customer = createCustomerFromWhatsApp(fromNumber, company);
+            }
+            
+            // Find or create conversation
+            ConversationDTO conversation = findOrCreateConversation(customer);
+            
+            // Save incoming message
+            messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
+            
+            logger.info("Successfully processed incoming message for conversation: {}", 
+                conversation.getId());
+            
+        } catch (Exception e) {
+            logger.error("Error processing incoming message: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to process incoming message", e);
+        }
+    }
+    
+    private String extractPhoneNumber(String twilioNumber) {
+        if (twilioNumber == null) {
+            return null;
+        }
+        
+        // Remove 'whatsapp:' prefix if present
+        String cleanNumber = twilioNumber.replace("whatsapp:", "");
+        
+        // Normalize the phone number using existing logic
+        return customerService.normalizePhoneNumber(cleanNumber);
+    }
+    
+    private Company findCompanyByWhatsAppNumber(String whatsappNumber) {
+        if (whatsappNumber == null || whatsappNumber.trim().isEmpty()) {
+            logger.warn("WhatsApp number is null or empty");
+            return null;
+        }
+        
+        // Normalize the WhatsApp number to match stored format
+        String normalizedNumber = customerService.normalizePhoneNumber(whatsappNumber);
+        
+        // Find active user with this WhatsApp number across all companies
+        Optional<User> userOptional = userRepository.findActiveByWhatsappNumber(normalizedNumber);
+        User user = userOptional.orElse(null);
+        
+        if (user != null) {
+            logger.info("Found company {} for WhatsApp number {}", 
+                user.getCompany().getName(), whatsappNumber);
+            return user.getCompany();
+        }
+        
+        // If no user found, try to find by any company's WhatsApp configuration
+        // This handles cases where the WhatsApp number might be configured at company level
+        logger.warn("No active user found with WhatsApp number: {}. " +
+            "Message will be ignored or you may need to configure WhatsApp numbers for users.", 
+            whatsappNumber);
+        
+        return null;
+    }
+    
+    private Customer createCustomerFromWhatsApp(String phoneNumber, Company company) {
+        logger.info("Creating new customer for WhatsApp number: {} in company: {}", 
+            phoneNumber, company.getName());
+        
+        // Generate default name from phone number
+        String defaultName = "WhatsApp " + phoneNumber.substring(Math.max(0, phoneNumber.length() - 4));
+        
+        CreateCustomerDTO createDTO = CreateCustomerDTO.builder()
+            .phone(phoneNumber)
+            .name(defaultName)
+            .build();
+        
+        CustomerDTO customerDTO = customerService.create(createDTO, company.getId());
+        
+        return Customer.builder()
+            .id(customerDTO.getId())
+            .phone(customerDTO.getPhone())
+            .name(customerDTO.getName())
+            .company(company)
+            .whatsappId(phoneNumber)
+            .isBlocked(false)
+            .build();
+    }
+    
+    private ConversationDTO findOrCreateConversation(Customer customer) {
+        // First, try to find existing active WhatsApp conversations for this customer
+        List<ConversationDTO> customerConversations = conversationService
+            .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
+        
+        // Look for active WhatsApp conversations (ENTRADA or ESPERANDO status)
+        Optional<ConversationDTO> existingConversation = customerConversations.stream()
+            .filter(conv -> conv.getChannel() == Channel.WHATSAPP)
+            .filter(conv -> conv.getStatus() == ConversationStatus.ENTRADA || 
+                           conv.getStatus() == ConversationStatus.ESPERANDO)
+            .findFirst();
+        
+        if (existingConversation.isPresent()) {
+            logger.info("Found existing active WhatsApp conversation: {} for customer: {}", 
+                existingConversation.get().getId(), customer.getId());
+            return existingConversation.get();
+        }
+        
+        // No active conversation found, create a new one
+        logger.info("Creating new WhatsApp conversation for customer: {}", customer.getId());
+        
+        CreateConversationDTO createDTO = CreateConversationDTO.builder()
+            .customerId(customer.getId())
+            .channel(Channel.WHATSAPP)
+            .status(ConversationStatus.ENTRADA)
+            .priority(1)
+            .build();
+        
+        return conversationService.create(createDTO, customer.getCompany().getId());
     }
 }
