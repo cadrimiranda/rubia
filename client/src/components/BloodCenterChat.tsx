@@ -136,7 +136,7 @@ export const BloodCenterChat: React.FC = () => {
       // Converter ConversationDTO para formato Donor (compatibilidade)
       const conversationsAsDonors = response.content.map(conv => {
         return {
-          id: conv.id,
+          id: conv.customerId, // Usar customerId para buscar dados do customer
           conversationId: conv.id, // Incluir o ID da conversa
           name: conv.customerName || conv.customerPhone || 'Cliente',
           lastMessage: conv.lastMessage?.content || '',
@@ -147,7 +147,7 @@ export const BloodCenterChat: React.FC = () => {
             }) : '',
           unread: statusToLoad === 'aguardando' ? 0 : 1,
           status: 'offline' as const,
-          bloodType: 'N/I',
+          bloodType: 'Não informado',
           phone: conv.customerPhone || '',
           email: '',
           lastDonation: 'Sem registro',
@@ -207,7 +207,7 @@ export const BloodCenterChat: React.FC = () => {
           timestamp: "",
           unread: 0,
           status: "offline" as const,
-          bloodType: "N/I",
+          bloodType: "Não informado",
           phone: user.phone || '',
           email: "",
           lastDonation: "Sem registro",
@@ -248,40 +248,73 @@ export const BloodCenterChat: React.FC = () => {
   }, [updateState]);
 
   // Função para trocar status de uma conversa específica
-  const handleConversationStatusChange = React.useCallback((donorId: string, newStatus: ChatStatus) => {
+  const handleConversationStatusChange = React.useCallback(async (donorId: string, newStatus: ChatStatus) => {
     console.log(`🔄 Mudando status da conversa ${donorId} para: ${newStatus}`);
     
     // Encontrar o donor atual
     const donor = donors.find(d => d.id === donorId);
     if (!donor) return;
 
-    // Remover da lista atual
-    setDonors(prev => prev.filter(d => d.id !== donorId));
+    // Verificar se tem conversationId
+    const conversationId = donor.conversationId || donor.id;
     
-    // Se o donor selecionado foi movido, limpar seleção
-    if (state.selectedDonor?.id === donorId) {
-      updateState({ selectedDonor: null, messages: [] });
-    }
+    try {
+      // Chamar API para mudar status no backend
+      const backendStatus = conversationAdapter.mapStatusToBackend(newStatus);
+      console.log(`📡 Chamando API para mudar status da conversa ${conversationId} para: ${backendStatus}`);
+      
+      await conversationApi.changeStatus(conversationId, backendStatus as any);
+      
+      // Remover da lista atual após sucesso na API
+      setDonors(prev => prev.filter(d => d.id !== donorId));
+      
+      // Se o donor selecionado foi movido, limpar seleção
+      if (state.selectedDonor?.id === donorId) {
+        updateState({ selectedDonor: null, messages: [] });
+      }
 
-    // Mostrar feedback
-    const statusLabels: Record<ChatStatus, string> = {
-      ativos: 'Ativo',
-      aguardando: 'Aguardando', 
-      inativo: 'Inativo',
-      entrada: 'Entrada',
-      esperando: 'Esperando',
-      finalizados: 'Finalizados'
-    };
-    
-    console.log(`✅ Conversa de ${donor.name} movida para ${statusLabels[newStatus]}`);
-    
-    // Se mudou para o status atual, recarregar para mostrar na lista
-    if (newStatus === currentStatus) {
-      setTimeout(() => {
-        loadConversations(currentStatus);
-      }, 100);
+      // Mostrar feedback
+      const statusLabels: Record<ChatStatus, string> = {
+        ativos: 'Ativo',
+        aguardando: 'Aguardando', 
+        inativo: 'Inativo',
+        entrada: 'Entrada',
+        esperando: 'Esperando',
+        finalizados: 'Finalizados'
+      };
+      
+      console.log(`✅ Conversa de ${donor.name} movida para ${statusLabels[newStatus]} no backend`);
+      
+      // Se mudou para o status atual, recarregar para mostrar na lista
+      if (newStatus === currentStatus) {
+        setTimeout(() => {
+          loadConversations(currentStatus);
+        }, 100);
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao mudar status da conversa:', error);
+      
+      // Mostrar modal de erro
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: 'Erro ao Alterar Status',
+          message: `Não foi possível alterar o status da conversa de ${donor.name}. Deseja tentar novamente?`,
+          type: 'warning',
+          confirmText: 'Tentar Novamente',
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null
+            });
+            // Tentar novamente
+            handleConversationStatusChange(donorId, newStatus);
+          }
+        }
+      });
     }
-  }, [donors, state.selectedDonor, updateState, currentStatus, loadConversations]);
+  }, [donors, state.selectedDonor, updateState, currentStatus, loadConversations, conversationAdapter, conversationApi]);
 
   // Função para lidar com agendamento
   const handleSchedule = React.useCallback((scheduleData: { type: string; date: string; time: string; notes: string }) => {
@@ -363,19 +396,17 @@ export const BloodCenterChat: React.FC = () => {
     });
   }, [updateState]);
 
-  // Função para carregar dados completos do customer e abrir modal
-  const handleDonorInfoClick = React.useCallback(async () => {
-    if (!state.selectedDonor) return;
-    
+  // Função reutilizável para carregar dados completos do customer e abrir modal (DRY)
+  const handleOpenDonorProfile = React.useCallback(async (donor: Donor) => {
     try {
-      console.log('📋 Carregando dados completos do customer:', state.selectedDonor.id);
+      console.log('📋 Carregando dados completos do customer:', donor.id);
       
       // Buscar dados completos do customer na API
-      const customerData = await customerApi.getById(state.selectedDonor.id);
+      const customerData = await customerApi.getById(donor.id);
       console.log('📋 Dados do customer recebidos:', customerData);
       
-      // Atualizar o donor selecionado com os dados completos
-      const updatedDonor = customerAdapter.updateDonorWithCustomerData(state.selectedDonor, customerData);
+      // Atualizar o donor com os dados completos
+      const updatedDonor = customerAdapter.updateDonorWithCustomerData(donor, customerData);
       
       updateState({
         selectedDonor: updatedDonor,
@@ -384,9 +415,18 @@ export const BloodCenterChat: React.FC = () => {
     } catch (error) {
       console.error('❌ Erro ao carregar dados do customer:', error);
       // Abrir modal mesmo com erro, mostrando dados que já temos
-      updateState({ showDonorInfo: true });
+      updateState({
+        selectedDonor: donor,
+        showDonorInfo: true
+      });
     }
-  }, [state.selectedDonor, updateState]);
+  }, [updateState]);
+
+  // Função para carregar dados completos do customer e abrir modal (ChatHeader)
+  const handleDonorInfoClick = React.useCallback(async () => {
+    if (!state.selectedDonor) return;
+    await handleOpenDonorProfile(state.selectedDonor);
+  }, [state.selectedDonor, handleOpenDonorProfile]);
 
   const createDonorFromContact = (contactData: NewContactData): Donor => {
     return {
@@ -396,7 +436,7 @@ export const BloodCenterChat: React.FC = () => {
       timestamp: "",
       unread: 0,
       status: "offline",
-      bloodType: "N/I",
+      bloodType: "Não informado",
       phone: contactData.phone,
       email: "",
       lastDonation: "Sem registro",
@@ -448,7 +488,7 @@ export const BloodCenterChat: React.FC = () => {
     });
   };
 
-  const handleContextMenuAction = (action: string, donorId: string) => {
+  const handleContextMenuAction = React.useCallback(async (action: string, donorId: string) => {
     console.log(`🎯 Ação: ${action} para donor: ${donorId}`);
     
     // Encontrar o donor
@@ -476,71 +516,8 @@ export const BloodCenterChat: React.FC = () => {
         break;
 
       case 'view-profile':
-        // Abrir modal de informações do doador
-        updateState({
-          selectedDonor: donor,
-          showDonorInfo: true
-        });
-        break;
-
-      case 'archive-conversation':
-        // Mostrar confirmação para arquivar
-        updateState({
-          showConfirmationModal: true,
-          confirmationData: {
-            title: 'Arquivar Conversa',
-            message: `Tem certeza que deseja arquivar a conversa com ${donor.name}? Esta ação pode ser desfeita posteriormente.`,
-            type: 'warning',
-            confirmText: 'Arquivar',
-            onConfirm: () => {
-              // Arquivar conversa (remover da lista atual)
-              setDonors(prev => prev.filter(d => d.id !== donorId));
-              
-              // Se é a conversa selecionada, limpar seleção
-              if (state.selectedDonor?.id === donorId) {
-                updateState({ selectedDonor: null, messages: [] });
-              }
-              
-              console.log(`📁 Conversa de ${donor.name} arquivada`);
-              
-              // Fechar modal
-              updateState({
-                showConfirmationModal: false,
-                confirmationData: null
-              });
-            }
-          }
-        });
-        break;
-
-      case 'block-contact':
-        // Mostrar confirmação para bloquear
-        updateState({
-          showConfirmationModal: true,
-          confirmationData: {
-            title: 'Bloquear Contato',
-            message: `Tem certeza que deseja bloquear ${donor.name}? Esta pessoa não receberá mais mensagens e será movida para a lista de inativos.`,
-            type: 'danger',
-            confirmText: 'Bloquear',
-            onConfirm: () => {
-              // Bloquear contato (mover para inativo e remover)
-              setDonors(prev => prev.filter(d => d.id !== donorId));
-              
-              // Se é a conversa selecionada, limpar seleção
-              if (state.selectedDonor?.id === donorId) {
-                updateState({ selectedDonor: null, messages: [] });
-              }
-              
-              console.log(`🚫 Contato ${donor.name} bloqueado`);
-              
-              // Fechar modal
-              updateState({
-                showConfirmationModal: false,
-                confirmationData: null
-              });
-            }
-          }
-        });
+        // Reutiliza a mesma função do ChatHeader (DRY)
+        await handleOpenDonorProfile(donor);
         break;
 
       default:
@@ -551,7 +528,7 @@ export const BloodCenterChat: React.FC = () => {
     updateState({
       contextMenu: { show: false, x: 0, y: 0, donorId: "" },
     });
-  };
+  }, [donors, allContacts, handleDonorSelect, handleOpenDonorProfile, updateState, state.selectedDonor, setDonors]);
 
   const handleFileUpload = (files: FileList | null) => {
     if (!files) return;

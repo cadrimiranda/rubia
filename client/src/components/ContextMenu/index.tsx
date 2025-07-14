@@ -1,5 +1,5 @@
 import React from "react";
-import { MessageSquare, Calendar, User, Archive, UserX, CheckCircle, Clock, XCircle } from "lucide-react";
+import { MessageSquare, Calendar, User, CheckCircle, Clock, XCircle } from "lucide-react";
 import type { ContextMenu as ContextMenuType } from "../../types/types";
 import type { ChatStatus } from "../../types/index";
 
@@ -92,22 +92,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           )}
         </>
       )}
-
-      <div className="border-t border-gray-200 my-1" />
-      <button
-        onClick={() => onAction("archive-conversation", contextMenu.donorId)}
-        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-      >
-        <Archive className="w-4 h-4" />
-        Arquivar conversa
-      </button>
-      <button
-        onClick={() => onAction("block-contact", contextMenu.donorId)}
-        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-      >
-        <UserX className="w-4 h-4" />
-        Bloquear contato
-      </button>
     </div>
   );
 };
