@@ -339,7 +339,9 @@ public class MessageService {
                 .deliveredAt(message.getDeliveredAt())
                 .readAt(message.getReadAt())
                 // Frontend compatibility
-                .timestamp(message.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .timestamp(message.getCreatedAt() != null ? 
+                    message.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : 
+                    LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                 .isFromUser(message.getSenderType() != SenderType.CUSTOMER)
                 .build();
     }

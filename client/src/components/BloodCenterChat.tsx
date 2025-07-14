@@ -15,6 +15,7 @@ import { ConfirmationModal } from "./ConfirmationModal";
 import { MessageEnhancerModal } from "./MessageEnhancerModal";
 import { conversationApi } from "../api/services/conversationApi";
 import { customerApi } from "../api/services/customerApi";
+import { messageApi } from "../api/services/messageApi";
 import { customerAdapter } from "../adapters/customerAdapter";
 import { conversationAdapter } from "../adapters/conversationAdapter";
 import { getMessagesForDonor } from "../mocks/data";
@@ -136,6 +137,7 @@ export const BloodCenterChat: React.FC = () => {
       const conversationsAsDonors = response.content.map(conv => {
         return {
           id: conv.id,
+          conversationId: conv.id, // Incluir o ID da conversa
           name: conv.customerName || conv.customerPhone || 'Cliente',
           lastMessage: conv.lastMessage?.content || '',
           timestamp: conv.lastMessage?.createdAt ? 
@@ -577,13 +579,34 @@ export const BloodCenterChat: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if (
-      (!state.messageInput.trim() && state.attachments.length === 0) ||
-      !state.selectedDonor ||
+    console.log('🔍 handleSendMessage called with:', {
+      messageInput: state.messageInput,
+      messageInputTrimmed: state.messageInput.trim(),
+      messageInputLength: state.messageInput.length,
+      attachments: state.attachments,
+      selectedDonor: state.selectedDonor,
+      selectedDonorId: state.selectedDonor?.id,
+      conversationId: state.selectedDonor?.conversationId,
       isCreatingConversation
-    )
-      return;
+    });
 
+    if (!state.messageInput.trim() && state.attachments.length === 0) {
+      console.log('❌ Mensagem vazia - early return');
+      return;
+    }
+
+    if (!state.selectedDonor) {
+      console.log('❌ Nenhum donor selecionado - early return');
+      return;
+    }
+
+    if (isCreatingConversation) {
+      console.log('❌ Já criando conversa - early return');
+      return;
+    }
+
+    let conversationId = state.selectedDonor.conversationId;
+    
     // Verificar se é a primeira mensagem de um novo contato
     const isFirstMessage = !state.selectedDonor.hasActiveConversation && !state.selectedDonor.lastMessage;
 
@@ -601,10 +624,12 @@ export const BloodCenterChat: React.FC = () => {
         
         const newConversation = await conversationApi.create(createRequest);
         console.log('✅ Conversa criada:', newConversation.id);
+        conversationId = newConversation.id;
 
         // Atualizar o donor para marcar que agora tem conversa ativa
         const updatedDonor = {
           ...state.selectedDonor,
+          conversationId: newConversation.id,
           hasActiveConversation: true,
           lastMessage: state.messageInput.trim() || "Anexo enviado",
           timestamp: getCurrentTimestamp(),
@@ -648,21 +673,82 @@ export const BloodCenterChat: React.FC = () => {
       }
     }
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
+    if (!conversationId) {
+      console.error('❌ ID da conversa não encontrado');
+      return;
+    }
+
+    // Armazenar conteúdo antes de limpar o input
+    const messageContent = state.messageInput;
+
+    // Criar mensagem temporária para UI otimista
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
       senderId: "ai",
-      content: state.messageInput,
+      content: messageContent,
       timestamp: getCurrentTimestamp(),
       isAI: true,
-      attachments:
-        state.attachments.length > 0 ? [...state.attachments] : undefined,
+      attachments: state.attachments.length > 0 ? [...state.attachments] : undefined,
     };
 
+    // Atualizar UI imediatamente
     updateState({
-      messages: [...state.messages, newMessage],
+      messages: [...state.messages, tempMessage],
       messageInput: "",
       attachments: [],
     });
+
+    try {
+      console.log('📤 Enviando mensagem para conversa:', conversationId);
+      
+      // Enviar mensagem para a API
+      const sentMessage = await messageApi.send(conversationId, {
+        content: messageContent,
+        senderId: null, // TODO: Adicionar ID do usuário atual
+        messageType: 'TEXT'
+      });
+
+      console.log('✅ Mensagem enviada com sucesso:', sentMessage.id);
+
+      // Substituir mensagem temporária pela real
+      updateState({
+        messages: state.messages.map(msg => 
+          msg.id === tempMessage.id 
+            ? {
+                ...msg,
+                id: sentMessage.id,
+                timestamp: sentMessage.createdAt || msg.timestamp
+              }
+            : msg
+        )
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar mensagem:', error);
+      
+      // Remover mensagem temporária em caso de erro
+      updateState({
+        messages: state.messages.filter(msg => msg.id !== tempMessage.id)
+      });
+      
+      // Mostrar feedback de erro
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: 'Erro ao Enviar Mensagem',
+          message: 'Não foi possível enviar a mensagem. Deseja tentar novamente?',
+          type: 'warning',
+          confirmText: 'Tentar Novamente',
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null,
+              messageInput: messageContent
+            });
+          }
+        }
+      });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

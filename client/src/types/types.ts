@@ -48,6 +48,7 @@ export interface Donor {
   conversationStatus?: string; // Para indicar o status da conversa
   campaignId?: string; // ID da campanha atual
   campaigns?: string[]; // Lista de todas as campanhas em que participa
+  conversationId?: string; // ID da conversa ativa
 }
 
 export interface FileAttachment {
