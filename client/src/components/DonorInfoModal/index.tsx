@@ -59,7 +59,7 @@ export const DonorInfoModal: React.FC<DonorInfoModalProps> = ({
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-600">Tipo Sanguíneo</span>
                 </div>
-                <p className="text-xl font-bold text-gray-900">{donor.bloodType || 'N/I'}</p>
+                <p className="text-xl font-bold text-gray-900">{donor.bloodType || 'Não informado'}</p>
               </div>
 
               <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -68,7 +68,7 @@ export const DonorInfoModal: React.FC<DonorInfoModalProps> = ({
                   <span className="text-sm font-medium text-gray-600">Idade</span>
                 </div>
                 <p className="text-xl font-bold text-gray-900">
-                  {donor.birthDate ? `${calculateAge(donor.birthDate)} anos` : 'N/I'}
+                  {donor.birthDate ? `${calculateAge(donor.birthDate)} anos` : 'Não informado'}
                 </p>
               </div>
 
@@ -78,7 +78,7 @@ export const DonorInfoModal: React.FC<DonorInfoModalProps> = ({
                   <span className="text-sm font-medium text-gray-600">Peso</span>
                 </div>
                 <p className="text-xl font-bold text-gray-900">
-                  {donor.weight && donor.weight > 0 ? `${donor.weight} kg` : 'N/I'}
+                  {donor.weight && donor.weight > 0 ? `${donor.weight} kg` : 'Não informado'}
                 </p>
               </div>
 
@@ -88,7 +88,7 @@ export const DonorInfoModal: React.FC<DonorInfoModalProps> = ({
                   <span className="text-sm font-medium text-gray-600">Altura</span>
                 </div>
                 <p className="text-xl font-bold text-gray-900">
-                  {donor.height && donor.height > 0 ? `${donor.height} cm` : 'N/I'}
+                  {donor.height && donor.height > 0 ? `${donor.height} cm` : 'Não informado'}
                 </p>
               </div>
             </div>

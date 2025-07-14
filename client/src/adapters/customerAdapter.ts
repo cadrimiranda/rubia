@@ -288,7 +288,7 @@ class CustomerAdapter {
       timestamp: '',
       unread: 0,
       status: 'offline' as const,
-      bloodType: dto.bloodType || 'N/I',
+      bloodType: dto.bloodType || 'Não informado',
       phone: dto.phone,
       email: '', // Campo não existe no CustomerDTO
       lastDonation: dto.lastDonationDate ? new Date(dto.lastDonationDate).toLocaleDateString('pt-BR') : 'Sem registro',
@@ -339,13 +339,13 @@ class CustomerAdapter {
       ...donor,
       name: dto.name || this.formatPhoneAsName(dto.phone),
       avatar: dto.profileUrl || donor.avatar,
-      bloodType: dto.bloodType || donor.bloodType,
+      bloodType: dto.bloodType || 'Não informado',
       phone: dto.phone,
       lastDonation: dto.lastDonationDate ? new Date(dto.lastDonationDate).toLocaleDateString('pt-BR') : donor.lastDonation,
       address: this.formatAddress(dto) || donor.address,
       birthDate: dto.birthDate || donor.birthDate,
-      weight: dto.weight || donor.weight,
-      height: dto.height || donor.height,
+      weight: dto.weight || 0,
+      height: dto.height || 0,
     }
   }
 }
