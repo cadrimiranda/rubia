@@ -31,19 +31,7 @@ class ConversationAdapter {
     }
   }
 
-  /**
-   * Converte CustomerDTO para User (método interno para evitar dependência circular)
-   */
-  private convertCustomer(customer: CustomerDTO) {
-    return {
-      id: customer.id,
-      name: customer.name || this.formatPhoneAsName(customer.phone),
-      avatar: customer.profileUrl || this.generateAvatarUrl(customer.name || customer.phone),
-      isOnline: false,
-      lastSeen: customer.updatedAt ? new Date(customer.updatedAt) : undefined,
-      phone: customer.phone
-    }
-  }
+  // Método removido pois não estava sendo usado
 
   /**
    * Converte MessageDTO para Message (método interno)

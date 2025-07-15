@@ -41,6 +41,11 @@ public class TwilioAdapter implements MessagingAdapter {
         try {
             String fromPhoneNumber = fromNumber != null ? fromNumber : config.getPhoneNumber();
             
+            // Verificar se temos um número de telefone válido
+            if (fromPhoneNumber == null || fromPhoneNumber.trim().isEmpty()) {
+                throw new IllegalStateException("WhatsApp phone number not configured. Please set WHATSAPP_PHONE_NUMBER environment variable.");
+            }
+            
             Message twilioMessage = Message.creator(
                 new PhoneNumber(formatPhoneNumber(to)),
                 new PhoneNumber(formatPhoneNumber(fromPhoneNumber)),
@@ -69,6 +74,11 @@ public class TwilioAdapter implements MessagingAdapter {
     public MessageResult sendMediaMessage(String to, String mediaUrl, String caption, String fromNumber) {
         try {
             String fromPhoneNumber = fromNumber != null ? fromNumber : config.getPhoneNumber();
+            
+            // Verificar se temos um número de telefone válido
+            if (fromPhoneNumber == null || fromPhoneNumber.trim().isEmpty()) {
+                throw new IllegalStateException("WhatsApp phone number not configured. Please set WHATSAPP_PHONE_NUMBER environment variable.");
+            }
             
             var messageCreator = Message.creator(
                 new PhoneNumber(formatPhoneNumber(to)),
@@ -129,7 +139,8 @@ public class TwilioAdapter implements MessagingAdapter {
     }
     
     String formatPhoneNumber(String phoneNumber) {
-        if (config.getPhoneNumber().startsWith("whatsapp:")) {
+        String configPhoneNumber = config.getPhoneNumber();
+        if (configPhoneNumber != null && configPhoneNumber.startsWith("whatsapp:")) {
             return phoneNumber.startsWith("whatsapp:") ? phoneNumber : "whatsapp:" + phoneNumber;
         }
         return phoneNumber;

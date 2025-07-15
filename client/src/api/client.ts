@@ -31,7 +31,7 @@ class ApiClient {
 
     const config: RequestInit = {
       headers: {
-        "Content-Type": "application/json",
+        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...options.headers,
       },
       ...options,
@@ -49,15 +49,27 @@ class ApiClient {
         };
       }
 
-      // Adicionar contexto da empresa para multi-tenant (somente se não for desenvolvimento)
-      const companySlug = getCurrentCompanySlug();
-      if (companySlug && companySlug !== 'localhost' && companySlug !== '127.0.0.1') {
+      // Adicionar contexto da empresa para multi-tenant
+      const companySlug = localStorage.getItem('auth_company_slug') || getCurrentCompanySlug();
+      if (companySlug) {
         // Limitar tamanho do header para evitar erro 431
         const sanitizedSlug = companySlug.substring(0, 50);
         config.headers = {
           ...config.headers,
           "X-Company-Slug": sanitizedSlug,
         };
+      }
+      
+      // Debug para upload de mídia
+      if (endpoint.includes('/media')) {
+        console.log('🔍 Media upload request:', {
+          endpoint,
+          hasToken: !!token,
+          companySlug,
+          tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
+          headers: Object.keys(config.headers || {}),
+          isFormData: config.body instanceof FormData
+        });
       }
     }
 
@@ -115,8 +127,26 @@ class ApiClient {
           const errorData = await response.json();
           error.message = errorData.message || error.message;
           error.code = errorData.code;
-        } catch {
-          // Manter mensagem padrão se não conseguir parsear JSON
+          
+          // Debug especial para 403 em uploads de mídia
+          if (response.status === 403 && endpoint.includes('/media')) {
+            console.error('❌ 403 Forbidden on media upload:', {
+              endpoint,
+              errorData,
+              headers: Object.keys(config.headers || {}),
+              companySlug: localStorage.getItem('auth_company_slug'),
+              tokenExists: !!localStorage.getItem('auth_token')
+            });
+          }
+        } catch (parseError) {
+          // Tentar ler como texto se não for JSON
+          try {
+            const errorText = await response.text();
+            console.error('❌ Error response (text):', errorText);
+            error.message = errorText || error.message;
+          } catch {
+            // Manter mensagem padrão se não conseguir parsear nada
+          }
         }
 
         // Se for erro 403, tratar como falta de permissão
@@ -220,9 +250,13 @@ class ApiClient {
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
+    const isFormData = data instanceof FormData;
+    
     return this.request<T>(endpoint, {
       method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      // Don't set Content-Type for FormData - let browser set it with boundary
+      ...(isFormData ? {} : { headers: { "Content-Type": "application/json" } }),
     });
   }
 

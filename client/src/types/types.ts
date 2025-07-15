@@ -59,6 +59,29 @@ export interface FileAttachment {
   url: string;
 }
 
+export interface ConversationMedia {
+  id: string;
+  conversationId: string;
+  fileUrl: string;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT' | 'STICKER' | 'OTHER';
+  mimeType: string;
+  originalFileName: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+  uploadedByUser?: string;
+  uploadedByCustomer?: string;
+}
+
+export interface PendingMedia {
+  id: string;
+  file: File;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT' | 'STICKER' | 'OTHER';
+  mimeType: string;
+  originalFileName: string;
+  fileSizeBytes: number;
+  previewUrl?: string; // Para preview local
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -66,6 +89,7 @@ export interface Message {
   timestamp: string;
   isAI: boolean;
   attachments?: FileAttachment[];
+  media?: ConversationMedia[];
   campaignId?: string; // ID da campanha
 }
 
@@ -83,6 +107,8 @@ export interface ChatState {
   selectedCampaign: Campaign | null;
   messages: Message[];
   attachments: FileAttachment[];
+  media: ConversationMedia[];
+  pendingMedia: PendingMedia[];
   searchTerm: string;
   messageInput: string;
   showNewChatModal: boolean;

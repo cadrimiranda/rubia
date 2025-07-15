@@ -52,24 +52,24 @@ public class ConversationMediaService {
 
         // Validate and set required company
         Company company = companyRepository.findById(createDTO.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + createDTO.getCompanyId()));
+                .orElseThrow(() -> new IllegalArgumentException("Company not found with ID: " + createDTO.getCompanyId()));
         builder.company(company);
 
         // Validate and set required conversation
         Conversation conversation = conversationRepository.findById(createDTO.getConversationId())
-                .orElseThrow(() -> new RuntimeException("Conversation not found with ID: " + createDTO.getConversationId()));
+                .orElseThrow(() -> new IllegalArgumentException("Conversation not found with ID: " + createDTO.getConversationId()));
         builder.conversation(conversation);
 
         // Handle optional relationships
         if (createDTO.getUploadedByUserId() != null) {
             User user = userRepository.findById(createDTO.getUploadedByUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + createDTO.getUploadedByUserId()));
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + createDTO.getUploadedByUserId()));
             builder.uploadedByUser(user);
         }
 
         if (createDTO.getUploadedByCustomerId() != null) {
             Customer customer = customerRepository.findById(createDTO.getUploadedByCustomerId())
-                    .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + createDTO.getUploadedByCustomerId()));
+                    .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + createDTO.getUploadedByCustomerId()));
             builder.uploadedByCustomer(customer);
         }
 

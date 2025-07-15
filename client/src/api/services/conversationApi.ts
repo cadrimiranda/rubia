@@ -4,7 +4,6 @@ import type {
   ConversationFilters,
   CreateConversationRequest,
   UpdateConversationRequest,
-  ConversationAssignResponse,
   PageResponse,
   ConversationStatus
 } from '../types'

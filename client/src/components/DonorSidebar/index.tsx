@@ -1,5 +1,18 @@
 import React from "react";
-import { Search, Plus, User, Circle, Heart, Loader, AlertCircle, RefreshCw, Settings, Filter, Grid, List } from "lucide-react";
+import {
+  Search,
+  Plus,
+  User,
+  Circle,
+  Heart,
+  Loader,
+  AlertCircle,
+  RefreshCw,
+  Settings,
+  Filter,
+  Grid,
+  List,
+} from "lucide-react";
 import { Select } from "antd";
 import type { Donor, Campaign, ViewMode } from "../../types/types";
 import type { ChatStatus } from "../../types/index";
@@ -40,15 +53,17 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
   error = null,
   onRetry,
   onConfigClick,
-  currentStatus = 'ativos',
+  currentStatus = "ativos",
   onStatusChange,
   campaigns = [],
   selectedCampaign = null,
   onCampaignChange,
-  viewMode = 'full',
+  viewMode = "full",
   onViewModeChange,
 }) => {
-  const activeDonors = donors.filter((d) => d.lastMessage || d.hasActiveConversation);
+  const activeDonors = donors.filter(
+    (d) => d.lastMessage || d.hasActiveConversation
+  );
   const filteredDonors = activeDonors.filter((donor) =>
     donor.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -79,13 +94,18 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
           <div className="mb-3 p-2 bg-gray-50 rounded-md border border-gray-200">
             <div className="flex items-center gap-2 mb-2">
               <Filter className="w-3.5 h-3.5 text-blue-600" />
-              <span className="text-xs font-semibold text-gray-800">Filtrar por Campanha</span>
+              <span className="text-xs font-semibold text-gray-800">
+                Filtrar por Campanha
+              </span>
             </div>
             <Select
-              value={selectedCampaign?.id || 'all'}
+              value={selectedCampaign?.id || "all"}
               onChange={(value) => {
                 if (onCampaignChange) {
-                  const campaign = value === 'all' ? null : campaigns.find(c => c.id === value) || null;
+                  const campaign =
+                    value === "all"
+                      ? null
+                      : campaigns.find((c) => c.id === value) || null;
                   onCampaignChange(campaign);
                 }
               }}
@@ -101,8 +121,8 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
               {campaigns.map((campaign) => (
                 <Option key={campaign.id} value={campaign.id}>
                   <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: campaign.color }}
                     ></div>
                     <span>{campaign.name}</span>
@@ -114,71 +134,72 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
         )}
 
         <div className="bg-gray-50 rounded-md p-2 border border-gray-200 mb-3">
-          <div className="text-xs font-semibold text-gray-600 mb-2">STATUS DAS CONVERSAS</div>
+          <div className="text-xs font-semibold text-gray-600 mb-2">
+            STATUS DAS CONVERSAS
+          </div>
           <div className="flex gap-1">
-          <button
-            onClick={() => onStatusChange?.('ativos')}
-            className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              currentStatus === 'ativos'
-                ? 'bg-green-500 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Ativos
-          </button>
-          <button
-            onClick={() => onStatusChange?.('aguardando')}
-            className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              currentStatus === 'aguardando'
-                ? 'bg-yellow-500 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Aguardando
-          </button>
-          <button
-            onClick={() => onStatusChange?.('inativo')}
-            className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              currentStatus === 'inativo'
-                ? 'bg-red-500 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Inativo
-          </button>
+            <button
+              onClick={() => onStatusChange?.("ativos")}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                currentStatus === "ativos"
+                  ? "bg-green-500 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Ativos
+            </button>
+            <button
+              onClick={() => onStatusChange?.("aguardando")}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                currentStatus === "aguardando"
+                  ? "bg-yellow-500 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Aguardando
+            </button>
+            <button
+              onClick={() => onStatusChange?.("inativo")}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                currentStatus === "inativo"
+                  ? "bg-red-500 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Inativo
+            </button>
           </div>
         </div>
-
         <div className="space-y-2">
           <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
-            <input
-              type="text"
-              placeholder="Buscar doador..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-sm bg-white"
-            />
-          </div>
-          <button
-            onClick={onNewChat}
-            className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition-colors shadow-sm flex items-center justify-center min-w-[36px]"
-            title="Nova conversa"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+              <input
+                type="text"
+                placeholder="Buscar doador..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-sm bg-white"
+              />
+            </div>
+            <button
+              onClick={onNewChat}
+              className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition-colors shadow-sm flex items-center justify-center min-w-[36px]"
+              title="Nova conversa"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {/* Toggle de Visualização */}
           {onViewModeChange && (
             <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
               <button
-                onClick={() => onViewModeChange('full')}
+                onClick={() => onViewModeChange("full")}
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                  viewMode === 'full'
-                    ? 'bg-white text-gray-800 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                  viewMode === "full"
+                    ? "bg-white text-gray-800 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                 }`}
                 title="Visualização completa"
               >
@@ -186,11 +207,11 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                 Completo
               </button>
               <button
-                onClick={() => onViewModeChange('compact')}
+                onClick={() => onViewModeChange("compact")}
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                  viewMode === 'compact'
-                    ? 'bg-white text-gray-800 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                  viewMode === "compact"
+                    ? "bg-white text-gray-800 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                 }`}
                 title="Visualização compacta"
               >
@@ -226,17 +247,16 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
           <div className="flex flex-col items-center justify-center h-32 text-gray-500">
             <Heart className="w-6 h-6 mb-2" />
             <span className="text-sm">
-              {donors.length === 0 
-                ? "Nenhuma conversa encontrada" 
-                : searchTerm 
-                ? "Nenhuma conversa encontrada para sua busca" 
-                : "Nenhuma conversa ativa"
-              }
+              {donors.length === 0
+                ? "Nenhuma conversa encontrada"
+                : searchTerm
+                ? "Nenhuma conversa encontrada para sua busca"
+                : "Nenhuma conversa ativa"}
             </span>
           </div>
         ) : (
-          filteredDonors.map((donor) => 
-            viewMode === 'compact' ? (
+          filteredDonors.map((donor) =>
+            viewMode === "compact" ? (
               // Visualização Compacta
               <div
                 key={donor.id}
@@ -261,7 +281,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                       fill="currentColor"
                     />
                   </div>
-                  
+
                   {/* Info principal */}
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between">
@@ -279,33 +299,37 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Badges compactas */}
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className="inline-flex items-center text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200">
                         {donor.bloodType}
                       </span>
-                      
+
                       {donor.campaignId && (
-                        <span 
+                        <span
                           className="inline-flex items-center text-xs font-medium px-1.5 py-0.5 rounded text-white"
-                          style={{ 
-                            backgroundColor: campaigns.find(c => c.id === donor.campaignId)?.color || '#6b7280' 
+                          style={{
+                            backgroundColor:
+                              campaigns.find((c) => c.id === donor.campaignId)
+                                ?.color || "#6b7280",
                           }}
                         >
-                          {campaigns.find(c => c.id === donor.campaignId)?.name?.split(' ')[0] || 'Camp'}
+                          {campaigns
+                            .find((c) => c.id === donor.campaignId)
+                            ?.name?.split(" ")[0] || "Camp"}
                         </span>
                       )}
                     </div>
-                    
+
                     {/* Última mensagem compacta */}
-                    <p 
+                    <p
                       className="text-xs text-gray-600 leading-tight overflow-hidden"
                       style={{
-                        display: '-webkit-box',
+                        display: "-webkit-box",
                         WebkitLineClamp: 1,
-                        WebkitBoxOrient: 'vertical' as const,
-                        maxHeight: '1.1rem'
+                        WebkitBoxOrient: "vertical" as const,
+                        maxHeight: "1.1rem",
                       }}
                     >
                       {donor.lastMessage}
@@ -339,7 +363,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                         fill="currentColor"
                       />
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold text-gray-900 text-sm truncate">
@@ -364,41 +388,49 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                     <span className="inline-flex items-center text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">
                       {donor.bloodType}
                     </span>
-                    
+
                     {donor.campaignId && (
-                      <span 
+                      <span
                         className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md text-white shadow-sm"
-                        style={{ 
-                          backgroundColor: campaigns.find(c => c.id === donor.campaignId)?.color || '#6b7280' 
+                        style={{
+                          backgroundColor:
+                            campaigns.find((c) => c.id === donor.campaignId)
+                              ?.color || "#6b7280",
                         }}
                       >
-                        {campaigns.find(c => c.id === donor.campaignId)?.name || 'Campanha'}
+                        {campaigns.find((c) => c.id === donor.campaignId)
+                          ?.name || "Campanha"}
                       </span>
                     )}
-                    
+
                     {currentStatus && (
-                      <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md border ${
-                        currentStatus === 'ativos' 
-                          ? 'text-green-700 bg-green-50 border-green-200' 
-                          : currentStatus === 'aguardando'
-                          ? 'text-yellow-700 bg-yellow-50 border-yellow-200'
-                          : 'text-red-700 bg-red-50 border-red-200'
-                      }`}>
-                        {currentStatus === 'ativos' ? 'Ativo' : 
-                         currentStatus === 'aguardando' ? 'Aguardando' : 'Inativo'}
+                      <span
+                        className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                          currentStatus === "ativos"
+                            ? "text-green-700 bg-green-50 border-green-200"
+                            : currentStatus === "aguardando"
+                            ? "text-yellow-700 bg-yellow-50 border-yellow-200"
+                            : "text-red-700 bg-red-50 border-red-200"
+                        }`}
+                      >
+                        {currentStatus === "ativos"
+                          ? "Ativo"
+                          : currentStatus === "aguardando"
+                          ? "Aguardando"
+                          : "Inativo"}
                       </span>
                     )}
                   </div>
 
                   {/* Última Mensagem */}
                   <div className="bg-gray-50 rounded-md p-2.5 border border-gray-100">
-                    <p 
+                    <p
                       className="text-sm text-gray-700 leading-relaxed overflow-hidden"
                       style={{
-                        display: '-webkit-box',
+                        display: "-webkit-box",
                         WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical' as const,
-                        maxHeight: '2.6rem'
+                        WebkitBoxOrient: "vertical" as const,
+                        maxHeight: "2.6rem",
                       }}
                     >
                       {donor.lastMessage}
@@ -410,12 +442,8 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                     <span className="font-medium">
                       {calculateAge(donor.birthDate)} anos
                     </span>
-                    <span>
-                      {donor.totalDonations} doações
-                    </span>
-                    <span>
-                      Última: {donor.lastDonation}
-                    </span>
+                    <span>{donor.totalDonations} doações</span>
+                    <span>Última: {donor.lastDonation}</span>
                   </div>
                 </div>
               </div>

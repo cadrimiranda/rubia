@@ -222,12 +222,12 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       message.success("Template restaurado com sucesso!");
       loadDeletedTemplates(); // Recarregar templates excluídos
       loadTemplates(); // Recarregar templates ativos
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao restaurar template:", error);
-      const errorMessage = error?.message || "Erro ao restaurar template";
-      if (error?.status === 403) {
+      const errorMessage = (error as Error)?.message || "Erro ao restaurar template";
+      if ((error as { status?: number })?.status === 403) {
         message.error("Você não tem permissão para restaurar este template");
-      } else if (error?.status === 404) {
+      } else if ((error as { status?: number })?.status === 404) {
         message.error("Template não encontrado");
       } else {
         message.error(`Erro ao restaurar template: ${errorMessage}`);
@@ -249,12 +249,12 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }));
   };
 
-  const handleDateRangeChange = (dates: any) => {
+  const handleDateRangeChange = (dates: [string, string] | null) => {
     if (dates && dates.length === 2) {
       setCampaignData((prev) => ({
         ...prev,
-        startDate: dates[0].format("YYYY-MM-DD"),
-        endDate: dates[1].format("YYYY-MM-DD"),
+        startDate: (dates[0] as { format: (format: string) => string }).format("YYYY-MM-DD"),
+        endDate: (dates[1] as { format: (format: string) => string }).format("YYYY-MM-DD"),
       }));
     }
   };
