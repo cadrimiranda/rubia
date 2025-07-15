@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
-import type { Donor, Message, FileAttachment, ChatState, ViewMode } from "../types/types";
+import type { Donor, Message, FileAttachment, ChatState, ViewMode, PendingMedia, ConversationMedia } from "../types/types";
 import { getCurrentTimestamp } from "../utils";
 import { DonorSidebar } from "./DonorSidebar";
 import { ChatHeader } from "./ChatHeader";
@@ -16,12 +16,14 @@ import { MessageEnhancerModal } from "./MessageEnhancerModal";
 import { conversationApi } from "../api/services/conversationApi";
 import { customerApi } from "../api/services/customerApi";
 import { messageApi } from "../api/services/messageApi";
+import { mediaApi } from "../api/services/mediaApi";
 import { customerAdapter } from "../adapters/customerAdapter";
 import { conversationAdapter } from "../adapters/conversationAdapter";
 import { getMessagesForDonor } from "../mocks/data";
 import { mockCampaigns } from "../mocks/campaigns";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
+import type { ConversationStatus } from "../api/types";
 
 interface NewContactData {
   name: string;
@@ -35,6 +37,8 @@ export const BloodCenterChat: React.FC = () => {
     selectedCampaign: null,
     messages: [],
     attachments: [],
+    media: [],
+    pendingMedia: [],
     searchTerm: "",
     messageInput: "",
     showNewChatModal: false,
@@ -130,7 +134,7 @@ export const BloodCenterChat: React.FC = () => {
       const backendStatus = conversationAdapter.mapStatusToBackend(statusToLoad);
       
       // Buscar conversas da API
-      const response = await conversationApi.getByStatus(backendStatus as any);
+      const response = await conversationApi.getByStatus(backendStatus as ConversationStatus);
       console.log(`📊 API retornou ${response.content.length} conversas`);
       
       // Converter ConversationDTO para formato Donor (compatibilidade)
@@ -172,7 +176,7 @@ export const BloodCenterChat: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentStatus, conversationAdapter, conversationApi]);
+  }, [currentStatus]);
 
   // Carregar todos os contatos (customers) da API
   const loadAllContacts = React.useCallback(async () => {
@@ -338,6 +342,17 @@ export const BloodCenterChat: React.FC = () => {
     console.log('🚀 BloodCenterChat montado - carregando dados...');
     loadConversations();
   }, [loadConversations]);
+
+  // Cleanup URLs de preview ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      state.pendingMedia.forEach(media => {
+        if (media.previewUrl) {
+          URL.revokeObjectURL(media.previewUrl);
+        }
+      });
+    };
+  }, [state.pendingMedia]);
 
   // Função para abrir modal e carregar contatos
   const handleOpenNewChatModal = React.useCallback(() => {
@@ -578,6 +593,68 @@ export const BloodCenterChat: React.FC = () => {
     setShowMessageEnhancer(false);
   };
 
+  const handleMediaSelected = (file: File) => {
+    // Validar arquivo
+    const validation = mediaApi.validateFile(file);
+    if (!validation.valid) {
+      handleMediaError(validation.error || 'Arquivo inválido');
+      return;
+    }
+
+    // Determinar tipo de mídia
+    let mediaType: PendingMedia['mediaType'] = 'OTHER';
+    if (file.type.startsWith('image/')) mediaType = 'IMAGE';
+    else if (file.type.startsWith('video/')) mediaType = 'VIDEO';
+    else if (file.type.startsWith('audio/')) mediaType = 'AUDIO';
+    else if (file.type.includes('pdf') || file.type.includes('document') || file.type.includes('text')) mediaType = 'DOCUMENT';
+
+    // Criar preview local
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+
+    const pendingMedia: PendingMedia = {
+      id: `pending-${Date.now()}-${Math.random()}`,
+      file,
+      mediaType,
+      mimeType: file.type,
+      originalFileName: file.name,
+      fileSizeBytes: file.size,
+      previewUrl,
+    };
+
+    updateState({
+      pendingMedia: [...state.pendingMedia, pendingMedia],
+    });
+  };
+
+  const handleRemovePendingMedia = (mediaId: string) => {
+    const mediaToRemove = state.pendingMedia.find(m => m.id === mediaId);
+    if (mediaToRemove?.previewUrl) {
+      URL.revokeObjectURL(mediaToRemove.previewUrl);
+    }
+    
+    updateState({
+      pendingMedia: state.pendingMedia.filter(m => m.id !== mediaId),
+    });
+  };
+
+  const handleMediaError = (error: string) => {
+    updateState({
+      showConfirmationModal: true,
+      confirmationData: {
+        title: 'Erro no Upload',
+        message: error,
+        type: 'warning',
+        confirmText: 'OK',
+        onConfirm: () => {
+          updateState({
+            showConfirmationModal: false,
+            confirmationData: null
+          });
+        }
+      }
+    });
+  };
+
   const handleSendMessage = async () => {
     console.log('🔍 handleSendMessage called with:', {
       messageInput: state.messageInput,
@@ -590,7 +667,7 @@ export const BloodCenterChat: React.FC = () => {
       isCreatingConversation
     });
 
-    if (!state.messageInput.trim() && state.attachments.length === 0) {
+    if (!state.messageInput.trim() && state.attachments.length === 0 && state.pendingMedia.length === 0) {
       console.log('❌ Mensagem vazia - early return');
       return;
     }
@@ -689,23 +766,87 @@ export const BloodCenterChat: React.FC = () => {
       timestamp: getCurrentTimestamp(),
       isAI: true,
       attachments: state.attachments.length > 0 ? [...state.attachments] : undefined,
+      // Converter pendingMedia para um formato de preview
+      media: state.pendingMedia.length > 0 ? state.pendingMedia.map(pm => ({
+        id: pm.id,
+        conversationId: conversationId || '',
+        fileUrl: pm.previewUrl || 'uploading...',
+        mediaType: pm.mediaType,
+        mimeType: pm.mimeType,
+        originalFileName: pm.originalFileName,
+        fileSizeBytes: pm.fileSizeBytes,
+        uploadedAt: new Date().toISOString(),
+      })) : undefined,
     };
+
+    // Armazenar pendingMedia para upload
+    const mediaToUpload = [...state.pendingMedia];
 
     // Atualizar UI imediatamente
     updateState({
       messages: [...state.messages, tempMessage],
       messageInput: "",
       attachments: [],
+      pendingMedia: [],
     });
 
     try {
       console.log('📤 Enviando mensagem para conversa:', conversationId);
       
+      // Upload das mídias pendentes primeiro
+      let uploadedMedia: ConversationMedia | null = null;
+      if (mediaToUpload.length > 0) {
+        console.log('📤 Fazendo upload de', mediaToUpload.length, 'arquivos de mídia...');
+        
+        // Por enquanto, fazer upload apenas do primeiro arquivo
+        const firstPendingMedia = mediaToUpload[0];
+        try {
+          const uploadResponse = await mediaApi.upload({
+            conversationId: conversationId,
+            file: firstPendingMedia.file,
+            mediaType: firstPendingMedia.mediaType,
+          });
+          
+          uploadedMedia = uploadResponse;
+          console.log('✅ Upload de mídia concluído:', uploadedMedia.id);
+        } catch (uploadError) {
+          console.error('❌ Erro no upload de mídia:', uploadError);
+          throw new Error('Falha no upload da mídia');
+        }
+      }
+      
+      // Determinar tipo de mensagem e incluir mídia se necessário
+      let messageType = 'TEXT';
+      let mediaUrl = undefined;
+      
+      if (uploadedMedia) {
+        // Mapear os tipos de mídia para os tipos de mensagem
+        switch (uploadedMedia.mediaType) {
+          case 'IMAGE':
+            messageType = 'IMAGE';
+            break;
+          case 'AUDIO':
+            messageType = 'AUDIO';
+            break;
+          case 'VIDEO':
+            messageType = 'VIDEO';
+            break;
+          case 'DOCUMENT':
+            messageType = 'FILE';
+            break;
+          default:
+            messageType = 'FILE';
+        }
+        mediaUrl = uploadedMedia.fileUrl;
+      }
+      
+      console.log('📤 Enviando mensagem com tipo:', messageType, 'e mediaUrl:', mediaUrl);
+      
       // Enviar mensagem para a API
       const sentMessage = await messageApi.send(conversationId, {
         content: messageContent,
-        senderId: null, // TODO: Adicionar ID do usuário atual
-        messageType: 'TEXT'
+        messageType,
+        mediaUrl
       });
 
       console.log('✅ Mensagem enviada com sucesso:', sentMessage.id);
@@ -726,9 +867,18 @@ export const BloodCenterChat: React.FC = () => {
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);
       
+      // Limpar URLs de preview em caso de erro
+      mediaToUpload.forEach(media => {
+        if (media.previewUrl) {
+          URL.revokeObjectURL(media.previewUrl);
+        }
+      });
+      
       // Remover mensagem temporária em caso de erro
       updateState({
-        messages: state.messages.filter(msg => msg.id !== tempMessage.id)
+        messages: state.messages.filter(msg => msg.id !== tempMessage.id),
+        // Restaurar pendingMedia em caso de erro para o usuário tentar novamente
+        pendingMedia: mediaToUpload,
       });
       
       // Mostrar feedback de erro
@@ -895,6 +1045,8 @@ export const BloodCenterChat: React.FC = () => {
             <MessageInput
               messageInput={state.messageInput}
               attachments={state.attachments}
+              pendingMedia={state.pendingMedia}
+              conversationId={state.selectedDonor?.conversationId}
               onMessageChange={(value) => updateState({ messageInput: value })}
               onSendMessage={handleSendMessage}
               onFileUpload={handleFileUpload}
@@ -903,8 +1055,11 @@ export const BloodCenterChat: React.FC = () => {
                   attachments: state.attachments.filter((att) => att.id !== id),
                 })
               }
+              onMediaSelected={handleMediaSelected}
+              onRemovePendingMedia={handleRemovePendingMedia}
               onKeyPress={handleKeyPress}
               onEnhanceMessage={handleEnhanceMessage}
+              onError={handleMediaError}
               isLoading={isCreatingConversation}
             />
           </>

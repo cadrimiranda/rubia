@@ -1,6 +1,7 @@
 import React from "react";
 import type { Message as MessageType } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
+import { MediaPreview } from "../MediaPreview";
 
 interface MessageProps {
   message: MessageType;
@@ -33,6 +34,18 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
                 key={attachment.id}
                 attachment={attachment}
                 isAI={message.isAI}
+                variant="message"
+              />
+            ))}
+          </div>
+        )}
+
+        {message.media && message.media.length > 0 && (
+          <div className="space-y-2">
+            {message.media.map((mediaItem) => (
+              <MediaPreview
+                key={mediaItem.id}
+                media={mediaItem}
                 variant="message"
               />
             ))}

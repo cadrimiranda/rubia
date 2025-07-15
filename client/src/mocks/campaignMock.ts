@@ -234,7 +234,7 @@ export const processCampaignFile = async (
     
     // Simular algumas respostas automáticas (10-20% dos contatos)
     if (Math.random() < 0.15) {
-      await generateAutomaticResponse(contact, conversation, initialMessage)
+      await generateAutomaticResponse(contact)
     }
   }
   
@@ -257,9 +257,7 @@ export const processCampaignFile = async (
  * Gera resposta automática simulada para alguns contatos
  */
 const generateAutomaticResponse = async (
-  contact: CampaignContact,
-  _conversation: ConversationDTO,
-  _initialMessage: MessageDTO
+  contact: CampaignContact
 ): Promise<void> => {
   const responses = [
     'Oi! Obrigado por entrar em contato. Tenho interesse em saber mais sobre a doação.',

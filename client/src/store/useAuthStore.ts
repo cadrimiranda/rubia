@@ -343,13 +343,13 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     const state = get()
     
     // Evitar inicialização múltipla
-    if ((state as any)._initialized) {
+    if ((state as AuthState & { _initialized?: boolean })._initialized) {
       console.log('🚀 Auth store já foi inicializado, pulando...');
       return
     }
     
     console.log('🚀 Inicializando auth store...');
-    set({ isLoading: true, ...(state as any), _initialized: true } as any)
+    set({ isLoading: true, ...state, _initialized: true } as AuthState & { _initialized: boolean })
     
     try {
       // Inicializar contexto da empresa primeiro

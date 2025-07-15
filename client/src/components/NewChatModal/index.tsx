@@ -59,8 +59,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     register,
     handleSubmit,
     formState: { errors, isValid },
-    reset,
-    watch
+    reset
   } = useForm<FormData>({
     mode: "onChange",
     defaultValues: {
