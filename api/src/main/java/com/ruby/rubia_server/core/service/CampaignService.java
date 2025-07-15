@@ -2,8 +2,8 @@ package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.core.base.BaseCompanyEntityService;
 import com.ruby.rubia_server.core.base.EntityRelationshipValidator;
-import com.ruby.rubia_server.core.dto.CreateCampaignDTO;
-import com.ruby.rubia_server.core.dto.UpdateCampaignDTO;
+import com.ruby.rubia_server.dto.campaign.CreateCampaignDTO;
+import com.ruby.rubia_server.dto.campaign.UpdateCampaignDTO;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.enums.CampaignStatus;
 import com.ruby.rubia_server.core.repository.*;
@@ -11,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,16 +24,19 @@ public class CampaignService extends BaseCompanyEntityService<Campaign, CreateCa
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
     private final MessageTemplateRepository messageTemplateRepository;
+    private final CampaignContactService campaignContactService;
 
     public CampaignService(CampaignRepository campaignRepository,
                           CompanyRepository companyRepository,
                           UserRepository userRepository,
                           MessageTemplateRepository messageTemplateRepository,
+                          CampaignContactService campaignContactService,
                           EntityRelationshipValidator relationshipValidator) {
         super(campaignRepository, companyRepository, relationshipValidator);
         this.campaignRepository = campaignRepository;
         this.userRepository = userRepository;
         this.messageTemplateRepository = messageTemplateRepository;
+        this.campaignContactService = campaignContactService;
     }
 
     @Override
@@ -136,5 +141,117 @@ public class CampaignService extends BaseCompanyEntityService<Campaign, CreateCa
     public List<Campaign> getActiveCampaignsByCompanyId(UUID companyId) {
         log.debug("Finding active campaigns for company: {}", companyId);
         return campaignRepository.findByCompanyIdAndStatus(companyId, CampaignStatus.ACTIVE);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Campaign> findActiveCampaignsByCompany(UUID companyId) {
+        log.debug("Finding active campaigns for company: {}", companyId);
+        return campaignRepository.findByCompanyIdAndStatus(companyId, CampaignStatus.ACTIVE);
+    }
+
+    @Transactional
+    public Campaign pauseCampaign(UUID campaignId) {
+        Campaign campaign = findById(campaignId);
+        
+        if (campaign.getStatus() != CampaignStatus.ACTIVE) {
+            throw new IllegalArgumentException("Apenas campanhas ativas podem ser pausadas");
+        }
+        
+        campaign.setStatus(CampaignStatus.PAUSED);
+        Campaign saved = campaignRepository.save(campaign);
+        
+        log.info("Campanha {} pausada com sucesso", campaignId);
+        return saved;
+    }
+
+    @Transactional
+    public Campaign resumeCampaign(UUID campaignId) {
+        Campaign campaign = findById(campaignId);
+        
+        if (campaign.getStatus() != CampaignStatus.PAUSED) {
+            throw new IllegalArgumentException("Apenas campanhas pausadas podem ser retomadas");
+        }
+        
+        campaign.setStatus(CampaignStatus.ACTIVE);
+        Campaign saved = campaignRepository.save(campaign);
+        
+        log.info("Campanha {} retomada com sucesso", campaignId);
+        return saved;
+    }
+
+    @Transactional
+    public Campaign completeCampaign(UUID campaignId) {
+        Campaign campaign = findById(campaignId);
+        
+        if (campaign.getStatus() == CampaignStatus.COMPLETED || campaign.getStatus() == CampaignStatus.CANCELED) {
+            throw new IllegalArgumentException("Campanha já está finalizada");
+        }
+        
+        campaign.setStatus(CampaignStatus.COMPLETED);
+        Campaign saved = campaignRepository.save(campaign);
+        
+        log.info("Campanha {} marcada como completa", campaignId);
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCampaignStatistics(UUID campaignId) {
+        Campaign campaign = findById(campaignId);
+        
+        // Buscar estatísticas dos contatos da campanha
+        List<CampaignContact> contacts = campaignContactService.findByCampaignId(campaignId);
+        
+        Map<String, Object> statistics = new HashMap<>();
+        statistics.put("campaignId", campaignId);
+        statistics.put("campaignName", campaign.getName());
+        statistics.put("status", campaign.getStatus());
+        statistics.put("totalContacts", campaign.getTotalContacts());
+        statistics.put("contactsReached", campaign.getContactsReached());
+        
+        // Calcular estatísticas detalhadas dos contatos
+        long pendingCount = contacts.stream()
+            .filter(c -> c.getStatus() == com.ruby.rubia_server.core.enums.CampaignContactStatus.PENDING)
+            .count();
+        
+        long sentCount = contacts.stream()
+            .filter(c -> c.getStatus() == com.ruby.rubia_server.core.enums.CampaignContactStatus.SENT)
+            .count();
+        
+        long respondedCount = contacts.stream()
+            .filter(c -> c.getStatus() == com.ruby.rubia_server.core.enums.CampaignContactStatus.RESPONDED)
+            .count();
+        
+        long convertedCount = contacts.stream()
+            .filter(c -> c.getStatus() == com.ruby.rubia_server.core.enums.CampaignContactStatus.CONVERTED)
+            .count();
+        
+        long failedCount = contacts.stream()
+            .filter(c -> c.getStatus() == com.ruby.rubia_server.core.enums.CampaignContactStatus.FAILED)
+            .count();
+        
+        long optOutCount = contacts.stream()
+            .filter(c -> c.getStatus() == com.ruby.rubia_server.core.enums.CampaignContactStatus.OPT_OUT)
+            .count();
+        
+        statistics.put("contactStatistics", Map.of(
+            "pending", pendingCount,
+            "sent", sentCount,
+            "responded", respondedCount,
+            "converted", convertedCount,
+            "failed", failedCount,
+            "optOut", optOutCount
+        ));
+        
+        // Calcular taxas de conversão
+        if (sentCount > 0) {
+            statistics.put("responseRate", (double) respondedCount / sentCount * 100);
+            statistics.put("conversionRate", (double) convertedCount / sentCount * 100);
+        } else {
+            statistics.put("responseRate", 0.0);
+            statistics.put("conversionRate", 0.0);
+        }
+        
+        log.debug("Estatísticas calculadas para campanha {}", campaignId);
+        return statistics;
     }
 }

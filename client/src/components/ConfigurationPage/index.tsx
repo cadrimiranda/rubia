@@ -29,13 +29,8 @@ import {
 import type { UploadProps, RadioChangeEvent } from "antd";
 import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
-import type { ConversationTemplate, CampaignData } from "../../types/types";
-import {
-  createMockCampaign,
-  syncCampaignConversationsWithStore,
-  simulateContactStatusChanges,
-  getAllCampaignConversations,
-} from "../../mocks/campaignMock";
+import type { ConversationTemplate } from "../../types/types";
+import { campaignService, type CampaignData } from "../../services/campaignService";
 import { useChatStore } from "../../store/useChatStore";
 import {
   messageTemplateService,
@@ -383,59 +378,86 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       return;
     }
 
+    if (!user?.companyId || !user?.id) {
+      message.error("Erro: Usuário não autenticado corretamente");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // Simular processamento do arquivo enviado
-      message.loading("Processando arquivo...", 0.5);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Mostrar progresso do processamento
+      message.loading("Processando arquivo...", 1);
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      message.loading("Validando contatos...", 0.5);
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      message.loading("Validando contatos...", 1);
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      message.loading("Aplicando templates de conversa...", 0.5);
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      message.loading("Criando campanha...", 1);
 
-      // Criar campanha mock com contatos gerados
-      const result = await createMockCampaign(campaignData, selectedTemplates);
+      // Preparar dados da campanha
+      const campaignRequestData: CampaignData = {
+        name: campaignData.name,
+        description: campaignData.description,
+        startDate: campaignData.startDate,
+        endDate: campaignData.endDate,
+        sourceSystem: campaignData.sourceSystem || "Planilha Manual",
+        templateIds: selectedTemplates.map((t) => t.id),
+      };
+
+      // Enviar para o backend
+      const result = await campaignService.processExcelAndCreateCampaign(
+        campaignData.file,
+        campaignRequestData,
+        user.companyId,
+        user.id
+      );
 
       if (result.success) {
-        setDuplicateUsers(result.stats.duplicatesFound);
+        // Mostrar duplicados encontrados
+        if (result.statistics.duplicates > 0) {
+          setDuplicateUsers([`${result.statistics.duplicates} contatos duplicados encontrados`]);
+        }
 
         // Mensagem de sucesso detalhada
         message.success({
           content: (
             <div>
               <div className="font-semibold mb-2">
-                Campanha "{campaignData.name}" criada com sucesso! 🎉
+                Campanha "{result.campaign.name}" criada com sucesso! 🎉
               </div>
               <div className="text-sm space-y-1">
                 <div>
-                  📊 {result.stats.contactsProcessed} contatos processados do
-                  arquivo
+                  📊 {result.statistics.processed} contatos processados do arquivo
                 </div>
                 <div>
-                  💬 {result.stats.conversationsCreated} conversas iniciadas
+                  💬 {result.statistics.created} contatos adicionados à campanha
                 </div>
-                <div>📝 {selectedTemplates.length} templates aplicados:</div>
-                <div className="pl-4 text-xs text-gray-600">
-                  {result.stats.templateDistribution.map((item, index) => (
-                    <div key={index}>
-                      • {item.template}: {item.used} mensagens
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  ⚠️ {result.stats.duplicatesFound.length} duplicatas detectadas
-                </div>
+                <div>📝 {selectedTemplates.length} templates selecionados</div>
+                {result.statistics.duplicates > 0 && (
+                  <div>
+                    ⚠️ {result.statistics.duplicates} duplicatas detectadas
+                  </div>
+                )}
+                {result.errors.length > 0 && (
+                  <div>
+                    ❌ {result.errors.length} erros no processamento
+                  </div>
+                )}
                 <div className="mt-2 text-green-600">
-                  ✅ Campanhas ativas receberão respostas automaticamente
+                  ✅ Campanha ativa e pronta para uso
                 </div>
               </div>
             </div>
           ),
-          duration: 10,
+          duration: 8,
         });
+
+        // Mostrar erros se houverem
+        if (result.errors.length > 0) {
+          console.warn("Erros durante o processamento:", result.errors);
+          // Opcional: mostrar modal com detalhes dos erros
+        }
 
         // Reset form
         setCampaignData({
@@ -450,48 +472,32 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         // Limpar lista de duplicados
         setDuplicateUsers([]);
 
-        // Log detalhado dos templates utilizados
-        console.log("🎯 Campanha criada:", result.campaign.name);
-        console.log("📋 Templates aplicados:");
-        result.stats.templateDistribution.forEach((item) => {
-          const template = selectedTemplates.find(
-            (t) => t.title === item.template
-          );
-          console.log(`${item.template} (${item.used}x):`);
-          console.log(`"${template?.content}"`);
-        });
+        // Log da campanha criada
+        console.log("🎯 Campanha criada:", result.campaign);
+        console.log("📋 Estatísticas:", result.statistics);
 
-        // Debug: verificar conversas criadas
-        console.log("🔍 Debug: Verificando conversas criadas...");
-        setTimeout(() => {
-          const allConversations = getAllCampaignConversations();
-          console.log(
-            "📊 Total de conversas no sistema:",
-            allConversations.length
-          );
-          allConversations.forEach((conv, index) => {
-            console.log(
-              `  ${index + 1}. ${conv.customer?.name} - Status: ${conv.status}`
-            );
-          });
-        }, 500);
+        // Refresh das conversas
+        refreshConversations();
 
-        // Sincronizar conversas com o chat store
-        syncCampaignConversationsWithStore(refreshConversations);
-
-        // Iniciar simulação de mudanças de status
-        simulateContactStatusChanges();
-
-        // Voltar para conversas após 4 segundos
+        // Voltar para conversas após 3 segundos
         setTimeout(() => {
           onBack();
-        }, 4000);
+        }, 3000);
       } else {
         message.error("Erro ao criar campanha!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar campanha:", error);
-      message.error("Erro ao criar campanha!");
+      
+      // Tentar extrair mensagem de erro específica
+      let errorMessage = "Erro ao criar campanha!";
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = `Erro: ${error.message}`;
+      }
+      
+      message.error(errorMessage);
     } finally {
       setIsUploading(false);
     }
