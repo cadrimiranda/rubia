@@ -151,7 +151,8 @@ public class CampaignService extends BaseCompanyEntityService<Campaign, CreateCa
 
     @Transactional
     public Campaign pauseCampaign(UUID campaignId) {
-        Campaign campaign = findById(campaignId);
+        Campaign campaign = findById(campaignId)
+            .orElseThrow(() -> new IllegalArgumentException("Campanha não encontrada: " + campaignId));
         
         if (campaign.getStatus() != CampaignStatus.ACTIVE) {
             throw new IllegalArgumentException("Apenas campanhas ativas podem ser pausadas");
@@ -166,7 +167,8 @@ public class CampaignService extends BaseCompanyEntityService<Campaign, CreateCa
 
     @Transactional
     public Campaign resumeCampaign(UUID campaignId) {
-        Campaign campaign = findById(campaignId);
+        Campaign campaign = findById(campaignId)
+            .orElseThrow(() -> new IllegalArgumentException("Campanha não encontrada: " + campaignId));
         
         if (campaign.getStatus() != CampaignStatus.PAUSED) {
             throw new IllegalArgumentException("Apenas campanhas pausadas podem ser retomadas");
@@ -181,7 +183,8 @@ public class CampaignService extends BaseCompanyEntityService<Campaign, CreateCa
 
     @Transactional
     public Campaign completeCampaign(UUID campaignId) {
-        Campaign campaign = findById(campaignId);
+        Campaign campaign = findById(campaignId)
+            .orElseThrow(() -> new IllegalArgumentException("Campanha não encontrada: " + campaignId));
         
         if (campaign.getStatus() == CampaignStatus.COMPLETED || campaign.getStatus() == CampaignStatus.CANCELED) {
             throw new IllegalArgumentException("Campanha já está finalizada");
@@ -196,7 +199,8 @@ public class CampaignService extends BaseCompanyEntityService<Campaign, CreateCa
 
     @Transactional(readOnly = true)
     public Map<String, Object> getCampaignStatistics(UUID campaignId) {
-        Campaign campaign = findById(campaignId);
+        Campaign campaign = findById(campaignId)
+            .orElseThrow(() -> new IllegalArgumentException("Campanha não encontrada: " + campaignId));
         
         // Buscar estatísticas dos contatos da campanha
         List<CampaignContact> contacts = campaignContactService.findByCampaignId(campaignId);

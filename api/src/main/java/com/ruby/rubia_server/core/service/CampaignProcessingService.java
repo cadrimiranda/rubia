@@ -5,6 +5,10 @@ import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.dto.campaign.CreateCampaignDTO;
+import com.ruby.rubia_server.dto.campaign.UpdateCampaignDTO;
+import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
+import com.ruby.rubia_server.core.dto.CustomerDTO;
+import com.ruby.rubia_server.core.dto.CreateCampaignContactDTO;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
 import com.ruby.rubia_server.core.enums.CampaignStatus;
 import lombok.RequiredArgsConstructor;
@@ -138,7 +142,7 @@ public class CampaignProcessingService {
                 processed++;
                 
                 // Buscar ou criar customer
-                Customer customer = findOrCreateCustomer(contactData, companyId);
+                CustomerDTO customer = findOrCreateCustomer(contactData, companyId);
                 
                 // Verificar se já existe um CampaignContact para este customer
                 List<CampaignContact> existingContacts = campaignContactService.findByCustomerId(customer.getId());
@@ -165,7 +169,11 @@ public class CampaignProcessingService {
         // Atualizar estatísticas da campanha
         campaign.setTotalContacts(created);
         campaign.setStatus(CampaignStatus.ACTIVE);
-        campaignService.update(campaign);
+        UpdateCampaignDTO updateDTO = UpdateCampaignDTO.builder()
+            .totalContacts(created)
+            .status(CampaignStatus.ACTIVE)
+            .build();
+        campaignService.update(campaign.getId(), updateDTO);
 
         log.info("Campanha {} criada com {} contatos. Processados: {}, Criados: {}, Duplicados: {}", 
                 campaignName, created, processed, created, duplicates);
@@ -340,18 +348,18 @@ public class CampaignProcessingService {
         return campaignService.create(createDTO);
     }
 
-    private Customer findOrCreateCustomer(ContactData contactData, UUID companyId) {
+    private CustomerDTO findOrCreateCustomer(ContactData contactData, UUID companyId) {
         // Tentar encontrar por telefone primeiro
         if (contactData.getPhone() != null) {
             String normalizedPhone = customerService.normalizePhoneNumber(contactData.getPhone());
-            Customer existingCustomer = customerService.findByPhoneAndCompany(normalizedPhone, companyId);
+            CustomerDTO existingCustomer = customerService.findByPhoneAndCompany(normalizedPhone, companyId);
             if (existingCustomer != null) {
                 return existingCustomer;
             }
         }
         
-        // Criar novo customer
-        Customer customer = Customer.builder()
+        // Criar novo customer usando DTO
+        CreateCustomerDTO createDTO = CreateCustomerDTO.builder()
             .name(contactData.getName())
             .phone(contactData.getPhone())
             .email(contactData.getEmail())
@@ -366,19 +374,19 @@ public class CampaignProcessingService {
             .isBlocked(false)
             .build();
         
-        return customerService.create(customer, companyId);
+        return customerService.create(createDTO, companyId);
     }
 
-    private CampaignContact createCampaignContact(Campaign campaign, Customer customer, List<MessageTemplate> templates) {
+    private CampaignContact createCampaignContact(Campaign campaign, CustomerDTO customerDTO, List<MessageTemplate> templates) {
         // Distribuir templates de forma rotativa
-        MessageTemplate selectedTemplate = templates.get(customer.hashCode() % templates.size());
+        MessageTemplate selectedTemplate = templates.get(customerDTO.hashCode() % templates.size());
         
-        CampaignContact campaignContact = CampaignContact.builder()
-            .campaign(campaign)
-            .customer(customer)
+        CreateCampaignContactDTO createDTO = CreateCampaignContactDTO.builder()
+            .campaignId(campaign.getId())
+            .customerId(customerDTO.getId())
             .status(CampaignContactStatus.PENDING)
             .build();
         
-        return campaignContactService.create(campaignContact);
+        return campaignContactService.create(createDTO);
     }
 }

@@ -1,9 +1,11 @@
 package com.ruby.rubia_server.controller;
 
-import com.ruby.rubia_server.controller.base.BaseCompanyEntityController;
+import com.ruby.rubia_server.core.base.BaseCompanyEntityController;
+import com.ruby.rubia_server.core.base.BaseCompanyEntityService;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.service.CampaignProcessingService;
 import com.ruby.rubia_server.core.service.CampaignService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import com.ruby.rubia_server.dto.campaign.CreateCampaignDTO;
 import com.ruby.rubia_server.dto.campaign.UpdateCampaignDTO;
 import com.ruby.rubia_server.dto.campaign.CampaignDTO;
@@ -28,8 +30,10 @@ public class CampaignController extends BaseCompanyEntityController<Campaign, Cr
 
     private final CampaignProcessingService campaignProcessingService;
 
-    public CampaignController(CampaignService campaignService, CampaignProcessingService campaignProcessingService) {
-        super(campaignService);
+    public CampaignController(CampaignService campaignService, 
+                            CampaignProcessingService campaignProcessingService,
+                            CompanyContextUtil companyContextUtil) {
+        super((BaseCompanyEntityService<Campaign, CreateCampaignDTO, UpdateCampaignDTO>) campaignService, companyContextUtil);
         this.campaignProcessingService = campaignProcessingService;
     }
 
