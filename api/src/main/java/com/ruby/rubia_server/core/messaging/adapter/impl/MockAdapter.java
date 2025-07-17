@@ -1,8 +1,8 @@
-package com.ruby.rubia_server.messaging.adapter.impl;
+package com.ruby.rubia_server.core.messaging.adapter.impl;
 
-import com.ruby.rubia_server.messaging.adapter.MessagingAdapter;
-import com.ruby.rubia_server.messaging.model.MessageResult;
-import com.ruby.rubia_server.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.messaging.adapter.MessagingAdapter;
+import com.ruby.rubia_server.core.messaging.model.MessageResult;
+import com.ruby.rubia_server.core.messaging.model.IncomingMessage;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;

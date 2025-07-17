@@ -1,4 +1,4 @@
-package com.ruby.rubia_server.messaging.config;
+package com.ruby.rubia_server.core.messaging.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

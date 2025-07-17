@@ -11,7 +11,7 @@ import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
-import com.ruby.rubia_server.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.messaging.model.IncomingMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

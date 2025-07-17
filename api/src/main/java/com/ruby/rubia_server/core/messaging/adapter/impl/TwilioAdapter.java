@@ -1,9 +1,9 @@
-package com.ruby.rubia_server.messaging.adapter.impl;
+package com.ruby.rubia_server.core.messaging.adapter.impl;
 
-import com.ruby.rubia_server.messaging.adapter.MessagingAdapter;
-import com.ruby.rubia_server.messaging.model.MessageResult;
-import com.ruby.rubia_server.messaging.model.IncomingMessage;
-import com.ruby.rubia_server.messaging.config.WhatsAppProviderConfig;
+import com.ruby.rubia_server.core.messaging.adapter.MessagingAdapter;
+import com.ruby.rubia_server.core.messaging.model.MessageResult;
+import com.ruby.rubia_server.core.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.messaging.config.WhatsAppProviderConfig;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
