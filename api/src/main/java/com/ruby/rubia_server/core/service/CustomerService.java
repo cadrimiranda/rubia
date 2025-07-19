@@ -32,8 +32,11 @@ public class CustomerService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
         
-        if (customerRepository.existsByPhoneAndCompanyId(createDTO.getPhone(), companyId)) {
-            throw new IllegalArgumentException("Cliente com telefone '" + createDTO.getPhone() + "' já existe nesta empresa");
+        // Normalizar telefone antes de verificar duplicação
+        String normalizedPhone = normalizePhoneNumber(createDTO.getPhone());
+        
+        if (customerRepository.existsByPhoneAndCompanyId(normalizedPhone, companyId)) {
+            throw new IllegalArgumentException("Cliente com telefone '" + normalizedPhone + "' já existe nesta empresa");
         }
         
         if (createDTO.getWhatsappId() != null && customerRepository.existsByWhatsappIdAndCompanyId(createDTO.getWhatsappId(), companyId)) {
@@ -41,7 +44,7 @@ public class CustomerService {
         }
         
         Customer customer = Customer.builder()
-                .phone(createDTO.getPhone())
+                .phone(normalizedPhone) // Usar o telefone normalizado
                 .name(createDTO.getName())
                 .whatsappId(createDTO.getWhatsappId())
                 .profileUrl(createDTO.getProfileUrl())
@@ -98,12 +101,14 @@ public class CustomerService {
         }
         
         if (updateDTO.getPhone() != null) {
-            if (!updateDTO.getPhone().equals(customer.getPhone())) {
-                if (customerRepository.existsByPhoneAndCompanyId(updateDTO.getPhone(), companyId)) {
-                    throw new IllegalArgumentException("Cliente com telefone '" + updateDTO.getPhone() + "' já existe nesta empresa");
+            // Normalizar telefone antes de verificar duplicação
+            String normalizedPhone = normalizePhoneNumber(updateDTO.getPhone());
+            if (!normalizedPhone.equals(customer.getPhone())) {
+                if (customerRepository.existsByPhoneAndCompanyId(normalizedPhone, companyId)) {
+                    throw new IllegalArgumentException("Cliente com telefone '" + normalizedPhone + "' já existe nesta empresa");
                 }
             }
-            customer.setPhone(updateDTO.getPhone());
+            customer.setPhone(normalizedPhone);
         }
         
         if (updateDTO.getName() != null) {
@@ -239,10 +244,9 @@ public class CustomerService {
     public CustomerDTO findByPhoneAndCompany(String phone, UUID companyId) {
         log.debug("Finding customer by phone: {} for company: {}", phone, companyId);
         
-        Customer customer = customerRepository.findByPhoneAndCompanyId(phone, companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado nesta empresa"));
+        Optional<Customer> customer = customerRepository.findByPhoneAndCompanyId(phone, companyId);
         
-        return toDTO(customer);
+        return customer.map(this::toDTO).orElse(null);
     }
     
     @Transactional(readOnly = true)

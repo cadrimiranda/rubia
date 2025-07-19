@@ -1,4 +1,4 @@
-package com.ruby.rubia_server.core.messaging.model;
+package com.ruby.rubia_server.core.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,7 +1,7 @@
 package com.ruby.rubia_server.core.service;
 
-import com.ruby.rubia_server.core.dto.CreateCampaignDTO;
-import com.ruby.rubia_server.core.dto.UpdateCampaignDTO;
+import com.ruby.rubia_server.dto.campaign.CreateCampaignDTO;
+import com.ruby.rubia_server.dto.campaign.UpdateCampaignDTO;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.enums.CampaignStatus;
@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -73,8 +74,8 @@ class CampaignServiceTest {
                 .name("Test Campaign")
                 .description("Test Description")
                 .status(CampaignStatus.DRAFT)
-                .startDate(LocalDateTime.now().plusDays(1))
-                .endDate(LocalDateTime.now().plusDays(30))
+                .startDate(LocalDate.now().plusDays(1))
+                .endDate(LocalDate.now().plusDays(30))
                 .targetAudienceDescription("Test audience")
                 .totalContacts(100)
                 .sourceSystemName("Test System")

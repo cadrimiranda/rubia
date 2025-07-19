@@ -35,7 +35,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     List<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId);
     
-    @Query("SELECT c FROM Conversation c WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
+    @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.status = :status AND c.company.id = :companyId ORDER BY c.priority DESC, c.updatedAt DESC")
     Page<Conversation> findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(@Param("status") ConversationStatus status, @Param("companyId") UUID companyId, Pageable pageable);
     
     @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.id IN :ids")

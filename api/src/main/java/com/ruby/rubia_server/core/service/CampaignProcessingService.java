@@ -4,13 +4,23 @@ import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
+import com.ruby.rubia_server.core.entity.Conversation;
+import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.dto.campaign.CreateCampaignDTO;
 import com.ruby.rubia_server.dto.campaign.UpdateCampaignDTO;
 import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
+import com.ruby.rubia_server.core.dto.UpdateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.CreateCampaignContactDTO;
+import com.ruby.rubia_server.core.dto.CreateConversationDTO;
+import com.ruby.rubia_server.core.dto.CreateMessageDTO;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
 import com.ruby.rubia_server.core.enums.CampaignStatus;
+import com.ruby.rubia_server.core.enums.Channel;
+import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.enums.ConversationType;
+import com.ruby.rubia_server.core.enums.MessageStatus;
+import com.ruby.rubia_server.core.enums.SenderType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -34,6 +44,8 @@ public class CampaignProcessingService {
     private final CampaignContactService campaignContactService;
     private final CustomerService customerService;
     private final MessageTemplateService messageTemplateService;
+    private final ConversationService conversationService;
+    private final MessageService messageService;
 
     public static class CampaignProcessingResult {
         private final Campaign campaign;
@@ -112,8 +124,8 @@ public class CampaignProcessingService {
             String description,
             UUID companyId,
             UUID userId,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
+            LocalDate startDate,
+            LocalDate endDate,
             String sourceSystem,
             List<UUID> templateIds) throws IOException {
 
@@ -144,19 +156,29 @@ public class CampaignProcessingService {
                 // Buscar ou criar customer
                 CustomerDTO customer = findOrCreateCustomer(contactData, companyId);
                 
-                // Verificar se já existe um CampaignContact para este customer
+                // Verificar se já existe um CampaignContact para este customer NESTA campanha
                 List<CampaignContact> existingContacts = campaignContactService.findByCustomerId(customer.getId());
-                boolean isDuplicate = existingContacts.stream()
+                boolean alreadyInThisCampaign = existingContacts.stream()
+                    .anyMatch(cc -> cc.getCampaign().getId().equals(campaign.getId()));
+                
+                if (alreadyInThisCampaign) {
+                    duplicates++;
+                    log.debug("Customer {} já existe na campanha {}", customer.getName(), campaign.getName());
+                    continue;
+                }
+                
+                // Verificar se o customer tem OPT_OUT global (em qualquer campanha)
+                boolean hasGlobalOptOut = existingContacts.stream()
                     .anyMatch(cc -> cc.getStatus() == CampaignContactStatus.OPT_OUT);
                 
-                if (isDuplicate) {
+                if (hasGlobalOptOut) {
                     duplicates++;
-                    log.debug("Customer {} já optou por não receber mensagens", customer.getName());
+                    log.debug("Customer {} optou por não receber mensagens (opt-out global)", customer.getName());
                     continue;
                 }
 
-                // Criar CampaignContact
-                CampaignContact campaignContact = createCampaignContact(campaign, customer, templates);
+                // Criar CampaignContact, Conversa e Mensagem DRAFT
+                CampaignContact campaignContact = createCampaignContact(campaign, customer, templates, companyId);
                 campaignContacts.add(campaignContact);
                 created++;
 
@@ -206,17 +228,42 @@ public class CampaignProcessingService {
     private List<ContactData> parseExcelFile(MultipartFile file) throws IOException {
         List<ContactData> contacts = new ArrayList<>();
         
+        // Validar tipo de arquivo
+        String filename = file.getOriginalFilename();
+        if (filename == null || (!filename.toLowerCase().endsWith(".xlsx") && !filename.toLowerCase().endsWith(".xls"))) {
+            throw new IllegalArgumentException("Arquivo deve ser do tipo Excel (.xlsx ou .xls)");
+        }
+        
+        // Validar tamanho do arquivo
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Arquivo está vazio");
+        }
+        
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            if (workbook.getNumberOfSheets() == 0) {
+                throw new IllegalArgumentException("Arquivo Excel não possui planilhas");
+            }
+            
             Sheet sheet = workbook.getSheetAt(0);
+            
+            // Verificar se a planilha tem dados
+            if (sheet.getLastRowNum() < 1) {
+                throw new IllegalArgumentException("Planilha não possui dados ou apenas cabeçalho");
+            }
             
             // Assumir que a primeira linha contém os headers
             Row headerRow = sheet.getRow(0);
             if (headerRow == null) {
-                throw new IllegalArgumentException("Arquivo Excel vazio ou inválido");
+                throw new IllegalArgumentException("Primeira linha (cabeçalho) está vazia");
             }
             
             // Mapear colunas baseado nos headers
             Map<String, Integer> columnMap = mapColumns(headerRow);
+            
+            // Validar se as colunas essenciais existem
+            if (!columnMap.containsKey("nome")) {
+                throw new IllegalArgumentException("Coluna 'Nome' é obrigatória no arquivo Excel");
+            }
             
             // Processar dados
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
@@ -228,6 +275,17 @@ public class CampaignProcessingService {
                     contacts.add(contact);
                 }
             }
+            
+            if (contacts.isEmpty()) {
+                throw new IllegalArgumentException("Nenhum contato válido encontrado no arquivo");
+            }
+            
+        } catch (Exception e) {
+            log.error("Erro ao processar arquivo Excel: {}", e.getMessage());
+            if (e.getCause() instanceof org.apache.poi.openxml4j.exceptions.InvalidFormatException) {
+                throw new IllegalArgumentException("Arquivo Excel corrompido ou em formato inválido. Certifique-se de que é um arquivo .xlsx válido");
+            }
+            throw new IOException("Erro ao processar arquivo Excel: " + e.getMessage(), e);
         }
         
         return contacts;
@@ -254,11 +312,13 @@ public class CampaignProcessingService {
             // Nome
             contact.setName(getStringValue(row, columnMap.get("nome")));
             
-            // Telefone (combinar DDD + Telefone)
-            String ddd = getStringValue(row, columnMap.get("ddd"));
-            String telefone = getStringValue(row, columnMap.get("telefone"));
+            // Telefone (combinar DDD + Telefone Celular)
+            String ddd = getStringValue(row, columnMap.get("dddtelefonecelular"));
+            String telefone = getStringValue(row, columnMap.get("telefonecelular"));
             if (ddd != null && telefone != null) {
                 contact.setPhone(ddd + telefone);
+            } else if (telefone != null) {
+                contact.setPhone(telefone);
             }
             
             // CPF
@@ -280,12 +340,23 @@ public class CampaignProcessingService {
             contact.setState(getStringValue(row, columnMap.get("estado")));
             
             // Data de nascimento
-            contact.setBirthDate(getDateValue(row, columnMap.get("datanascimento")));
+            Integer birthDateColumn = columnMap.get("datanascimento");
+            if (birthDateColumn != null) {
+                LocalDate birthDate = getDateValue(row, birthDateColumn);
+                contact.setBirthDate(birthDate);
+                if (birthDate != null) {
+                    log.info("✅ Data de nascimento processada: {} para contato: {}", birthDate, contact.getName());
+                } else {
+                    log.warn("⚠️ Falha ao processar data de nascimento para contato: {}", contact.getName());
+                }
+            } else {
+                log.warn("❌ Coluna 'DataNascimento' não encontrada no arquivo Excel. Colunas disponíveis: {}", columnMap.keySet());
+            }
             
             // Datas de doação
-            contact.setLastDonation(getDateValue(row, columnMap.get("dataultima")));
-            contact.setSecondLastDonation(getDateValue(row, columnMap.get("datapenultima")));
-            contact.setThirdLastDonation(getDateValue(row, columnMap.get("dataantepenultima")));
+            contact.setLastDonation(getDateValue(row, columnMap.get("dataultimadoacao")));
+            contact.setSecondLastDonation(getDateValue(row, columnMap.get("datapenultimadoacao")));
+            contact.setThirdLastDonation(getDateValue(row, columnMap.get("dataantepenultimadoacao")));
             
             // Validar dados mínimos
             if (contact.getName() == null || contact.getName().trim().isEmpty()) {
@@ -322,15 +393,61 @@ public class CampaignProcessingService {
         Cell cell = row.getCell(columnIndex);
         if (cell == null) return null;
         
-        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-            return cell.getLocalDateTimeCellValue().toLocalDate();
+        try {
+            // Tentar como data formatada do Excel
+            if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                LocalDate date = cell.getLocalDateTimeCellValue().toLocalDate();
+                log.debug("📅 Data processada como numérica: {}", date);
+                return date;
+            }
+            
+            // Tentar como string no formato ISO (2003-09-18 00:00:00.000)
+            if (cell.getCellType() == CellType.STRING) {
+                String dateStr = cell.getStringCellValue().trim();
+                log.debug("📅 Processando data como string: '{}'", dateStr);
+                
+                if (dateStr.isEmpty()) {
+                    return null;
+                }
+                
+                // Remover timestamp se existir (2003-09-18 00:00:00.000 -> 2003-09-18)
+                if (dateStr.contains(" ")) {
+                    dateStr = dateStr.split(" ")[0];
+                }
+                
+                // Tentar diferentes formatos
+                try {
+                    LocalDate date = LocalDate.parse(dateStr); // ISO format: 2003-09-18
+                    log.debug("📅 Data processada como ISO: {}", date);
+                    return date;
+                } catch (Exception e1) {
+                    // Tentar formato brasileiro: dd/MM/yyyy
+                    try {
+                        String[] parts = dateStr.split("/");
+                        if (parts.length == 3) {
+                            int day = Integer.parseInt(parts[0]);
+                            int month = Integer.parseInt(parts[1]);
+                            int year = Integer.parseInt(parts[2]);
+                            LocalDate date = LocalDate.of(year, month, day);
+                            log.debug("📅 Data processada como dd/MM/yyyy: {}", date);
+                            return date;
+                        }
+                    } catch (Exception e2) {
+                        log.warn("Falha ao processar data '{}' nos formatos ISO e dd/MM/yyyy", dateStr);
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            log.warn("Erro ao processar data na linha {}, coluna {}: {}", 
+                    row.getRowNum(), columnIndex, e.getMessage());
         }
         
         return null;
     }
 
     private Campaign createCampaign(String name, String description, UUID companyId, UUID userId,
-                                  LocalDateTime startDate, LocalDateTime endDate, String sourceSystem,
+                                  LocalDate startDate, LocalDate endDate, String sourceSystem,
                                   MessageTemplate initialTemplate) {
         CreateCampaignDTO createDTO = CreateCampaignDTO.builder()
             .name(name)
@@ -354,7 +471,48 @@ public class CampaignProcessingService {
             String normalizedPhone = customerService.normalizePhoneNumber(contactData.getPhone());
             CustomerDTO existingCustomer = customerService.findByPhoneAndCompany(normalizedPhone, companyId);
             if (existingCustomer != null) {
-                return existingCustomer;
+                // Customer existe - verificar se precisa atualizar dados
+                boolean needsUpdate = false;
+                UpdateCustomerDTO updateDTO = UpdateCustomerDTO.builder()
+                    .name(contactData.getName() != null ? contactData.getName() : existingCustomer.getName())
+                    .phone(contactData.getPhone() != null ? contactData.getPhone() : existingCustomer.getPhone())
+                    .bloodType(contactData.getBloodType() != null ? contactData.getBloodType() : existingCustomer.getBloodType())
+                    .addressCity(contactData.getCity() != null ? contactData.getCity() : existingCustomer.getAddressCity())
+                    .addressState(contactData.getState() != null ? contactData.getState() : existingCustomer.getAddressState())
+                    .birthDate(contactData.getBirthDate() != null ? contactData.getBirthDate() : existingCustomer.getBirthDate())
+                    .lastDonationDate(contactData.getLastDonation() != null ? contactData.getLastDonation() : existingCustomer.getLastDonationDate())
+                    .build();
+                
+                // Verificar se houve mudanças nos dados importantes
+                if (contactData.getBirthDate() != null && !contactData.getBirthDate().equals(existingCustomer.getBirthDate())) {
+                    needsUpdate = true;
+                    log.info("🔄 Atualizando birthDate do customer {}: {} -> {}", 
+                            existingCustomer.getName(), existingCustomer.getBirthDate(), contactData.getBirthDate());
+                }
+                
+                if (contactData.getBloodType() != null && !contactData.getBloodType().equals(existingCustomer.getBloodType())) {
+                    needsUpdate = true;
+                    log.info("🔄 Atualizando bloodType do customer {}: {} -> {}", 
+                            existingCustomer.getName(), existingCustomer.getBloodType(), contactData.getBloodType());
+                }
+                
+                if (contactData.getLastDonation() != null && !contactData.getLastDonation().equals(existingCustomer.getLastDonationDate())) {
+                    needsUpdate = true;
+                    log.info("🔄 Atualizando lastDonation do customer {}: {} -> {}", 
+                            existingCustomer.getName(), existingCustomer.getLastDonationDate(), contactData.getLastDonation());
+                }
+                
+                if (needsUpdate) {
+                    try {
+                        return customerService.update(existingCustomer.getId(), updateDTO, companyId);
+                    } catch (Exception e) {
+                        log.warn("Erro ao atualizar customer {}: {}", existingCustomer.getName(), e.getMessage());
+                        return existingCustomer; // Retornar dados antigos se falhar
+                    }
+                } else {
+                    log.debug("Customer {} já tem dados atualizados", existingCustomer.getName());
+                    return existingCustomer;
+                }
             }
         }
         
@@ -377,16 +535,56 @@ public class CampaignProcessingService {
         return customerService.create(createDTO, companyId);
     }
 
-    private CampaignContact createCampaignContact(Campaign campaign, CustomerDTO customerDTO, List<MessageTemplate> templates) {
+    private CampaignContact createCampaignContact(Campaign campaign, CustomerDTO customerDTO, List<MessageTemplate> templates, UUID companyId) {
         // Distribuir templates de forma rotativa
-        MessageTemplate selectedTemplate = templates.get(customerDTO.hashCode() % templates.size());
+        int templateIndex = Math.abs(customerDTO.hashCode()) % templates.size();
+        MessageTemplate selectedTemplate = templates.get(templateIndex);
         
+        // Criar CampaignContact
         CreateCampaignContactDTO createDTO = CreateCampaignContactDTO.builder()
             .campaignId(campaign.getId())
             .customerId(customerDTO.getId())
             .status(CampaignContactStatus.PENDING)
             .build();
         
-        return campaignContactService.create(createDTO);
+        CampaignContact campaignContact = campaignContactService.create(createDTO);
+        
+        // Verificar se já existe uma conversa para este customer + campanha
+        var existingConversation = conversationService.findByCustomerIdAndCampaignId(customerDTO.getId(), campaign.getId());
+        
+        var conversation = existingConversation.orElseGet(() -> {
+            // Criar Conversa para esta campanha + customer
+            CreateConversationDTO conversationDTO = CreateConversationDTO.builder()
+                .customerId(customerDTO.getId())
+                .channel(Channel.WHATSAPP) // Assumindo WhatsApp por padrão
+                .status(ConversationStatus.ENTRADA) // Status inicial
+                .conversationType(ConversationType.ONE_TO_ONE)
+                .campaignId(campaign.getId()) // Associar à campanha
+                .build();
+            
+            return conversationService.create(conversationDTO, companyId);
+        });
+        
+        // Verificar se já existe uma mensagem DRAFT nesta conversa
+        boolean hasDraftMessage = messageService.hasDraftMessage(conversation.getId());
+        
+        if (!hasDraftMessage) {
+            // Criar Mensagem DRAFT com o template selecionado
+            CreateMessageDTO messageDTO = CreateMessageDTO.builder()
+                .conversationId(conversation.getId())
+                .companyId(companyId) // Necessário para validações
+                .content(selectedTemplate.getContent()) // Conteúdo do template
+                .senderType(SenderType.AGENT) // Será enviado pelo agente
+                .status(MessageStatus.DRAFT) // Status DRAFT
+                .messageTemplateId(selectedTemplate.getId()) // Referência ao template
+                .build();
+            
+            messageService.create(messageDTO);
+        }
+        
+        log.debug("Criada conversa {} com mensagem DRAFT para customer {} na campanha {}", 
+                 conversation.getId(), customerDTO.getName(), campaign.getName());
+        
+        return campaignContact;
     }
 }

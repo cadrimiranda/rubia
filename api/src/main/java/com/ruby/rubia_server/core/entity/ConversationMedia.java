@@ -45,6 +45,7 @@ public class ConversationMedia implements BaseEntity {
     private String fileUrl; // A URL/caminho para o arquivo armazenado (ex: no S3, GCS)
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "media_type", nullable = false)
     private MediaType mediaType; // Tipo de mídia (ex: IMAGE, VIDEO, AUDIO, DOCUMENT)
 

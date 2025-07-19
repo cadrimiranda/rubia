@@ -8,7 +8,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -48,6 +50,7 @@ public class DonationAppointment implements BaseEntity {
     private LocalDateTime appointmentDateTime; // Data e hora do agendamento
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "appointment_status", nullable = false)
     @Builder.Default
     private DonationAppointmentStatus status = DonationAppointmentStatus.SCHEDULED; // Status do agendamento

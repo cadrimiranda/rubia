@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -23,9 +24,9 @@ public class CampaignDTO {
     
     private CampaignStatus status;
     
-    private LocalDateTime startDate;
+    private LocalDate startDate;
     
-    private LocalDateTime endDate;
+    private LocalDate endDate;
     
     private Integer totalContacts;
     

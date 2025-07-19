@@ -1,8 +1,8 @@
-package com.ruby.rubia_server.core.messaging.controller;
+package com.ruby.rubia_server.core.controller;
 
-import com.ruby.rubia_server.core.messaging.service.MessagingService;
-import com.ruby.rubia_server.core.messaging.model.MessageResult;
-import com.ruby.rubia_server.core.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.service.MessagingService;
+import com.ruby.rubia_server.core.entity.MessageResult;
+import com.ruby.rubia_server.core.entity.IncomingMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

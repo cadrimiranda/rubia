@@ -1,9 +1,9 @@
-package com.ruby.rubia_server.core.messaging.service;
+package com.ruby.rubia_server.core.service;
 
-import com.ruby.rubia_server.core.messaging.adapter.MessagingAdapter;
-import com.ruby.rubia_server.core.messaging.adapter.impl.TwilioAdapter;
-import com.ruby.rubia_server.core.messaging.model.MessageResult;
-import com.ruby.rubia_server.core.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.adapter.MessagingAdapter;
+import com.ruby.rubia_server.core.adapter.impl.TwilioAdapter;
+import com.ruby.rubia_server.core.entity.MessageResult;
+import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Conversation;

@@ -2,6 +2,7 @@ package com.ruby.rubia_server.core.dto;
 
 import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.enums.ConversationType;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,4 +35,9 @@ public class CreateConversationDTO {
     
     @Builder.Default
     private Boolean isPinned = false;
+    
+    private UUID campaignId;
+    
+    @Builder.Default
+    private ConversationType conversationType = ConversationType.ONE_TO_ONE;
 }

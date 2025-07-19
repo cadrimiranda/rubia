@@ -1,7 +1,7 @@
-package com.ruby.rubia_server.core.messaging.adapter;
+package com.ruby.rubia_server.core.adapter;
 
-import com.ruby.rubia_server.core.messaging.model.MessageResult;
-import com.ruby.rubia_server.core.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.entity.MessageResult;
+import com.ruby.rubia_server.core.entity.IncomingMessage;
 
 public interface MessagingAdapter {
     

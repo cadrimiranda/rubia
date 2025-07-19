@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.enums;
 
 public enum MessageStatus {
+    DRAFT("Rascunho"),
     SENDING("Enviando"),
     SENT("Enviado"),
     DELIVERED("Entregue"),

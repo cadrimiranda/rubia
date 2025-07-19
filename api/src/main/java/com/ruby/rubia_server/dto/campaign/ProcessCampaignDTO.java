@@ -9,7 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,10 +33,10 @@ public class ProcessCampaignDTO {
     private String description;
     
     @NotNull(message = "Start date is required")
-    private LocalDateTime startDate;
+    private LocalDate startDate;
     
     @NotNull(message = "End date is required")
-    private LocalDateTime endDate;
+    private LocalDate endDate;
     
     @Size(max = 100, message = "Source system name must not exceed 100 characters")
     private String sourceSystem;

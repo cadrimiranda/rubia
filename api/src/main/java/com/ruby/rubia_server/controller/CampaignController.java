@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -133,6 +134,11 @@ public class CampaignController extends BaseCompanyEntityController<Campaign, Cr
             log.warn("Erro de validação ao processar campanha: {}", e.getMessage());
             return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));
+                
+        } catch (IOException e) {
+            log.warn("Erro ao processar arquivo: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Erro ao processar arquivo: " + e.getMessage()));
                 
         } catch (Exception e) {
             log.error("Erro interno ao processar campanha: {}", e.getMessage(), e);

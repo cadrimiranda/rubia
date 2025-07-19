@@ -87,7 +87,7 @@ public class Customer {
     @Column(name = "address_city")
     private String addressCity; // Cidade
 
-    @Column(name = "address_state", length = 2)
+    @Column(name = "address_state", length = 20)
     private String addressState; // Estado (UF)
 
     // CAMPOS ADICIONAIS PARA CAMPANHA
