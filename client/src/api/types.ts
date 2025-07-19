@@ -19,7 +19,7 @@ export interface PageResponse<T> {
 export type ConversationStatus = 'ENTRADA' | 'ESPERANDO' | 'FINALIZADOS'
 export type ConversationChannel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'WEB_CHAT' | 'EMAIL'
 export type MessageType = 'TEXT' | 'IMAGE' | 'AUDIO' | 'FILE' | 'LOCATION' | 'CONTACT'
-export type MessageStatus = 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
+export type MessageStatus = 'DRAFT' | 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
 export type SenderType = 'CUSTOMER' | 'AGENT' | 'AI' | 'SYSTEM'
 export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'AGENT'
 
@@ -85,8 +85,15 @@ export interface ConversationDTO {
   customerId: string
   customerName?: string
   customerPhone?: string
+  customerBirthDate?: string
+  customerBloodType?: string
+  customerLastDonationDate?: string
+  customerHeight?: number
+  customerWeight?: number
   assignedUserId?: string
   assignedUserName?: string
+  campaignId?: string
+  campaignName?: string
   departmentId?: string
   departmentName?: string
   status: ConversationStatus

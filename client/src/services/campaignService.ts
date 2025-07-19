@@ -89,7 +89,8 @@ class CampaignService {
       formData
     );
 
-    return response.data;
+    console.log("📡 Resposta da API /process:", response);
+    return response;
   }
 
   async getCampaigns(companyId: string): Promise<CampaignResponse[]> {

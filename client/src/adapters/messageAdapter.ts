@@ -62,6 +62,7 @@ class MessageAdapter {
    */
   private mapStatus(backendStatus: BackendMessageStatus): MessageStatus {
     const statusMap: Record<BackendMessageStatus, MessageStatus> = {
+      'DRAFT': 'DRAFT' as MessageStatus,
       'SENDING': 'sending',
       'SENT': 'sent',
       'DELIVERED': 'delivered',
