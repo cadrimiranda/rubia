@@ -39,6 +39,9 @@ interface DonorSidebarProps {
   onCampaignChange?: (campaign: Campaign | null) => void;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  hasMorePages?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export const DonorSidebar: React.FC<DonorSidebarProps> = ({
@@ -60,11 +63,32 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
   onCampaignChange,
   viewMode = "full",
   onViewModeChange,
+  hasMorePages = false,
+  isLoadingMore = false,
+  onLoadMore,
 }) => {
   const activeDonors = donors.filter(
     (d) => d.lastMessage || d.hasActiveConversation
   );
-  const filteredDonors = activeDonors.filter((donor) =>
+
+  // Handler para scroll infinito
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    
+    // Verifica se chegou perto do final (80%)
+    if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+      if (hasMorePages && !isLoadingMore && onLoadMore) {
+        onLoadMore();
+      }
+    }
+  }, [hasMorePages, isLoadingMore, onLoadMore]);
+  
+  // Filtrar por campanha se uma campanha específica estiver selecionada
+  const campaignFilteredDonors = selectedCampaign 
+    ? activeDonors.filter((donor) => donor.campaignId === selectedCampaign.id)
+    : activeDonors;
+  
+  const filteredDonors = campaignFilteredDonors.filter((donor) =>
     donor.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -223,7 +247,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-2 bg-gray-50" onScroll={handleScroll}>
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-32 text-gray-500">
             <Loader className="w-6 h-6 animate-spin mb-2" />
@@ -440,7 +464,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                   {/* Info Adicional */}
                   <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
                     <span className="font-medium">
-                      {calculateAge(donor.birthDate)} anos
+                      {donor.birthDate ? `${calculateAge(donor.birthDate)} anos` : 'Idade N/I'}
                     </span>
                     <span>{donor.totalDonations} doações</span>
                     <span>Última: {donor.lastDonation}</span>
@@ -449,6 +473,16 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
               </div>
             )
           )
+        )}
+        
+        {/* Indicador de carregamento para paginação infinita */}
+        {hasMorePages && isLoadingMore && (
+          <div className="flex items-center justify-center py-4">
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Carregando mais conversas...</span>
+            </div>
+          </div>
         )}
       </div>
     </div>

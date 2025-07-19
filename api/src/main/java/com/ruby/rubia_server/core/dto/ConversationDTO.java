@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -21,8 +22,15 @@ public class ConversationDTO {
     private UUID customerId;
     private String customerName;
     private String customerPhone;
+    private LocalDate customerBirthDate;
+    private String customerBloodType;
+    private LocalDate customerLastDonationDate;
+    private Integer customerHeight;
+    private Double customerWeight;
     private UUID assignedUserId;
     private String assignedUserName;
+    private UUID campaignId;
+    private String campaignName;
     private ConversationStatus status;
     private Channel channel;
     private Integer priority;

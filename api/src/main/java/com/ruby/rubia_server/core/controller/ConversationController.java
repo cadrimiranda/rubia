@@ -10,6 +10,7 @@ import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.ConversationMediaDTO;
 import com.ruby.rubia_server.core.dto.CreateConversationMediaDTO;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.enums.MediaType;
 import com.ruby.rubia_server.core.service.ConversationService;
@@ -19,8 +20,8 @@ import com.ruby.rubia_server.core.service.ConversationMediaService;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.ConversationMedia;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
-import com.ruby.rubia_server.messaging.service.MessagingService;
-import com.ruby.rubia_server.messaging.model.MessageResult;
+import com.ruby.rubia_server.core.service.MessagingService;
+import com.ruby.rubia_server.core.entity.MessageResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -225,8 +226,10 @@ public class ConversationController {
     // Message endpoints for conversations
     
     @GetMapping("/{conversationId}/messages")
-    public ResponseEntity<List<MessageDTO>> getMessages(@PathVariable UUID conversationId) {
-        log.debug("Getting messages for conversation: {}", conversationId);
+    public ResponseEntity<List<MessageDTO>> getMessages(
+            @PathVariable UUID conversationId,
+            @RequestParam(required = false) MessageStatus status) {
+        log.debug("Getting messages for conversation: {} with status: {}", conversationId, status);
         
         try {
             UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
@@ -234,7 +237,13 @@ public class ConversationController {
             // Validate conversation exists and user has access
             conversationService.findById(conversationId, currentCompanyId);
             
-            List<MessageDTO> messages = messageService.findByConversation(conversationId);
+            List<MessageDTO> messages;
+            if (status != null) {
+                messages = messageService.findByConversationAndStatus(conversationId, status);
+            } else {
+                messages = messageService.findByConversation(conversationId);
+            }
+            
             return ResponseEntity.ok(messages);
         } catch (IllegalArgumentException e) {
             log.warn("Error getting messages: {}", e.getMessage());

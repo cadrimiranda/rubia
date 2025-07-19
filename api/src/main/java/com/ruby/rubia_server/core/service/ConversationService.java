@@ -10,6 +10,7 @@ import com.ruby.rubia_server.core.entity.ConversationParticipant;
 import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Department;
 import com.ruby.rubia_server.core.entity.User;
+import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.ConversationParticipantRepository;
@@ -17,6 +18,7 @@ import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.CustomerRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
+import com.ruby.rubia_server.core.repository.CampaignRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,7 +45,27 @@ public class ConversationService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final CompanyRepository companyRepository;
+    private final CampaignRepository campaignRepository;
     
+    public Optional<ConversationDTO> findByCustomerIdAndCampaignId(UUID customerId, UUID campaignId) {
+        log.debug("Finding conversation by customer id: {} and campaign id: {}", customerId, campaignId);
+        
+        // Buscar conversas do customer que tenham a campanha específica
+        List<Conversation> conversations = conversationRepository.findAll().stream()
+            .filter(conv -> conv.getCampaign() != null && conv.getCampaign().getId().equals(campaignId))
+            .filter(conv -> conv.getParticipants().stream()
+                .anyMatch(p -> p.getCustomer() != null && p.getCustomer().getId().equals(customerId)))
+            .toList();
+        
+        if (conversations.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        // Retornar a primeira conversa encontrada
+        Conversation conversation = conversations.get(0);
+        return Optional.of(toDTO(conversation));
+    }
+
     public ConversationDTO create(CreateConversationDTO createDTO, UUID companyId) {
         log.info("Creating conversation for customer: {} in company: {}", createDTO.getCustomerId(), companyId);
         
@@ -77,12 +100,24 @@ public class ConversationService {
             }
         }
         
+        Campaign campaign = null;
+        if (createDTO.getCampaignId() != null) {
+            campaign = campaignRepository.findById(createDTO.getCampaignId())
+                    .orElseThrow(() -> new IllegalArgumentException("Campanha não encontrada"));
+            // Validate campaign belongs to company
+            if (!campaign.getCompany().getId().equals(companyId)) {
+                throw new IllegalArgumentException("Campanha não pertence a esta empresa");
+            }
+        }
+        
         Conversation conversation = Conversation.builder()
                 .assignedUser(assignedUser)
                 .company(company)
                 .status(createDTO.getStatus())
                 .channel(createDTO.getChannel())
                 .priority(createDTO.getPriority())
+                .campaign(campaign)
+                .conversationType(createDTO.getConversationType())
                 .build();
         
         Conversation saved = conversationRepository.save(conversation);
@@ -108,6 +143,8 @@ public class ConversationService {
                 .customerPhone(customer.getPhone())
                 .assignedUserId(saved.getAssignedUser() != null ? saved.getAssignedUser().getId() : null)
                 .assignedUserName(saved.getAssignedUser() != null ? saved.getAssignedUser().getName() : null)
+                .campaignId(saved.getCampaign() != null ? saved.getCampaign().getId() : null)
+                .campaignName(saved.getCampaign() != null ? saved.getCampaign().getName() : null)
                 .status(saved.getStatus())
                 .channel(saved.getChannel())
                 .priority(saved.getPriority())
@@ -152,8 +189,15 @@ public class ConversationService {
                 .customerId(customer != null ? customer.getId() : null)
                 .customerName(customer != null ? customer.getName() : null)
                 .customerPhone(customer != null ? customer.getPhone() : null)
+                .customerBirthDate(customer != null ? customer.getBirthDate() : null)
+                .customerBloodType(customer != null ? customer.getBloodType() : null)
+                .customerLastDonationDate(customer != null ? customer.getLastDonationDate() : null)
+                .customerHeight(customer != null ? customer.getHeight() : null)
+                .customerWeight(customer != null ? customer.getWeight() : null)
                 .assignedUserId(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getId() : null)
                 .assignedUserName(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getName() : null)
+                .campaignId(conversation.getCampaign() != null ? conversation.getCampaign().getId() : null)
+                .campaignName(conversation.getCampaign() != null ? conversation.getCampaign().getName() : null)
                 .status(conversation.getStatus())
                 .channel(conversation.getChannel())
                 .priority(conversation.getPriority())
@@ -289,27 +333,8 @@ public class ConversationService {
         
         Page<Conversation> conversationPage = conversationRepository.findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(status, companyId, pageable);
         
-        // Get IDs and fetch with participants
-        List<UUID> conversationIds = conversationPage.getContent().stream()
-                .map(Conversation::getId)
-                .toList();
-        
-        if (conversationIds.isEmpty()) {
-            return conversationPage.map(this::toDTO);
-        }
-        
-        // Fetch conversations with participants
-        List<Conversation> conversationsWithParticipants = conversationRepository.findByIdsWithParticipants(conversationIds);
-        
-        // Create a map for easy lookup
-        Map<UUID, Conversation> conversationMap = conversationsWithParticipants.stream()
-                .collect(Collectors.toMap(Conversation::getId, c -> c));
-        
-        // Map page content with participants loaded
-        return conversationPage.map(conversation -> {
-            Conversation withParticipants = conversationMap.get(conversation.getId());
-            return toDTO(withParticipants != null ? withParticipants : conversation);
-        });
+        // Como a query já faz LEFT JOIN FETCH, podemos mapear diretamente
+        return conversationPage.map(this::toDTO);
     }
     
     @Transactional(readOnly = true)
@@ -373,8 +398,15 @@ public class ConversationService {
                 .customerId(customer != null ? customer.getId() : null)
                 .customerName(customer != null ? customer.getName() : null)
                 .customerPhone(customer != null ? customer.getPhone() : null)
+                .customerBirthDate(customer != null ? customer.getBirthDate() : null)
+                .customerBloodType(customer != null ? customer.getBloodType() : null)
+                .customerLastDonationDate(customer != null ? customer.getLastDonationDate() : null)
+                .customerHeight(customer != null ? customer.getHeight() : null)
+                .customerWeight(customer != null ? customer.getWeight() : null)
                 .assignedUserId(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getId() : null)
                 .assignedUserName(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getName() : null)
+                .campaignId(conversation.getCampaign() != null ? conversation.getCampaign().getId() : null)
+                .campaignName(conversation.getCampaign() != null ? conversation.getCampaign().getName() : null)
                 .status(conversation.getStatus())
                 .channel(conversation.getChannel())
                 .priority(conversation.getPriority())

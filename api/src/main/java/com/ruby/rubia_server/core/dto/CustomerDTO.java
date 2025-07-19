@@ -37,6 +37,10 @@ public class CustomerDTO {
     private String addressPostalCode;
     private String addressCity;
     private String addressState;
+    private String email;
+    private String cpf;
+    private String rg;
+    private String rhFactor;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -87,8 +87,21 @@ public class Customer {
     @Column(name = "address_city")
     private String addressCity; // Cidade
 
-    @Column(name = "address_state", length = 2)
+    @Column(name = "address_state", length = 20)
     private String addressState; // Estado (UF)
+
+    // CAMPOS ADICIONAIS PARA CAMPANHA
+    @Column(name = "email")
+    private String email; // Email do cliente
+    
+    @Column(name = "cpf", length = 11)
+    private String cpf; // CPF do cliente
+    
+    @Column(name = "rg", length = 20)
+    private String rg; // RG do cliente
+    
+    @Column(name = "rh_factor", length = 3)
+    private String rhFactor; // Fator RH (+, -)
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

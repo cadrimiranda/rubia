@@ -5,13 +5,15 @@ import com.ruby.rubia_server.core.dto.MessageDTO;
 import com.ruby.rubia_server.core.dto.UpdateMessageDTO;
 import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
+import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
-import com.ruby.rubia_server.messaging.model.IncomingMessage;
+import com.ruby.rubia_server.core.entity.IncomingMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,7 +35,13 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
+    private final MessageTemplateRepository messageTemplateRepository;
     
+    public boolean hasDraftMessage(UUID conversationId) {
+        log.debug("Checking if conversation {} has draft messages", conversationId);
+        return messageRepository.existsByConversationIdAndStatus(conversationId, MessageStatus.DRAFT);
+    }
+
     public MessageDTO create(CreateMessageDTO createDTO) {
         log.info("Creating message for conversation: {}", createDTO.getConversationId());
         
@@ -51,6 +59,12 @@ public class MessageService {
             throw new IllegalArgumentException("Mensagem com ID externo já existe");
         }
         
+        MessageTemplate messageTemplate = null;
+        if (createDTO.getMessageTemplateId() != null) {
+            messageTemplate = messageTemplateRepository.findById(createDTO.getMessageTemplateId())
+                    .orElseThrow(() -> new IllegalArgumentException("Template de mensagem não encontrado"));
+        }
+        
         Message message = Message.builder()
                 .conversation(conversation)
                 .content(createDTO.getContent())
@@ -59,6 +73,8 @@ public class MessageService {
                 .externalMessageId(createDTO.getExternalMessageId())
                 .isAiGenerated(createDTO.getIsAiGenerated())
                 .aiConfidence(createDTO.getAiConfidence())
+                .status(createDTO.getStatus())
+                .messageTemplate(messageTemplate)
                 .build();
         
         Message saved = messageRepository.save(message);
@@ -319,6 +335,22 @@ public class MessageService {
         messageRepository.deleteAll(messages);
         
         log.info("Deleted {} messages for company: {}", messages.size(), companyId);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<MessageDTO> findByConversationAndStatus(UUID conversationId, MessageStatus status) {
+        log.debug("Finding messages by conversation: {} and status: {}", conversationId, status);
+        
+        List<Message> messages = messageRepository.findByConversationIdAndStatus(conversationId, status);
+        return messages.stream()
+                .map(message -> {
+                    User sender = null;
+                    if (message.getSenderType() == SenderType.AGENT && message.getSenderId() != null) {
+                        sender = userRepository.findById(message.getSenderId()).orElse(null);
+                    }
+                    return toDTO(message, sender);
+                })
+                .toList();
     }
     
     

@@ -155,6 +155,23 @@ export class MessageAPI {
       `${this.basePath}/${messageId}/media-url`
     )
   }
+
+  async getDraftMessages(conversationId: string): Promise<MessageDTO[]> {
+    const response = await apiClient.get<MessageDTO[]>(
+      `/api/conversations/${conversationId}/messages`,
+      {
+        status: 'DRAFT',
+        size: '10'
+      }
+    )
+    return response
+  }
+
+  async updateMessageStatus(messageId: string, status: MessageStatus): Promise<MessageDTO> {
+    return apiClient.put<MessageDTO>(`${this.basePath}/${messageId}/status`, {
+      status
+    })
+  }
 }
 
 export const messageApi = new MessageAPI()

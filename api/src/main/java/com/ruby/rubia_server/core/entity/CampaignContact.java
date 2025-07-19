@@ -7,7 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -37,6 +39,7 @@ public class CampaignContact {
     private Customer customer; // O cliente (agora a entidade consolidada) associado a esta campanha
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "contact_status", nullable = false)
     @Builder.Default
     private CampaignContactStatus status = CampaignContactStatus.PENDING;

@@ -67,4 +67,17 @@ public class CreateCustomerDTO {
     @Size(max = 2, message = "Estado deve ter 2 caracteres")
     @Pattern(regexp = "^[A-Z]{2}$|^$", message = "Estado deve ser uma UF válida (ex: SP, RJ)")
     private String addressState;
+    
+    // Campos adicionais para campanhas
+    @Size(max = 255, message = "Email não pode exceder 255 caracteres")
+    private String email;
+    
+    @Size(max = 14, message = "CPF não pode exceder 14 caracteres")
+    private String cpf;
+    
+    @Size(max = 20, message = "RG não pode exceder 20 caracteres")
+    private String rg;
+    
+    @Size(max = 10, message = "Fator RH não pode exceder 10 caracteres")
+    private String rhFactor;
 }

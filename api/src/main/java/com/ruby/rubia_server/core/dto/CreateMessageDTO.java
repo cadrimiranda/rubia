@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.dto;
 
 import com.ruby.rubia_server.core.enums.MessageType;
+import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.SenderType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -45,4 +46,9 @@ public class CreateMessageDTO {
     private Boolean isAiGenerated = false;
     
     private Double aiConfidence;
+    
+    @Builder.Default
+    private MessageStatus status = MessageStatus.SENT;
+    
+    private UUID messageTemplateId;
 }
