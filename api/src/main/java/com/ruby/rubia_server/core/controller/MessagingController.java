@@ -6,12 +6,16 @@ import com.ruby.rubia_server.core.entity.IncomingMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/messaging")
 public class MessagingController {
+    
+    private static final Logger log = LoggerFactory.getLogger(MessagingController.class);
     
     @Autowired
     private MessagingService messagingService;
@@ -88,6 +92,34 @@ public class MessagingController {
             "currentProvider", messagingService.getCurrentProvider(),
             "availableProviders", messagingService.getAvailableProviders()
         );
+    }
+    
+    @PostMapping("/webhook/zapi")
+    public ResponseEntity<String> handleZApiWebhook(
+            @RequestBody Map<String, Object> payload,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        
+        try {
+            log.info("Received Z-API webhook: {}", payload);
+            
+            String fromMe = (String) payload.get("fromMe");
+            if ("true".equals(fromMe)) {
+                return ResponseEntity.ok("OK");
+            }
+
+            if (!messagingService.validateWebhook(payload, authorization)) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            
+            IncomingMessage message = messagingService.parseIncomingMessage(payload);
+            messagingService.processIncomingMessage(message);
+            
+            return ResponseEntity.ok("OK");
+            
+        } catch (Exception e) {
+            log.error("Error processing Z-API webhook: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
     
 }
