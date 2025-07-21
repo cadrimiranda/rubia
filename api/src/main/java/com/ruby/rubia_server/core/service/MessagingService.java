@@ -19,10 +19,12 @@ import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.service.CustomerService;
 import com.ruby.rubia_server.core.service.ConversationService;
 import com.ruby.rubia_server.core.service.MessageService;
+import com.ruby.rubia_server.core.service.WebSocketNotificationService;
 import com.ruby.rubia_server.core.dto.CreateConversationDTO;
 import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
+import com.ruby.rubia_server.core.dto.MessageDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -54,6 +56,9 @@ public class MessagingService {
     
     @Autowired
     private MessageService messageService;
+    
+    @Autowired
+    private WebSocketNotificationService webSocketNotificationService;
     
     @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
@@ -160,17 +165,21 @@ public class MessagingService {
     
     public void processIncomingMessage(IncomingMessage incomingMessage) {
         try {
-            logger.info("Processing incoming message from: {} to: {}", 
-                incomingMessage.getFrom(), incomingMessage.getTo());
+            logger.info("Processing incoming message from: {} via {}", 
+                incomingMessage.getFrom(), incomingMessage.getProvider());
             
-            // Extract phone numbers
             String fromNumber = extractPhoneNumber(incomingMessage.getFrom());
-            String toNumber = extractPhoneNumber(incomingMessage.getTo());
             
-            // Determine company based on destination number
-            Company company = findCompanyByWhatsAppNumber(toNumber);
+            Company company;
+            if ("z-api".equals(incomingMessage.getProvider())) {
+                company = findCompanyByZApiInstance("default");
+            } else {
+                String toNumber = extractPhoneNumber(incomingMessage.getTo());
+                company = findCompanyByWhatsAppNumber(toNumber);
+            }
+            
             if (company == null) {
-                logger.warn("No company found for WhatsApp number: {}", toNumber);
+                logger.warn("No company found for incoming message from: {}", fromNumber);
                 return;
             }
             
@@ -192,8 +201,9 @@ public class MessagingService {
             // Find or create conversation
             ConversationDTO conversation = findOrCreateConversation(customer);
             
-            // Save incoming message
-            messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
+            MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
+            
+            webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
             
             logger.info("Successfully processed incoming message for conversation: {}", 
                 conversation.getId());
@@ -297,5 +307,12 @@ public class MessagingService {
             .build();
         
         return conversationService.create(createDTO, customer.getCompany().getId());
+    }
+    
+    public Company findCompanyByZApiInstance(String instanceId) {
+        return companyRepository.findAll().stream()
+            .filter(Company::getIsActive)
+            .findFirst()
+            .orElse(null);
     }
 }
