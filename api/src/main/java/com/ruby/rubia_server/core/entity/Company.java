@@ -62,6 +62,9 @@ public class Company {
     
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Department> departments;
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<WhatsAppInstance> whatsappInstances;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
