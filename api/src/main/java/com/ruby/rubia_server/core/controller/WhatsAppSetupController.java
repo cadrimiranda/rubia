@@ -51,16 +51,24 @@ public class WhatsAppSetupController {
     @PostMapping("/create-instance")
     public ResponseEntity<WhatsAppInstance> createInstance(@RequestBody CreateInstanceRequest request) {
         try {
+            log.debug("Creating WhatsApp instance with request: phoneNumber={}, displayName={}", 
+                     request.phoneNumber(), request.displayName());
+            
             Company company = getCurrentCompany();
+            log.debug("Current company: {} (max instances: {})", company.getSlug(), company.getMaxWhatsappNumbers());
             
             // Validate company limits
             List<WhatsAppInstance> existingInstances = whatsappInstanceService.findByCompany(company);
+            log.debug("Existing instances count: {}", existingInstances.size());
             if (existingInstances.size() >= company.getMaxWhatsappNumbers()) {
+                log.warn("Company {} has reached maximum WhatsApp instances limit: {}/{}", 
+                        company.getSlug(), existingInstances.size(), company.getMaxWhatsappNumbers());
                 return ResponseEntity.badRequest().build();
             }
 
             // Check if phone number already exists
             if (whatsappInstanceService.findByPhoneNumber(request.phoneNumber()).isPresent()) {
+                log.warn("Phone number {} already exists", request.phoneNumber());
                 return ResponseEntity.badRequest().build();
             }
 
@@ -71,6 +79,7 @@ public class WhatsAppSetupController {
             );
 
             log.info("Created WhatsApp instance {} for company {}", instance.getId(), company.getSlug());
+            log.debug("Returning instance data: {}", instance);
             return ResponseEntity.ok(instance);
         } catch (IllegalStateException | IllegalArgumentException e) {
             log.warn("Invalid request to create instance: {}", e.getMessage());

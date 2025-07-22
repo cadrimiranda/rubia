@@ -20,6 +20,9 @@ public class ZApiActivationService {
 
     @Value("${zapi.token}")
     private String token;
+    
+    @Value("${zapi.clientToken}")
+    private String clientToken;
 
     private final RestTemplate restTemplate;
 
@@ -72,16 +75,29 @@ public class ZApiActivationService {
     public QrCodeResult getQrCodeImage() {
         try {
             String url = instanceUrl + "/token/" + token + "/qr-code/image";
+            log.info("Getting QR code from URL: {}", url);
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
 
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+            log.info("Z-API QR Code response: status={}, body={}", response.getStatusCode(), response.getBody());
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String base64Image = (String) response.getBody().get("image");
+                // Z-API returns the QR code in the "value" field, not "image"
+                String fullValue = (String) response.getBody().get("value");
+                log.info("Full value received: {}", fullValue != null ? fullValue.substring(0, Math.min(100, fullValue.length())) + "..." : "null");
+                
+                // Extract base64 part from data URL format (data:image/png;base64,XXXX)
+                String base64Image = null;
+                if (fullValue != null && fullValue.startsWith("data:image/png;base64,")) {
+                    base64Image = fullValue.substring("data:image/png;base64,".length());
+                }
+                
+                log.info("Base64 image extracted: {}", base64Image != null ? "present (" + base64Image.length() + " chars)" : "null");
                 return QrCodeResult.success(base64Image, "base64");
             } else {
+                log.warn("Failed to get QR code: status={}, body={}", response.getStatusCode(), response.getBody());
                 return QrCodeResult.error("Failed to get QR code image");
             }
 
@@ -149,22 +165,43 @@ public class ZApiActivationService {
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + token);
+        headers.set("client-token", clientToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
 
     private ZApiStatus parseStatusResponse(Map<String, Object> response) {
-        String connected = (String) response.get("connected");
-        String session = (String) response.get("session");
-        String smartphoneConnected = (String) response.get("smartphoneConnected");
+        Object connectedObj = response.get("connected");
+        Object smartphoneConnectedObj = response.get("smartphoneConnected");
+        Object sessionObj = response.get("session");
+        
+        // Handle both boolean and string responses
+        boolean connected = parseBoolean(connectedObj);
+        boolean smartphoneConnected = parseBoolean(smartphoneConnectedObj);
+        String session = parseString(sessionObj);
         
         return ZApiStatus.builder()
-            .connected("true".equals(connected))
+            .connected(connected)
             .session(session)
-            .smartphoneConnected("true".equals(smartphoneConnected))
-            .needsQrCode(!(("true".equals(connected))))
+            .smartphoneConnected(smartphoneConnected)
+            .needsQrCode(!connected)
             .rawResponse(response)
             .build();
+    }
+    
+    private boolean parseBoolean(Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        } else if (value instanceof String) {
+            return "true".equalsIgnoreCase((String) value);
+        }
+        return false;
+    }
+    
+    private String parseString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return value.toString();
     }
 }

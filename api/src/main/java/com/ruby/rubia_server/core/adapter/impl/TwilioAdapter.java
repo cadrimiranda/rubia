@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Component
-@ConditionalOnProperty(name = "messaging.provider", havingValue = "twilio", matchIfMissing = true)
+@ConditionalOnProperty(name = "messaging.provider", havingValue = "twilio")
 public class TwilioAdapter implements MessagingAdapter {
     
     private static final Logger logger = LoggerFactory.getLogger(TwilioAdapter.class);

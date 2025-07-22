@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.ruby.rubia_server.core.enums.CompanyPlanType;
 import jakarta.persistence.*;
@@ -79,5 +80,6 @@ public class Company {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_group_id", nullable = false)
+    @JsonBackReference("companygroup-companies")
     private CompanyGroup companyGroup;
 }

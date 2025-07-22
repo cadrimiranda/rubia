@@ -98,7 +98,7 @@ export const mediaApi = {
 
   // URL para download
   getDownloadUrl: (mediaId: string): string => {
-    const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+    const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
     return `${baseURL}/api/media/${mediaId}/download`;
   },
 

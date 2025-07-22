@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.ruby.rubia_server.core.enums.MessagingProvider;
 import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import jakarta.persistence.*;
@@ -27,6 +28,7 @@ public class WhatsAppInstance {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
+    @JsonBackReference("company-whatsapp")
     private Company company;
     
     @Column(name = "phone_number", nullable = false)

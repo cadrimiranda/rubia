@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Radio, Input, Alert, Space, Typography, Divider } from 'antd';
 import { QrcodeOutlined, PhoneOutlined, ReloadOutlined, DisconnectOutlined } from '@ant-design/icons';
+import { apiClient } from '../api/client';
 
 const { Text, Title } = Typography;
 
@@ -34,13 +35,10 @@ const ZApiActivation: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [activationMethod, setActivationMethod] = useState<'qr' | 'phone'>('qr');
 
-  const API_BASE = '/api/zapi/activation';
-
   const checkStatus = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/status`);
-      const data: ZApiStatus = await response.json();
+      const data: ZApiStatus = await apiClient.get('/api/zapi/activation/status');
       setStatus(data);
     } catch (error) {
       console.error('Error checking status:', error);
@@ -52,8 +50,7 @@ const ZApiActivation: React.FC = () => {
   const loadQrCode = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/qr-code/image`);
-      const data: QrCodeResult = await response.json();
+      const data: QrCodeResult = await apiClient.get('/api/zapi/activation/qr-code/image');
       
       if (data.success) {
         setQrCodeImage(data.data);
@@ -72,8 +69,7 @@ const ZApiActivation: React.FC = () => {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/phone-code/${phoneNumber}`);
-      const data: PhoneCodeResult = await response.json();
+      const data: PhoneCodeResult = await apiClient.get(`/api/zapi/activation/phone-code/${phoneNumber}`);
       setPhoneCode(data);
     } catch (error) {
       console.error('Error generating phone code:', error);
@@ -85,8 +81,7 @@ const ZApiActivation: React.FC = () => {
   const restartInstance = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/restart`, { method: 'POST' });
-      const data = await response.json();
+      const data = await apiClient.post('/api/zapi/activation/restart');
       
       if (data.success) {
         await checkStatus();
@@ -101,8 +96,7 @@ const ZApiActivation: React.FC = () => {
   const disconnectInstance = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/disconnect`, { method: 'POST' });
-      const data = await response.json();
+      const data = await apiClient.post('/api/zapi/activation/disconnect');
       
       if (data.success) {
         await checkStatus();

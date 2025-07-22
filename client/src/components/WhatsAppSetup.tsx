@@ -22,6 +22,12 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   
   const [form] = Form.useForm();
 
+  // Debug log
+  console.log('🚀 WhatsApp Setup Render:', { 
+    currentStep, 
+    selectedInstance: selectedInstance ? { id: selectedInstance.id, status: selectedInstance.status } : null 
+  });
+
   useEffect(() => {
     loadSetupStatus();
     loadProviders();
@@ -33,10 +39,46 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       const status = await whatsappSetupApi.getSetupStatus();
       setSetupStatus(status);
       
-      // If already has instances, show management view
-      if (!status.requiresSetup) {
+      // Determine current step based on status - prioritize active instances that need setup
+      const instanceNeedingSetup = status.instances.find(instance => 
+        instance.status === 'NOT_CONFIGURED' || 
+        instance.status === 'CONFIGURING' || 
+        instance.status === 'AWAITING_QR_SCAN'
+      );
+      
+      console.log('🔍 Status Analysis:', {
+        totalInstances: status.totalInstances,
+        hasConnectedInstance: status.hasConnectedInstance,
+        instanceNeedingSetup: instanceNeedingSetup ? {
+          id: instanceNeedingSetup.id,
+          status: instanceNeedingSetup.status
+        } : null
+      });
+      
+      if (instanceNeedingSetup) {
+        // If there's an instance that needs setup, handle it first
+        setSelectedInstance(instanceNeedingSetup);
+        if (instanceNeedingSetup.status === 'NOT_CONFIGURED') {
+          console.log('📍 Setting currentStep to 1 (configuration)');
+          setCurrentStep(1); // Go to configuration step
+        } else if (instanceNeedingSetup.status === 'CONFIGURING' || instanceNeedingSetup.status === 'AWAITING_QR_SCAN') {
+          console.log('📍 Setting currentStep to 2 (activation)');
+          setCurrentStep(2); // Go to activation step
+        }
+      } else if (status.hasConnectedInstance) {
+        // If all instances are handled and there's a connected one, go to management
+        console.log('📍 Setting currentStep to 3 (management - connected)');
+        setCurrentStep(3);
+      } else if (status.totalInstances === 0) {
+        // If no instances, stay at step 0 for creating new instance
+        console.log('📍 Setting currentStep to 0 (create new)');
+        setCurrentStep(0);
+      } else {
+        // Fallback: if has instances but none need setup and none connected, go to management
+        console.log('📍 Setting currentStep to 3 (management - fallback)');
         setCurrentStep(3);
       }
+      
     } catch (error) {
       console.error('Error loading setup status:', error);
       message.error('Erro ao carregar status de configuração');
@@ -73,7 +115,9 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       message.success('Instância criada com sucesso!');
       setSelectedInstance(instance);
       setCurrentStep(1);
-      await loadSetupStatus();
+      // Reload setup status but don't change step automatically
+      const status = await whatsappSetupApi.getSetupStatus();
+      setSetupStatus(status);
       
     } catch (error: unknown) {
       console.error('Error creating instance:', error);
@@ -97,7 +141,9 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
 
       message.success('Instância configurada com sucesso!');
       setCurrentStep(2);
-      await loadSetupStatus();
+      // Reload setup status but don't change step automatically
+      const status = await whatsappSetupApi.getSetupStatus();
+      setSetupStatus(status);
       
     } catch (error: unknown) {
       console.error('Error configuring instance:', error);
@@ -123,7 +169,9 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
         message.error(result.error || 'Erro na ativação');
       }
       
-      await loadSetupStatus();
+      // Reload setup status but don't change step automatically
+      const status = await whatsappSetupApi.getSetupStatus();
+      setSetupStatus(status);
       
     } catch (error: unknown) {
       console.error('Error activating instance:', error);
@@ -203,8 +251,8 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     }
   ];
 
-  // If setup is not required, show management interface
-  if (setupStatus && !setupStatus.requiresSetup) {
+  // Only show management interface if we have connected instances AND currentStep is 3
+  if (setupStatus && setupStatus.hasConnectedInstance && currentStep === 3) {
     return (
       <Card>
         <Title level={3}>Gerenciar Instâncias WhatsApp</Title>
