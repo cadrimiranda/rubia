@@ -412,4 +412,101 @@ class ZApiAdapterTest {
             eq(Map.class)
         );
     }
+
+    @Test
+    void shouldHandleExpiredMediaUrls() {
+        // Given - Media message with various error scenarios
+        String phoneNumber = "+5511999999999";
+        String expiredMediaUrl = "https://expired-media-server.com/file.jpg";
+        String caption = "Test image";
+
+        // Test scenario 1: HTTP 404 Not Found (expired URL)
+        HttpClientErrorException notFoundException = new HttpClientErrorException(
+            HttpStatus.NOT_FOUND, "Media URL not found or expired"
+        );
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenThrow(notFoundException);
+
+        // When
+        MessageResult result1 = zApiAdapter.sendMediaMessage(phoneNumber, expiredMediaUrl, caption);
+
+        // Then - Should handle expired media URL gracefully
+        assertThat(result1.isSuccess()).isFalse();
+        assertThat(result1.getError()).contains("Error sending media message via Z-API");
+        assertThat(result1.getError()).contains("Media URL not found or expired");
+        assertThat(result1.getProvider()).isEqualTo("z-api");
+
+        // Test scenario 2: HTTP 403 Forbidden (access denied to media)
+        HttpClientErrorException forbiddenException = new HttpClientErrorException(
+            HttpStatus.FORBIDDEN, "Access denied to media resource"
+        );
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenThrow(forbiddenException);
+
+        // When
+        MessageResult result2 = zApiAdapter.sendMediaMessage(phoneNumber, expiredMediaUrl, caption);
+
+        // Then - Should handle access denied
+        assertThat(result2.isSuccess()).isFalse();
+        assertThat(result2.getError()).contains("Error sending media message via Z-API");
+        assertThat(result2.getError()).contains("Access denied to media resource");
+        assertThat(result2.getProvider()).isEqualTo("z-api");
+
+        // Test scenario 3: HTTP 410 Gone (media permanently removed)
+        HttpClientErrorException goneException = new HttpClientErrorException(
+            HttpStatus.GONE, "Media resource no longer available"
+        );
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenThrow(goneException);
+
+        // When
+        MessageResult result3 = zApiAdapter.sendMediaMessage(phoneNumber, expiredMediaUrl, caption);
+
+        // Then - Should handle permanently removed media
+        assertThat(result3.isSuccess()).isFalse();
+        assertThat(result3.getError()).contains("Error sending media message via Z-API");
+        assertThat(result3.getError()).contains("Media resource no longer available");
+        assertThat(result3.getProvider()).isEqualTo("z-api");
+
+        // Test scenario 4: Success with valid media URL
+        Map<String, Object> successResponse = Map.of("messageId", "media_123");
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenReturn(ResponseEntity.ok(successResponse));
+
+        // When
+        MessageResult result4 = zApiAdapter.sendMediaMessage(phoneNumber, "https://valid-url.com/image.jpg", caption);
+
+        // Then - Should succeed with valid URL
+        assertThat(result4.isSuccess()).isTrue();
+        assertThat(result4.getMessageId()).isEqualTo("media_123");
+        assertThat(result4.getProvider()).isEqualTo("z-api");
+
+        // Verify all calls were made
+        verify(restTemplate, times(4)).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
 }
