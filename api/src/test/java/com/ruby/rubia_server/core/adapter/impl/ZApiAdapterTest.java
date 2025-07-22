@@ -509,4 +509,93 @@ class ZApiAdapterTest {
             eq(Map.class)
         );
     }
+
+    @Test
+    void shouldReconnectInstanceAutomatically() {
+        // Given - Scenario simulating instance reconnection
+        String phoneNumber = "+5511999999999";
+        String message = "Test reconnection message";
+
+        // Simulate instance disconnected initially (401 Unauthorized)
+        HttpClientErrorException unauthorizedException = new HttpClientErrorException(
+            HttpStatus.UNAUTHORIZED, "Instance disconnected"
+        );
+
+        // Simulate instance being reconnected (502 Bad Gateway during reconnection)
+        HttpClientErrorException badGatewayException = new HttpClientErrorException(
+            HttpStatus.BAD_GATEWAY, "Instance reconnecting"
+        );
+
+        // Simulate successful reconnection
+        Map<String, Object> successResponse = Map.of("messageId", "reconnected_123");
+
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        ))
+        .thenThrow(unauthorizedException)    // First: Instance disconnected
+        .thenThrow(badGatewayException)      // Second: Instance reconnecting  
+        .thenReturn(ResponseEntity.ok(successResponse)); // Third: Successfully reconnected
+
+        // When - Attempt to send messages (simulating retry logic)
+        MessageResult result1 = zApiAdapter.sendMessage(phoneNumber, message);
+        MessageResult result2 = zApiAdapter.sendMessage(phoneNumber, message);
+        MessageResult result3 = zApiAdapter.sendMessage(phoneNumber, message);
+
+        // Then - Verify reconnection behavior
+
+        // First attempt: Instance disconnected
+        assertThat(result1.isSuccess()).isFalse();
+        assertThat(result1.getError()).contains("Error sending message via Z-API");
+        assertThat(result1.getError()).contains("Instance disconnected");
+        assertThat(result1.getProvider()).isEqualTo("z-api");
+
+        // Second attempt: Instance reconnecting
+        assertThat(result2.isSuccess()).isFalse();
+        assertThat(result2.getError()).contains("Error sending message via Z-API");
+        assertThat(result2.getError()).contains("Instance reconnecting");
+        assertThat(result2.getProvider()).isEqualTo("z-api");
+
+        // Third attempt: Successfully reconnected
+        assertThat(result3.isSuccess()).isTrue();
+        assertThat(result3.getMessageId()).isEqualTo("reconnected_123");
+        assertThat(result3.getProvider()).isEqualTo("z-api");
+
+        // Test with different reconnection scenario - service unavailable then success
+        HttpClientErrorException serviceUnavailableException = new HttpClientErrorException(
+            HttpStatus.SERVICE_UNAVAILABLE, "WhatsApp service temporarily unavailable"
+        );
+
+        Map<String, Object> afterMaintenanceResponse = Map.of("messageId", "after_maintenance_456");
+
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        ))
+        .thenThrow(serviceUnavailableException)  // Service maintenance
+        .thenReturn(ResponseEntity.ok(afterMaintenanceResponse)); // Service restored
+
+        // When - Attempt messages during and after maintenance
+        MessageResult maintenanceResult = zApiAdapter.sendMessage(phoneNumber, "Maintenance test");
+        MessageResult afterMaintenanceResult = zApiAdapter.sendMessage(phoneNumber, "After maintenance");
+
+        // Then - Verify maintenance and recovery behavior
+        assertThat(maintenanceResult.isSuccess()).isFalse();
+        assertThat(maintenanceResult.getError()).contains("WhatsApp service temporarily unavailable");
+
+        assertThat(afterMaintenanceResult.isSuccess()).isTrue();
+        assertThat(afterMaintenanceResult.getMessageId()).isEqualTo("after_maintenance_456");
+
+        // Verify total calls made (3 + 2 = 5)
+        verify(restTemplate, times(5)).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
 }
