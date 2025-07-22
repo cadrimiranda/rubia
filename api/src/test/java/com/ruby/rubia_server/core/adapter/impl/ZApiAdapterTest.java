@@ -21,6 +21,13 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import org.springframework.web.client.HttpClientErrorException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
+import java.util.ArrayList;
 
 @ExtendWith(MockitoExtension.class)
 class ZApiAdapterTest {
@@ -268,6 +275,78 @@ class ZApiAdapterTest {
         assertThat(result3.getProvider()).isEqualTo("z-api");
 
         verify(restTemplate, times(3)).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
+
+    @Test
+    void shouldProcessConcurrentMessagesCorrectly() throws Exception {
+        // Given - Multiple concurrent messages
+        int numberOfThreads = 10;
+        int messagesPerThread = 5;
+        AtomicInteger messageCounter = new AtomicInteger(0);
+        List<MessageResult> results = new ArrayList<>();
+        ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
+
+        // Setup mock to return unique message IDs
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenAnswer(invocation -> {
+            // Simulate some processing time
+            Thread.sleep(50);
+            
+            int messageId = messageCounter.incrementAndGet();
+            Map<String, Object> response = Map.of("messageId", "msg_" + messageId);
+            return ResponseEntity.ok(response);
+        });
+
+        // When - Send messages concurrently
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        
+        for (int i = 0; i < numberOfThreads; i++) {
+            final int threadId = i;
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                for (int j = 0; j < messagesPerThread; j++) {
+                    String phoneNumber = "+551199999" + String.format("%04d", threadId * messagesPerThread + j);
+                    String message = "Test message " + threadId + "-" + j;
+                    
+                    MessageResult result = zApiAdapter.sendMessage(phoneNumber, message);
+                    synchronized (results) {
+                        results.add(result);
+                    }
+                }
+            }, executorService);
+            futures.add(future);
+        }
+
+        // Wait for all messages to complete
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(30, TimeUnit.SECONDS);
+        executorService.shutdown();
+
+        // Then - All messages should be processed successfully
+        assertThat(results).hasSize(numberOfThreads * messagesPerThread);
+        
+        // All messages should be successful
+        long successfulMessages = results.stream().filter(MessageResult::isSuccess).count();
+        assertThat(successfulMessages).isEqualTo(numberOfThreads * messagesPerThread);
+
+        // All message IDs should be unique
+        List<String> messageIds = results.stream()
+            .filter(MessageResult::isSuccess)
+            .map(MessageResult::getMessageId)
+            .toList();
+        
+        assertThat(messageIds).hasSize(numberOfThreads * messagesPerThread);
+        assertThat(messageIds).doesNotHaveDuplicates();
+
+        // Verify RestTemplate was called the expected number of times
+        verify(restTemplate, times(numberOfThreads * messagesPerThread)).exchange(
             anyString(), 
             eq(HttpMethod.POST), 
             any(HttpEntity.class), 
