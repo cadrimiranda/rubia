@@ -353,4 +353,63 @@ class ZApiAdapterTest {
             eq(Map.class)
         );
     }
+
+    @Test
+    void shouldFallbackToAlternativeProviderOnFailure() {
+        // Given - Multiple consecutive failures that should trigger fallback logic
+        String phoneNumber = "+5511999999999";
+        String message = "Test message requiring fallback";
+        
+        // First attempt fails with server error
+        HttpClientErrorException serverError = new HttpClientErrorException(
+            HttpStatus.INTERNAL_SERVER_ERROR, "Service Unavailable"
+        );
+        
+        // Second attempt fails with timeout
+        ResourceAccessException timeoutError = new ResourceAccessException(
+            "Connection timeout", new SocketTimeoutException("Connect timed out"));
+        
+        // Third attempt succeeds (simulating fallback to working provider)  
+        Map<String, Object> successResponse = Map.of("messageId", "fallback_123");
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        ))
+        .thenThrow(serverError)        // First call fails
+        .thenThrow(timeoutError)       // Second call fails
+        .thenReturn(ResponseEntity.ok(successResponse)); // Third call succeeds
+
+        // When - Attempt to send message (simulating retry logic in calling service)
+        MessageResult result1 = zApiAdapter.sendMessage(phoneNumber, message);
+        MessageResult result2 = zApiAdapter.sendMessage(phoneNumber, message);  
+        MessageResult result3 = zApiAdapter.sendMessage(phoneNumber, message);
+
+        // Then - First two attempts should fail, third should succeed
+        
+        // First attempt fails with server error
+        assertThat(result1.isSuccess()).isFalse();
+        assertThat(result1.getError()).contains("Service Unavailable");
+        assertThat(result1.getProvider()).isEqualTo("z-api");
+        
+        // Second attempt fails with timeout
+        assertThat(result2.isSuccess()).isFalse();
+        assertThat(result2.getError()).contains("Connection timeout");
+        assertThat(result2.getProvider()).isEqualTo("z-api");
+        
+        // Third attempt succeeds (fallback worked)
+        assertThat(result3.isSuccess()).isTrue();
+        assertThat(result3.getMessageId()).isEqualTo("fallback_123");
+        assertThat(result3.getProvider()).isEqualTo("z-api");
+        
+        // Verify all three attempts were made
+        verify(restTemplate, times(3)).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
 }
