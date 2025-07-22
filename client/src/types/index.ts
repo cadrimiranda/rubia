@@ -4,6 +4,18 @@ export type ContactType = 'comercial' | 'suporte' | 'vendas'
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read'
 
+export type WhatsAppInstanceStatus = 
+  | 'NOT_CONFIGURED' 
+  | 'CONFIGURING' 
+  | 'AWAITING_QR_SCAN' 
+  | 'CONNECTING' 
+  | 'CONNECTED' 
+  | 'DISCONNECTED' 
+  | 'ERROR' 
+  | 'SUSPENDED'
+
+export type MessagingProvider = 'Z_API' | 'TWILIO' | 'WHATSAPP_BUSINESS_API' | 'MOCK'
+
 export interface User {
   id: string
   name: string
@@ -61,6 +73,46 @@ export interface Chat {
   closedAt?: Date
   createdAt: Date
   updatedAt: Date
+}
+
+export interface WhatsAppInstance {
+  id: string
+  phoneNumber: string
+  displayName?: string
+  provider: MessagingProvider
+  status: WhatsAppInstanceStatus
+  isPrimary: boolean
+  isActive: boolean
+  lastConnectedAt?: Date
+  createdAt: Date
+  errorMessage?: string
+}
+
+export interface WhatsAppSetupStatus {
+  requiresSetup: boolean
+  hasConfiguredInstance: boolean
+  hasConnectedInstance: boolean
+  totalInstances: number
+  maxAllowedInstances: number
+  instances: WhatsAppInstance[]
+}
+
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+  avatar?: string
+  role: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: AuthUser
+  expiresIn: number
+  companyId: string
+  companyGroupId: string
+  companySlug: string
+  requiresWhatsAppSetup: boolean
 }
 
 export interface ChatStore {
