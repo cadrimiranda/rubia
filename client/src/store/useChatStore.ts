@@ -681,11 +681,13 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
 
   // WebSocket/Tempo real
   addMessage: (conversationId: string, message: Message) => {
+    console.log('🗂️ Store addMessage called:', conversationId, message)
     const state = get()
     const cached = state.messagesCache[conversationId]
     
     if (cached) {
       const updatedMessages = [...cached.messages, message]
+      console.log('🗂️ Updating existing cache with', updatedMessages.length, 'messages')
       
       set({
         messagesCache: {
@@ -699,10 +701,35 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       
       // Atualiza chat ativo se for o mesmo
       if (state.activeChat?.id === conversationId) {
+        console.log('🗂️ Updating active chat messages')
         set({
           activeChat: {
             ...state.activeChat,
             messages: updatedMessages
+          }
+        })
+      }
+    } else {
+      console.log('🗂️ Creating new cache for conversation:', conversationId)
+      // Se não há cache, cria um novo com a mensagem
+      set({
+        messagesCache: {
+          ...state.messagesCache,
+          [conversationId]: {
+            messages: [message],
+            page: 1,
+            hasMore: false
+          }
+        }
+      })
+      
+      // Se é o chat ativo, também atualiza
+      if (state.activeChat?.id === conversationId) {
+        console.log('🗂️ Setting active chat messages')
+        set({
+          activeChat: {
+            ...state.activeChat,
+            messages: [message]
           }
         })
       }

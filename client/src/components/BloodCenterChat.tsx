@@ -24,6 +24,10 @@ import { campaignApi } from "../api/services/campaignApi";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
 import type { ConversationStatus } from "../api/types";
+import { useWebSocket } from "../hooks/useWebSocket";
+import { authService } from "../auth/authService";
+import { useAuthStore } from "../store/useAuthStore";
+import { useChatStore } from "../store/useChatStore";
 
 interface NewContactData {
   name: string;
@@ -32,6 +36,7 @@ interface NewContactData {
 }
 
 export const BloodCenterChat: React.FC = () => {
+
   const [state, setState] = useState<ChatState>({
     selectedDonor: null,
     selectedCampaign: null,
@@ -75,6 +80,65 @@ export const BloodCenterChat: React.FC = () => {
   // Refs para controlar paginação e evitar dependências circulares
   const currentPageRef = useRef(0);
   const loadConversationsRef = useRef<(status?: ChatStatus, reset?: boolean) => Promise<void>>();
+
+  // WebSocket para atualizações em tempo real
+  const webSocket = useWebSocket();
+  
+  // Chat store para mensagens em tempo real
+  const { messagesCache, activeChat } = useChatStore();
+  
+  // Combinar mensagens locais (enviadas) com mensagens do WebSocket (recebidas)
+  const activeMessages = React.useMemo(() => {
+    const conversationId = state.selectedDonor?.conversationId;
+    
+    // Mensagens locais (enviadas pelo usuário + carregadas da API inicialmente)
+    const localMessages = state.messages;
+    
+    // Mensagens do WebSocket (apenas de outros usuários)
+    const webSocketMessages = conversationId && messagesCache[conversationId] 
+      ? messagesCache[conversationId].messages.map(msg => ({
+          id: msg.id,
+          senderId: msg.senderId || "unknown",
+          content: msg.content,
+          timestamp: msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : "",
+          isAI: msg.isFromUser === true,
+          attachments: msg.attachments,
+          media: msg.media
+        }))
+      : [];
+    
+    // Combinar e remover duplicatas (apenas por ID exato)
+    const allMessages = [...localMessages];
+    webSocketMessages.forEach(wsMsg => {
+      if (!allMessages.some(localMsg => localMsg.id === wsMsg.id)) {
+        allMessages.push(wsMsg);
+      }
+    });
+    
+    // Ordenar por timestamp
+    return allMessages.sort((a, b) => {
+      const timeA = new Date(`1970-01-01 ${a.timestamp || '00:00'}`).getTime();
+      const timeB = new Date(`1970-01-01 ${b.timestamp || '00:00'}`).getTime();
+      return timeA - timeB;
+    });
+  }, [state.selectedDonor, state.messages, messagesCache]);
+  
+  useEffect(() => {
+    console.log('🔍 WebSocket status check - isConnected:', webSocket.isConnected);
+    console.log('🔍 Auth status:', authService.isAuthenticated());
+    
+    if (webSocket.isConnected) {
+      console.log('✅ WebSocket conectado!');
+    } else if (authService.isAuthenticated()) {
+      console.log('🔄 Tentando conectar WebSocket...');
+      webSocket.connect();
+    } else {
+      console.log('❌ Não autenticado, não conectando WebSocket');
+    }
+  }, [webSocket.isConnected]);
 
   // Carregar campanhas ativas da API
   const loadCampaigns = React.useCallback(async () => {
@@ -502,7 +566,7 @@ export const BloodCenterChat: React.FC = () => {
                 hour: '2-digit',
                 minute: '2-digit'
               }) : "",
-              isAI: msg.senderType === 'AGENT' || msg.senderType === 'SYSTEM',
+              isAI: msg.senderType === 'SYSTEM' || msg.senderType === 'CUSTOMER',
               attachments: msg.mediaUrl ? [{
                 id: `media_${msg.id}`,
                 name: msg.mediaUrl.split('/').pop() || 'arquivo',
@@ -528,6 +592,29 @@ export const BloodCenterChat: React.FC = () => {
       messages: donorMessages,
       messageInput: draftMessage?.content || "", // Colocar DRAFT no input se existir
     });
+    
+    // Definir conversa ativa no store para receber mensagens WebSocket
+    if (donor.conversationId) {
+      const store = useChatStore.getState();
+      store.setActiveConversation(donor.conversationId);
+      
+      // Inicializar cache de mensagens se não existir
+      if (!store.messagesCache[donor.conversationId] && donorMessages.length > 0) {
+        store.messagesCache[donor.conversationId] = {
+          messages: donorMessages.map(msg => ({
+            id: msg.id,
+            content: msg.content,
+            senderId: msg.senderId,
+            timestamp: msg.timestamp,
+            isFromUser: !msg.isAI,
+            attachments: msg.attachments,
+            media: msg.media
+          })),
+          page: 0,
+          hasMore: false
+        };
+      }
+    }
     
     // Armazenar referência da mensagem DRAFT para o MessageInput
     setCurrentDraftMessage(draftMessage);
@@ -872,12 +959,13 @@ export const BloodCenterChat: React.FC = () => {
     }
 
     // Criar mensagem temporária para UI otimista
+    const currentUser = useAuthStore.getState().user;
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
-      senderId: "ai",
+      senderId: currentUser?.id || "user",
       content: messageContent,
       timestamp: getCurrentTimestamp(),
-      isAI: true,
+      isAI: false,
       attachments: state.attachments.length > 0 ? [...state.attachments] : undefined,
       // Converter pendingMedia para um formato de preview
       media: state.pendingMedia.length > 0 ? state.pendingMedia.map(pm => ({
@@ -895,7 +983,7 @@ export const BloodCenterChat: React.FC = () => {
     // Armazenar pendingMedia para upload
     const mediaToUpload = [...state.pendingMedia];
 
-    // Atualizar UI imediatamente
+    // Atualizar UI imediatamente (optimistic update)
     updateState({
       messages: [...state.messages, tempMessage],
       messageInput: "",
@@ -964,14 +1052,18 @@ export const BloodCenterChat: React.FC = () => {
 
       console.log('✅ Mensagem enviada com sucesso:', sentMessage.id);
 
-      // Substituir mensagem temporária pela real
+      // Substituir mensagem temporária pela real (apenas localmente)
       updateState({
         messages: state.messages.map(msg => 
           msg.id === tempMessage.id 
             ? {
                 ...msg,
                 id: sentMessage.id,
-                timestamp: sentMessage.createdAt || msg.timestamp
+                timestamp: sentMessage.createdAt ? 
+                  new Date(sentMessage.createdAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : msg.timestamp
               }
             : msg
         )
@@ -1168,7 +1260,7 @@ export const BloodCenterChat: React.FC = () => {
             />
 
             <MessageList
-              messages={state.messages}
+              messages={activeMessages}
               isDragging={state.isDragging}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}

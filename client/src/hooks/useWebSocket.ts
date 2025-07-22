@@ -28,34 +28,73 @@ export const useWebSocket = (): UseWebSocketReturn => {
   const clientRef = useRef<Client | null>(null)
   const { user } = useAuthStore()
   const accessToken = authService.getAccessToken()
-  const { addMessage, updateConversation, setTypingUser } = useChatStore()
+  const { addMessage, updateConversation, setTypingUser: setUserTyping } = useChatStore()
 
   const handleNewMessage = useCallback((message: WebSocketMessage) => {
+    console.log('🔔 NEW MESSAGE received via WebSocket!', message)
     if (message.type === 'NEW_MESSAGE' && message.message && message.conversation) {
-      addMessage(message.conversation.id, message.message)
-      updateConversation(message.conversation)
+      // WebSocket deve processar APENAS mensagens de outros usuários
+      const currentUserId = user?.id;
+      const messageData = message.message;
+      
+      // Múltiplas verificações para identificar mensagens próprias
+      const isFromCurrentUser = 
+        messageData.senderId === currentUserId ||
+        messageData.senderType === 'AGENT' ||
+        messageData.isFromUser === true;
+      
+      console.log('🔍 Verificação de origem da mensagem:', {
+        currentUserId,
+        messageSenderId: messageData.senderId,
+        messageSenderType: messageData.senderType,
+        messageIsFromUser: messageData.isFromUser,
+        isFromCurrentUser
+      });
+      
+      if (isFromCurrentUser) {
+        console.log('🚫 Ignorando mensagem própria - mensagens enviadas são tratadas localmente');
+        return;
+      }
+      
+      console.log('📨 Processando mensagem de terceiro:', message.conversation.id, messageData)
+      addMessage(message.conversation.id, messageData)
+      updateConversation(message.conversation.id, message.conversation)
+      console.log('✅ Mensagem de terceiro adicionada ao chat!')
     }
-  }, [addMessage, updateConversation])
+  }, [addMessage, updateConversation, user?.id])
 
   const handleConversationUpdate = useCallback((message: WebSocketMessage) => {
     if (message.type === 'CONVERSATION_UPDATE' && message.conversation) {
-      updateConversation(message.conversation)
+      updateConversation(message.conversation.id, message.conversation)
     }
   }, [updateConversation])
 
   const handleTypingStatus = useCallback((message: WebSocketMessage) => {
     if (message.type === 'TYPING_STATUS' && message.conversationId && message.userName) {
-      setTypingUser(message.conversationId, message.userName, message.isTyping || false)
+      setUserTyping(message.conversationId, 'user', message.userName, message.isTyping || false)
     }
-  }, [setTypingUser])
+  }, [setUserTyping])
 
   const connect = useCallback(() => {
+    console.log('🚀 Attempting to connect WebSocket...')
+    console.log('🔑 Access token:', accessToken ? '✅ Present' : '❌ Missing')
+    console.log('🔑 Access token value:', accessToken ? `${accessToken.substring(0, 20)}...` : 'null')
+    console.log('👤 User:', user)
+    console.log('🔌 Current connection:', clientRef.current?.connected ? '✅ Already connected' : '⚡ Connecting...')
+    
     if (!accessToken || clientRef.current?.connected) {
+      console.log('⏹️ Connection aborted - token missing or already connected')
       return
     }
 
+    // Usar a mesma base que o frontend mas porta 8080
+    const currentOrigin = window.location.origin; // http://rubia.localhost:3000
+    const wsUrl = currentOrigin.replace(':3000', ':8080') + '/ws';
+    console.log('🌐 WebSocket URL:', wsUrl);
+    console.log('🌐 Current origin:', currentOrigin);
+    
     const client = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+      webSocketFactory: () => new SockJS(wsUrl),
       connectHeaders: {
         Authorization: `Bearer ${accessToken}`
       },
@@ -68,18 +107,30 @@ export const useWebSocket = (): UseWebSocketReturn => {
     })
 
     client.onConnect = (frame: IFrame) => {
-      console.log('WebSocket connected:', frame)
+      console.log('🌐 WebSocket connected successfully:', frame)
+      console.log('🏢 User company ID:', user?.companyId)
+      console.log('👤 User ID:', user?.id)
+      console.log('📧 User email:', user?.email)
+      console.log('🔗 User principal name should be:', user?.id)
       setIsConnected(true)
 
-      if (!user?.companyId) return
+      if (!user?.companyId) {
+        console.log('❌ No company ID found, skipping subscriptions')
+        return
+      }
 
       // Subscribe to company-specific message topics
+      console.log('📡 Subscribing to /user/topic/messages')
       client.subscribe(`/user/topic/messages`, (message: IMessage) => {
+        console.log('🔔 MESSAGE RECEIVED ON /user/topic/messages!')
+        console.log('🔔 Raw message:', message)
+        console.log('🔔 Message body:', message.body)
         try {
           const data: WebSocketMessage = JSON.parse(message.body)
+          console.log('🔔 Parsed data:', data)
           handleNewMessage(data)
         } catch (error) {
-          console.error('Error parsing message notification:', error)
+          console.error('❌ Error parsing message notification:', error, 'Raw body:', message.body)
         }
       })
 
@@ -109,17 +160,20 @@ export const useWebSocket = (): UseWebSocketReturn => {
     }
 
     client.onStompError = (frame: IFrame) => {
-      console.error('STOMP error:', frame)
+      console.error('❌ STOMP error:', frame)
+      console.error('❌ Error details:', frame.headers, frame.body)
       setIsConnected(false)
     }
 
-    client.onWebSocketClose = () => {
-      console.log('WebSocket connection closed')
+    client.onWebSocketClose = (event: any) => {
+      console.log('🔌 WebSocket connection closed')
+      console.log('🔌 Close event:', event)
       setIsConnected(false)
     }
 
-    client.onDisconnect = () => {
-      console.log('STOMP disconnected')
+    client.onDisconnect = (frame: IFrame) => {
+      console.log('🔌 STOMP disconnected')
+      console.log('🔌 Disconnect frame:', frame)
       setIsConnected(false)
     }
 
@@ -162,9 +216,22 @@ export const useWebSocket = (): UseWebSocketReturn => {
   }, [user])
 
   useEffect(() => {
+    console.log('🔄 WebSocket useEffect triggered')
+    console.log('🔄 - accessToken exists:', !!accessToken)
+    console.log('🔄 - user exists:', !!user)
+    console.log('🔄 - connect function:', typeof connect)
+    
     if (accessToken && user) {
-      connect()
+      console.log('✅ Conditions met, calling connect()')
+      try {
+        connect()
+      } catch (error) {
+        console.error('❌ Error in connect():', error)
+      }
     } else {
+      console.log('❌ Conditions not met, calling disconnect()')
+      console.log('❌ - accessToken:', !!accessToken)
+      console.log('❌ - user:', !!user)
       disconnect()
     }
 
