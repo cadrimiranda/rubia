@@ -906,60 +906,60 @@ export const BloodCenterChat: React.FC = () => {
     try {
       console.log('📤 Enviando mensagem para conversa:', conversationId);
       
-      // Upload das mídias pendentes primeiro
-      let uploadedMedia: ConversationMedia | null = null;
+      // Upload das mídias pendentes usando Z-API
+      let zapiResult: any = null;
       if (mediaToUpload.length > 0) {
-        console.log('📤 Fazendo upload de', mediaToUpload.length, 'arquivos de mídia...');
+        console.log('📤 Fazendo upload de', mediaToUpload.length, 'arquivos de mídia via Z-API...');
         
         // Por enquanto, fazer upload apenas do primeiro arquivo
         const firstPendingMedia = mediaToUpload[0];
+        const donorPhone = state.selectedDonor.phone;
+        
+        if (!donorPhone) {
+          throw new Error('Número de telefone do doador não encontrado');
+        }
+
         try {
-          const uploadResponse = await mediaApi.upload({
-            conversationId: conversationId,
-            file: firstPendingMedia.file,
-            mediaType: firstPendingMedia.mediaType,
-          });
+          // Usar upload direto para Z-API
+          zapiResult = await mediaApi.uploadForZApi(
+            firstPendingMedia.file,
+            donorPhone,
+            messageContent || undefined
+          );
           
-          uploadedMedia = uploadResponse;
-          console.log('✅ Upload de mídia concluído:', uploadedMedia.id);
+          console.log('✅ Upload de mídia Z-API concluído:', zapiResult.messageId);
         } catch (uploadError) {
-          console.error('❌ Erro no upload de mídia:', uploadError);
-          throw new Error('Falha no upload da mídia');
+          console.error('❌ Erro no upload de mídia Z-API:', uploadError);
+          throw new Error('Falha no upload da mídia via Z-API');
         }
       }
       
-      // Determinar tipo de mensagem e incluir mídia se necessário
-      let messageType = 'TEXT';
-      let mediaUrl = undefined;
-      
-      if (uploadedMedia) {
-        // Mapear os tipos de mídia para os tipos de mensagem
-        switch (uploadedMedia.mediaType) {
-          case 'IMAGE':
-            messageType = 'IMAGE';
-            break;
-          case 'AUDIO':
-            messageType = 'AUDIO';
-            break;
-          case 'VIDEO':
-            messageType = 'VIDEO';
-            break;
-          case 'DOCUMENT':
-            messageType = 'FILE';
-            break;
-          default:
-            messageType = 'FILE';
-        }
-        mediaUrl = uploadedMedia.fileUrl;
+      // Se teve upload de mídia via Z-API, a mensagem já foi enviada
+      if (zapiResult) {
+        console.log('✅ Mensagem com mídia enviada via Z-API:', zapiResult.messageId);
+        
+        // Atualizar UI para mostrar sucesso
+        updateState({
+          messages: state.messages.map(msg => 
+            msg.id === tempMessage.id 
+              ? {
+                  ...msg,
+                  id: zapiResult.messageId,
+                  timestamp: getCurrentTimestamp()
+                }
+              : msg
+          )
+        });
+        
+        return; // Não precisa enviar mensagem separada
       }
       
-      console.log('📤 Enviando mensagem com tipo:', messageType, 'e mediaUrl:', mediaUrl);
+      // Enviar mensagem de texto normal se não há mídia
+      console.log('📤 Enviando mensagem de texto para conversa:', conversationId);
       
-      // Enviar mensagem para a API
       const sentMessage = await messageApi.send(conversationId, {
         content: messageContent,
-        messageType,
-        mediaUrl
+        messageType: 'TEXT'
       });
 
       console.log('✅ Mensagem enviada com sucesso:', sentMessage.id);

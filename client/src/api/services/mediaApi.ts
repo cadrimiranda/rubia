@@ -209,5 +209,142 @@ export const mediaApi = {
       valid: errors.length === 0,
       errors
     };
+  },
+
+  // Novos métodos para integração Z-API
+  uploadForZApi: async (file: File, to: string, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    try {
+      // Validar arquivo primeiro
+      const validation = mediaApi.validateFile(file);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
+      // Usar o endpoint upload-and-send da Z-API
+      const formData = new FormData();
+      formData.append('to', to);
+      formData.append('file', file);
+      if (caption) formData.append('caption', caption);
+
+      const response = await fetch('/api/messaging/upload-and-send', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Erro no upload Z-API: ${error}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('❌ Erro no upload Z-API:', error);
+      throw error;
+    }
+  },
+
+  sendImageUrl: async (to: string, imageUrl: string, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    try {
+      const formData = new FormData();
+      formData.append('to', to);
+      formData.append('imageUrl', imageUrl);
+      if (caption) formData.append('caption', caption);
+
+      const response = await fetch('/api/messaging/send-image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Erro ao enviar imagem Z-API: ${error}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('❌ Erro ao enviar imagem Z-API:', error);
+      throw error;
+    }
+  },
+
+  sendDocumentUrl: async (to: string, documentUrl: string, caption?: string, fileName?: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    try {
+      const formData = new FormData();
+      formData.append('to', to);
+      formData.append('documentUrl', documentUrl);
+      if (caption) formData.append('caption', caption);
+      if (fileName) formData.append('fileName', fileName);
+
+      const response = await fetch('/api/messaging/send-document', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Erro ao enviar documento Z-API: ${error}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('❌ Erro ao enviar documento Z-API:', error);
+      throw error;
+    }
+  },
+
+  // Converter arquivo para base64
+  fileToBase64: (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  },
+
+  sendFileBase64: async (to: string, file: File, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    try {
+      // Validar arquivo
+      const validation = mediaApi.validateFile(file);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
+      // Converter para base64
+      const base64Data = await mediaApi.fileToBase64(file);
+
+      const response = await fetch('/api/messaging/send-file-base64', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({
+          to,
+          base64: base64Data,
+          fileName: file.name,
+          caption
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Erro ao enviar arquivo base64 Z-API: ${error}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('❌ Erro ao enviar arquivo base64 Z-API:', error);
+      throw error;
+    }
   }
 };

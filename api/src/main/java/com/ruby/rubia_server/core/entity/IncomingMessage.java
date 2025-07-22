@@ -18,6 +18,8 @@ public class IncomingMessage {
     private String body;
     private String mediaUrl;
     private String mediaType;
+    private String fileName;
+    private String mimeType;
     private LocalDateTime timestamp;
     private String provider;
     private Object rawPayload;

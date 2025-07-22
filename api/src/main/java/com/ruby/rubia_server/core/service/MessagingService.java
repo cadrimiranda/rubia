@@ -2,6 +2,7 @@ package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.core.adapter.MessagingAdapter;
 import com.ruby.rubia_server.core.adapter.impl.TwilioAdapter;
+import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.entity.User;
@@ -27,6 +28,7 @@ import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.MessageDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -314,5 +316,37 @@ public class MessagingService {
             .filter(Company::getIsActive)
             .findFirst()
             .orElse(null);
+    }
+
+    public MessageResult sendImageByUrl(String to, String imageUrl, String caption) {
+        if (currentAdapter instanceof ZApiAdapter zapiAdapter) {
+            return zapiAdapter.sendImageByUrl(to, imageUrl, caption);
+        }
+        return MessageResult.error("Image sending not supported by current adapter", getCurrentProvider());
+    }
+
+    public MessageResult sendDocumentByUrl(String to, String documentUrl, String caption, String fileName) {
+        if (currentAdapter instanceof ZApiAdapter zapiAdapter) {
+            return zapiAdapter.sendDocumentByUrl(to, documentUrl, caption, fileName);
+        }
+        return MessageResult.error("Document sending not supported by current adapter", getCurrentProvider());
+    }
+
+    public MessageResult sendFileBase64(String to, String base64Data, String fileName, String caption) {
+        if (currentAdapter instanceof ZApiAdapter zapiAdapter) {
+            return zapiAdapter.sendFileBase64(to, base64Data, fileName, caption);
+        }
+        return MessageResult.error("Base64 file sending not supported by current adapter", getCurrentProvider());
+    }
+
+    public String uploadFile(MultipartFile file) {
+        if (currentAdapter instanceof ZApiAdapter zapiAdapter) {
+            return zapiAdapter.uploadFile(file);
+        }
+        throw new RuntimeException("File upload not supported by current adapter");
+    }
+
+    public MessageResult sendMediaByUrl(String to, String mediaUrl, String caption) {
+        return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
     }
 }

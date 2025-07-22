@@ -150,6 +150,97 @@ export class MessageAPI {
     })
   }
 
+  // Novos métodos para Z-API
+  async sendImage(to: string, imageUrl: string, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const formData = new FormData()
+    formData.append('to', to)
+    formData.append('imageUrl', imageUrl)
+    if (caption) formData.append('caption', caption)
+
+    const response = await fetch('/api/messaging/send-image', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Erro ao enviar imagem: ${error}`)
+    }
+
+    return response.json()
+  }
+
+  async sendDocument(to: string, documentUrl: string, caption?: string, fileName?: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const formData = new FormData()
+    formData.append('to', to)
+    formData.append('documentUrl', documentUrl)
+    if (caption) formData.append('caption', caption)
+    if (fileName) formData.append('fileName', fileName)
+
+    const response = await fetch('/api/messaging/send-document', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Erro ao enviar documento: ${error}`)
+    }
+
+    return response.json()
+  }
+
+  async uploadAndSend(to: string, file: File, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const formData = new FormData()
+    formData.append('to', to)
+    formData.append('file', file)
+    if (caption) formData.append('caption', caption)
+
+    const response = await fetch('/api/messaging/upload-and-send', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Erro no upload e envio: ${error}`)
+    }
+
+    return response.json()
+  }
+
+  async sendFileBase64(to: string, base64Data: string, fileName: string, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const response = await fetch('/api/messaging/send-file-base64', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+      body: JSON.stringify({
+        to,
+        base64: base64Data,
+        fileName,
+        caption
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Erro ao enviar arquivo base64: ${error}`)
+    }
+
+    return response.json()
+  }
+
   async getMediaUrl(messageId: string): Promise<{ url: string; expiresAt: string }> {
     return apiClient.get<{ url: string; expiresAt: string }>(
       `${this.basePath}/${messageId}/media-url`
