@@ -108,4 +108,86 @@ class ZApiAdapterTest {
         // Then - Should accept when no webhook token configured
         assertThat(isValidWithoutToken).isTrue();
     }
+
+    @Test
+    void shouldFormatInternationalPhoneNumbers() {
+        // Test Brazilian numbers with different formats
+        
+        // Given - Number with +55 country code
+        String phoneWithPlusCode = "+5511999999999";
+        
+        // When - Send message to format the number
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenAnswer(invocation -> {
+            HttpEntity<Map<String, Object>> requestEntity = invocation.getArgument(2);
+            Map<String, Object> requestBody = requestEntity.getBody();
+            
+            // Verify the phone number was formatted correctly (should be 5511999999999 without +)
+            assertThat(requestBody.get("phone")).isEqualTo("5511999999999");
+            
+            // Return success response
+            Map<String, Object> response = Map.of("messageId", "test123");
+            return ResponseEntity.ok(response);
+        });
+        
+        MessageResult result = zApiAdapter.sendMessage(phoneWithPlusCode, "Test message");
+        
+        // Then
+        assertThat(result.isSuccess()).isTrue();
+        
+        // Given - Number without country code (assume Brazilian)
+        String phoneWithoutCode = "11999999999";
+        
+        // When
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenAnswer(invocation -> {
+            HttpEntity<Map<String, Object>> requestEntity = invocation.getArgument(2);
+            Map<String, Object> requestBody = requestEntity.getBody();
+            
+            // Should add 55 prefix for Brazilian numbers
+            assertThat(requestBody.get("phone")).isEqualTo("5511999999999");
+            
+            return ResponseEntity.ok(Map.of("messageId", "test456"));
+        });
+        
+        MessageResult result2 = zApiAdapter.sendMessage(phoneWithoutCode, "Test message");
+        assertThat(result2.isSuccess()).isTrue();
+        
+        // Given - Number already in correct format
+        String phoneCorrectFormat = "5511999999999";
+        
+        // When
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenAnswer(invocation -> {
+            HttpEntity<Map<String, Object>> requestEntity = invocation.getArgument(2);
+            Map<String, Object> requestBody = requestEntity.getBody();
+            
+            // Should keep same format
+            assertThat(requestBody.get("phone")).isEqualTo("5511999999999");
+            
+            return ResponseEntity.ok(Map.of("messageId", "test789"));
+        });
+        
+        MessageResult result3 = zApiAdapter.sendMessage(phoneCorrectFormat, "Test message");
+        assertThat(result3.isSuccess()).isTrue();
+        
+        verify(restTemplate, times(3)).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
 }
