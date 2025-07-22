@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import org.springframework.web.client.HttpClientErrorException;
+
 @ExtendWith(MockitoExtension.class)
 class ZApiAdapterTest {
 
@@ -183,6 +185,88 @@ class ZApiAdapterTest {
         MessageResult result3 = zApiAdapter.sendMessage(phoneCorrectFormat, "Test message");
         assertThat(result3.isSuccess()).isTrue();
         
+        verify(restTemplate, times(3)).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
+
+    @Test
+    void shouldHandleDisconnectedWhatsAppInstance() {
+        // Given - WhatsApp instance is disconnected (HTTP 401 Unauthorized)
+        String phoneNumber = "+5511999999999";
+        String message = "Test message";
+        
+        HttpClientErrorException unauthorizedException = new HttpClientErrorException(
+            HttpStatus.UNAUTHORIZED, 
+            "Unauthorized - Instance not connected"
+        );
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenThrow(unauthorizedException);
+
+        // When
+        MessageResult result = zApiAdapter.sendMessage(phoneNumber, message);
+
+        // Then - Should handle disconnected instance gracefully
+        assertThat(result).isNotNull();
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getError()).contains("Error sending message via Z-API");
+        assertThat(result.getError()).contains("Unauthorized - Instance not connected");
+        assertThat(result.getProvider()).isEqualTo("z-api");
+
+        // Given - WhatsApp instance returns error response (HTTP 400)
+        HttpClientErrorException badRequestException = new HttpClientErrorException(
+            HttpStatus.BAD_REQUEST,
+            "Bad Request - Instance disconnected"
+        );
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenThrow(badRequestException);
+
+        // When
+        MessageResult result2 = zApiAdapter.sendMessage(phoneNumber, message);
+
+        // Then - Should handle bad request error
+        assertThat(result2).isNotNull();
+        assertThat(result2.isSuccess()).isFalse();
+        assertThat(result2.getError()).contains("Error sending message via Z-API");
+        assertThat(result2.getError()).contains("Bad Request - Instance disconnected");
+        assertThat(result2.getProvider()).isEqualTo("z-api");
+
+        // Given - Server returns HTTP 500 (server error)
+        HttpClientErrorException serverErrorException = new HttpClientErrorException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error"
+        );
+        
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenThrow(serverErrorException);
+
+        // When
+        MessageResult result3 = zApiAdapter.sendMessage(phoneNumber, message);
+
+        // Then - Should handle server error
+        assertThat(result3).isNotNull();
+        assertThat(result3.isSuccess()).isFalse();
+        assertThat(result3.getError()).contains("Error sending message via Z-API");
+        assertThat(result3.getError()).contains("Internal Server Error");
+        assertThat(result3.getProvider()).isEqualTo("z-api");
+
         verify(restTemplate, times(3)).exchange(
             anyString(), 
             eq(HttpMethod.POST), 
