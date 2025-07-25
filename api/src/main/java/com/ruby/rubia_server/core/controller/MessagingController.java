@@ -101,19 +101,41 @@ public class MessagingController {
             @RequestHeader(value = "Authorization", required = false) String authorization) {
         
         try {
-            log.info("Received Z-API webhook: {}", payload);
+            log.info("=== Z-API WEBHOOK RECEIVED ===");
+            log.info("Payload: {}", payload);
+            log.info("Authorization header: {}", authorization);
             
-            String fromMe = (String) payload.get("fromMe");
-            if ("true".equals(fromMe)) {
+            Object fromMeObj = payload.get("fromMe");
+            boolean isFromMe = false;
+            if (fromMeObj instanceof Boolean) {
+                isFromMe = (Boolean) fromMeObj;
+            } else if (fromMeObj instanceof String) {
+                isFromMe = "true".equals(fromMeObj);
+            }
+            log.info("Message fromMe: {}", isFromMe);
+            
+            if (isFromMe) {
+                log.info("Ignoring message from me");
                 return ResponseEntity.ok("OK");
             }
 
-            if (!messagingService.validateWebhook(payload, authorization)) {
+            log.info("Validating webhook...");
+            boolean isValid = messagingService.validateWebhook(payload, authorization);
+            log.info("Webhook validation result: {}", isValid);
+            
+            if (!isValid) {
+                log.warn("Webhook validation failed");
                 return ResponseEntity.status(401).body("Unauthorized");
             }
             
+            log.info("Parsing incoming message...");
             IncomingMessage message = messagingService.parseIncomingMessage(payload);
+            log.info("Parsed message: from={}, body={}, messageId={}", 
+                message.getFrom(), message.getBody(), message.getMessageId());
+            
+            log.info("Processing incoming message...");
             messagingService.processIncomingMessage(message);
+            log.info("Message processed successfully");
             
             return ResponseEntity.ok("OK");
             

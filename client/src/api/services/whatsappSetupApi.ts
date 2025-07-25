@@ -36,6 +36,32 @@ export interface DeactivateInstanceResponse {
   message: string;
 }
 
+export interface ConnectionStatusResponse {
+  success: boolean;
+  instanceId: string;
+  currentStatus: WhatsAppInstanceStatus;
+  zapiStatus: {
+    connected: boolean;
+    error?: string;
+    smartphoneConnected?: boolean;
+  };
+  lastStatusCheck?: string;
+  lastConnectedAt?: string;
+  error?: string;
+}
+
+export interface ReconnectInstanceResponse {
+  success: boolean;
+  message: string;
+  status: WhatsAppInstanceStatus;
+  instanceId: string;
+  zapiStatus?: {
+    connected: boolean;
+    error?: string;
+  };
+  error?: string;
+}
+
 export interface PhoneValidationResult {
   valid: boolean;
   formatted?: string;
@@ -71,6 +97,26 @@ export const whatsappSetupApi = {
   // Deactivate instance
   deactivateInstance: async (instanceId: string): Promise<DeactivateInstanceResponse> => {
     return apiClient.delete<DeactivateInstanceResponse>(`/api/whatsapp-setup/${instanceId}`);
+  },
+
+  // Check instance connection status
+  checkConnectionStatus: async (instanceId: string): Promise<ConnectionStatusResponse> => {
+    return apiClient.get<ConnectionStatusResponse>(`/api/whatsapp-setup/${instanceId}/connection-status`);
+  },
+
+  // Reconnect instance (show QR code if needed)
+  reconnectInstance: async (instanceId: string): Promise<ReconnectInstanceResponse> => {
+    return apiClient.post<ReconnectInstanceResponse>(`/api/whatsapp-setup/${instanceId}/reconnect`);
+  },
+
+  // Force status check
+  forceStatusCheck: async (instanceId: string): Promise<any> => {
+    return apiClient.post<any>(`/api/whatsapp-setup/${instanceId}/force-status-check`);
+  },
+
+  // Health check
+  healthCheck: async (): Promise<any> => {
+    return apiClient.get<any>('/api/whatsapp-setup/health-check');
   },
 
   // Get available providers

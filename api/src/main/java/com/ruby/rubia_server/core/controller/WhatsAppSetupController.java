@@ -7,6 +7,7 @@ import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import com.ruby.rubia_server.config.CompanyContextResolver;
 import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.service.ZApiActivationService;
+import com.ruby.rubia_server.core.service.ZApiConnectionMonitorService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +30,7 @@ public class WhatsAppSetupController {
 
     private final WhatsAppInstanceService whatsappInstanceService;
     private final ZApiActivationService zapiActivationService;
+    private final ZApiConnectionMonitorService connectionMonitorService;
     private final CompanyContextResolver companyContextResolver;
 
     @GetMapping("/status")
@@ -165,6 +168,155 @@ public class WhatsAppSetupController {
             "success", true,
             "message", "Instance deactivated"
         ));
+    }
+
+    @GetMapping("/{instanceId}/connection-status")
+    public ResponseEntity<Map<String, Object>> checkInstanceConnectionStatus(@PathVariable UUID instanceId) {
+        try {
+            WhatsAppInstance instance = whatsappInstanceService.findById(instanceId)
+                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
+
+            Map<String, Object> zapiStatus = connectionMonitorService.checkInstanceStatus(
+                instance.getInstanceId(), 
+                instance.getAccessToken()
+            );
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "instanceId", instanceId,
+                "currentStatus", instance.getStatus(),
+                "zapiStatus", zapiStatus,
+                "lastStatusCheck", instance.getLastStatusCheck(),
+                "lastConnectedAt", instance.getLastConnectedAt()
+            ));
+
+        } catch (Exception e) {
+            log.error("Error checking connection status for instance {}: {}", instanceId, e.getMessage(), e);
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "error", e.getMessage(),
+                "instanceId", instanceId
+            ));
+        }
+    }
+
+    @PostMapping("/{instanceId}/reconnect")
+    public ResponseEntity<Map<String, Object>> reconnectInstance(@PathVariable UUID instanceId) {
+        try {
+            WhatsAppInstance instance = whatsappInstanceService.findById(instanceId)
+                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
+
+            // Check current Z-API status
+            Map<String, Object> zapiStatus = connectionMonitorService.checkInstanceStatus(
+                instance.getInstanceId(), 
+                instance.getAccessToken()
+            );
+
+            Boolean connected = (Boolean) zapiStatus.get("connected");
+            
+            if (Boolean.TRUE.equals(connected)) {
+                // Already connected, just update our database
+                whatsappInstanceService.updateInstanceStatus(instanceId, WhatsAppInstanceStatus.CONNECTED);
+                
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Instance is already connected",
+                    "status", "CONNECTED",
+                    "instanceId", instanceId
+                ));
+            } else {
+                // Need to show QR code for reconnection
+                whatsappInstanceService.updateInstanceStatus(instanceId, WhatsAppInstanceStatus.AWAITING_QR_SCAN);
+                
+                // Configure webhooks for monitoring
+                connectionMonitorService.configureDisconnectionWebhook(instance.getInstanceId(), instance.getAccessToken());
+                connectionMonitorService.configureConnectionWebhook(instance.getInstanceId(), instance.getAccessToken());
+                
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Reconnection initiated. Please scan QR code.",
+                    "status", "AWAITING_QR_SCAN",
+                    "instanceId", instanceId,
+                    "zapiStatus", zapiStatus
+                ));
+            }
+
+        } catch (Exception e) {
+            log.error("Error reconnecting instance {}: {}", instanceId, e.getMessage(), e);
+            whatsappInstanceService.markInstanceAsError(instanceId, e.getMessage());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "error", e.getMessage(),
+                "instanceId", instanceId
+            ));
+        }
+    }
+
+    @PostMapping("/{instanceId}/force-status-check")
+    public ResponseEntity<Map<String, Object>> forceStatusCheck(@PathVariable UUID instanceId) {
+        try {
+            WhatsAppInstance instance = whatsappInstanceService.findById(instanceId)
+                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
+
+            log.info("🔍 Manual status check requested for instance: {}", instance.getInstanceId());
+            
+            // Force immediate status check
+            connectionMonitorService.updateInstanceFromStatusCheck(instance);
+            
+            // Get updated instance
+            WhatsAppInstance updatedInstance = whatsappInstanceService.findById(instanceId)
+                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Status check completed",
+                "instanceId", instanceId,
+                "currentStatus", updatedInstance.getStatus(),
+                "lastStatusCheck", updatedInstance.getLastStatusCheck(),
+                "errorMessage", updatedInstance.getErrorMessage() != null ? updatedInstance.getErrorMessage() : ""
+            ));
+
+        } catch (Exception e) {
+            log.error("Error forcing status check for instance {}: {}", instanceId, e.getMessage(), e);
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "error", e.getMessage(),
+                "instanceId", instanceId
+            ));
+        }
+    }
+
+    @GetMapping("/health-check")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        try {
+            Company company = getCurrentCompany();
+            List<WhatsAppInstance> instances = whatsappInstanceService.findByCompany(company);
+            
+            long connectedCount = instances.stream()
+                .filter(i -> i.getStatus() == WhatsAppInstanceStatus.CONNECTED)
+                .count();
+            
+            long disconnectedCount = instances.stream()
+                .filter(i -> i.getStatus() == WhatsAppInstanceStatus.DISCONNECTED)
+                .count();
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "totalInstances", instances.size(),
+                "connectedInstances", connectedCount,
+                "disconnectedInstances", disconnectedCount,
+                "monitoringActive", true,
+                "lastCheck", LocalDateTime.now()
+            ));
+            
+        } catch (Exception e) {
+            log.error("Error in health check: {}", e.getMessage(), e);
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "error", e.getMessage()
+            ));
+        }
     }
 
     @GetMapping("/providers")

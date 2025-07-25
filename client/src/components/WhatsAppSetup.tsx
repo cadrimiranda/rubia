@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Steps, Form, Input, Select, Typography, Alert, Space, Table, Tag, message } from 'antd';
-import { PhoneOutlined, QrcodeOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Card, Button, Steps, Form, Input, Select, Typography, Alert, Space, Table, Tag, message, Modal } from 'antd';
+import { PhoneOutlined, QrcodeOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ReloadOutlined, DisconnectOutlined, SyncOutlined } from '@ant-design/icons';
 import { whatsappSetupApi } from '../api/services/whatsappSetupApi';
 import ZApiActivation from './ZApiActivation';
 import type { WhatsAppSetupStatus, WhatsAppInstance, MessagingProvider } from '../types';
@@ -19,6 +19,8 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   const [setupStatus, setSetupStatus] = useState<WhatsAppSetupStatus | null>(null);
   const [selectedInstance, setSelectedInstance] = useState<WhatsAppInstance | null>(null);
   const [providers, setProviders] = useState<MessagingProviderInfo[]>([]);
+  const [reconnectModalVisible, setReconnectModalVisible] = useState(false);
+  const [reconnectingInstance, setReconnectingInstance] = useState<WhatsAppInstance | null>(null);
   
   const [form] = Form.useForm();
 
@@ -37,18 +39,43 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     try {
       setLoading(true);
       const status = await whatsappSetupApi.getSetupStatus();
-      setSetupStatus(status);
+      
+      // Para cada instância, forçar verificação de status se for suspeita de estar desconectada
+      for (const instance of status.instances) {
+        if (instance.status === 'CONNECTED' && instance.lastStatusCheck) {
+          const lastCheck = new Date(instance.lastStatusCheck);
+          const now = new Date();
+          const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60);
+          
+          // Se não foi verificado nas últimas 5 horas, forçar verificação
+          if (minutesSinceCheck > 300) {
+            console.log(`🔄 Forcing status check for potentially stale instance: ${instance.phoneNumber}`);
+            try {
+              await whatsappSetupApi.forceStatusCheck(instance.id);
+            } catch (error) {
+              console.error('Error forcing status check:', error);
+            }
+          }
+        }
+      }
+      
+      // Recarregar status após verificações forçadas
+      const updatedStatus = await whatsappSetupApi.getSetupStatus();
+      setSetupStatus(updatedStatus);
       
       // Determine current step based on status - prioritize active instances that need setup
-      const instanceNeedingSetup = status.instances.find(instance => 
+      const instanceNeedingSetup = updatedStatus.instances.find(instance => 
         instance.status === 'NOT_CONFIGURED' || 
         instance.status === 'CONFIGURING' || 
         instance.status === 'AWAITING_QR_SCAN'
       );
       
+      const disconnectedInstances = updatedStatus.instances.filter(i => i.status === 'DISCONNECTED');
+      
       console.log('🔍 Status Analysis:', {
-        totalInstances: status.totalInstances,
-        hasConnectedInstance: status.hasConnectedInstance,
+        totalInstances: updatedStatus.totalInstances,
+        hasConnectedInstance: updatedStatus.hasConnectedInstance,
+        disconnectedCount: disconnectedInstances.length,
         instanceNeedingSetup: instanceNeedingSetup ? {
           id: instanceNeedingSetup.id,
           status: instanceNeedingSetup.status
@@ -65,11 +92,11 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
           console.log('📍 Setting currentStep to 2 (activation)');
           setCurrentStep(2); // Go to activation step
         }
-      } else if (status.hasConnectedInstance) {
-        // If all instances are handled and there's a connected one, go to management
-        console.log('📍 Setting currentStep to 3 (management - connected)');
+      } else if (updatedStatus.hasConnectedInstance || disconnectedInstances.length > 0) {
+        // If has connected instances OR disconnected instances, show management
+        console.log('📍 Setting currentStep to 3 (management)');
         setCurrentStep(3);
-      } else if (status.totalInstances === 0) {
+      } else if (updatedStatus.totalInstances === 0) {
         // If no instances, stay at step 0 for creating new instance
         console.log('📍 Setting currentStep to 0 (create new)');
         setCurrentStep(0);
@@ -189,6 +216,94 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     }
   };
 
+  const handleReconnectInstance = async (instance: WhatsAppInstance) => {
+    try {
+      setLoading(true);
+      setReconnectingInstance(instance);
+      
+      const result = await whatsappSetupApi.reconnectInstance(instance.id);
+      
+      if (result.success) {
+        if (result.status === 'CONNECTED') {
+          message.success('Instância já está conectada!');
+          // Reload status
+          await loadSetupStatus();
+        } else if (result.status === 'AWAITING_QR_SCAN') {
+          message.info('QR Code necessário para reconectar. Escaneie com seu WhatsApp.');
+          setReconnectModalVisible(true);
+          setSelectedInstance(instance);
+          setCurrentStep(2); // Go to QR step
+        }
+      } else {
+        message.error(result.error || 'Erro ao reconectar instância');
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error reconnecting instance:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao reconectar instância';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckConnectionStatus = async (instance: WhatsAppInstance) => {
+    try {
+      setLoading(true);
+      
+      const result = await whatsappSetupApi.checkConnectionStatus(instance.id);
+      
+      if (result.success) {
+        const { zapiStatus, currentStatus } = result;
+        
+        if (zapiStatus.connected && currentStatus !== 'CONNECTED') {
+          message.success('Instância reconectada automaticamente!');
+          await loadSetupStatus();
+        } else if (!zapiStatus.connected) {
+          message.warning(`Instância desconectada: ${zapiStatus.error || 'Motivo desconhecido'}`);
+        } else {
+          message.info(`Status atual: ${getStatusText(currentStatus)}`);
+        }
+      } else {
+        message.error(result.error || 'Erro ao verificar status');
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error checking connection status:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao verificar status';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForceStatusCheck = async (instance: WhatsAppInstance) => {
+    try {
+      setLoading(true);
+      
+      message.info('Forçando verificação de status...');
+      
+      const result = await whatsappSetupApi.forceStatusCheck(instance.id);
+      
+      if (result.success) {
+        message.success(`Status atualizado: ${getStatusText(result.currentStatus)}`);
+        if (result.errorMessage) {
+          message.warning(`Erro detectado: ${result.errorMessage}`);
+        }
+        await loadSetupStatus();
+      } else {
+        message.error(result.error || 'Erro ao forçar verificação de status');
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error forcing status check:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao forçar verificação';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'CONNECTED': return 'success';
@@ -248,21 +363,83 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       dataIndex: 'lastConnectedAt',
       key: 'lastConnectedAt',
       render: (date: string) => date ? new Date(date).toLocaleString() : '-'
+    },
+    {
+      title: 'Ações',
+      key: 'actions',
+      render: (_: unknown, instance: WhatsAppInstance) => (
+        <Space>
+          {instance.status === 'DISCONNECTED' && (
+            <>
+              <Button
+                type="primary"
+                size="small"
+                icon={<QrcodeOutlined />}
+                onClick={() => handleReconnectInstance(instance)}
+                loading={loading && reconnectingInstance?.id === instance.id}
+              >
+                Reconectar
+              </Button>
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                onClick={() => handleCheckConnectionStatus(instance)}
+                loading={loading}
+              >
+                Verificar
+              </Button>
+            </>
+          )}
+          {instance.status === 'CONNECTED' && (
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => handleCheckConnectionStatus(instance)}
+              loading={loading}
+            >
+              Verificar
+            </Button>
+          )}
+          
+          {/* Botão para forçar verificação sempre presente */}
+          <Button
+            size="small"
+            icon={<SyncOutlined />}
+            onClick={() => handleForceStatusCheck(instance)}
+            loading={loading}
+            type="dashed"
+          >
+            Forçar Status
+          </Button>
+        </Space>
+      )
     }
   ];
 
-  // Only show management interface if we have connected instances AND currentStep is 3
-  if (setupStatus && setupStatus.hasConnectedInstance && currentStep === 3) {
+  // Show management interface if we have connected instances OR disconnected instances AND currentStep is 3
+  if (setupStatus && (setupStatus.hasConnectedInstance || setupStatus.instances.some(i => i.status === 'DISCONNECTED')) && currentStep === 3) {
+    const disconnectedInstances = setupStatus.instances.filter(i => i.status === 'DISCONNECTED');
+    
     return (
       <Card>
         <Title level={3}>Gerenciar Instâncias WhatsApp</Title>
         <Space direction="vertical" className="w-full" size="large">
-          <Alert
-            type="success"
-            message="WhatsApp Configurado"
-            description="Sua empresa já possui instâncias WhatsApp configuradas."
-            showIcon
-          />
+          {disconnectedInstances.length > 0 ? (
+            <Alert
+              type="warning"
+              message="Instâncias Desconectadas Detectadas"
+              description={`${disconnectedInstances.length} instância(s) desconectada(s). Use o botão "Reconectar" para exibir o QR Code e reconectar.`}
+              showIcon
+              icon={<DisconnectOutlined />}
+            />
+          ) : (
+            <Alert
+              type="success"
+              message="WhatsApp Configurado"
+              description="Todas as instâncias WhatsApp estão conectadas e funcionando."
+              showIcon
+            />
+          )}
           
           <Table
             columns={instanceColumns}
@@ -442,6 +619,43 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
           </div>
         </Card>
       )}
+
+      {/* Reconnection Modal */}
+      <Modal
+        title="Reconectar Instância WhatsApp"
+        open={reconnectModalVisible}
+        onCancel={() => setReconnectModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setReconnectModalVisible(false)}>
+            Cancelar
+          </Button>,
+          <Button 
+            key="done" 
+            type="primary" 
+            onClick={() => {
+              setReconnectModalVisible(false);
+              setCurrentStep(3);
+              loadSetupStatus();
+            }}
+          >
+            Concluir
+          </Button>
+        ]}
+        width={800}
+      >
+        <div className="text-center mb-4">
+          <Alert
+            type="info"
+            message="Reconexão Necessária"
+            description={`Escaneie o QR Code com o WhatsApp do número ${reconnectingInstance?.phoneNumber ? whatsappSetupApi.formatPhoneNumber(reconnectingInstance.phoneNumber) : ''} para reconectar a instância.`}
+            showIcon
+            className="mb-4"
+          />
+        </div>
+        
+        {/* Show QR code component */}
+        <ZApiActivation />
+      </Modal>
     </Card>
   );
 };

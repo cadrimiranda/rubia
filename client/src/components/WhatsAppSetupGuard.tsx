@@ -12,6 +12,7 @@ export const WhatsAppSetupGuard: React.FC<WhatsAppSetupGuardProps> = ({ children
   const [setupStatus, setSetupStatus] = useState<WhatsAppSetupStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState('Verificando configuração WhatsApp...');
 
   useEffect(() => {
     checkSetupStatus();
@@ -23,7 +24,47 @@ export const WhatsAppSetupGuard: React.FC<WhatsAppSetupGuardProps> = ({ children
       setError(null);
       
       const status = await whatsappSetupApi.getSetupStatus();
-      setSetupStatus(status);
+      
+      // Forçar verificação de status para instâncias que podem estar obsoletas
+      let needsRecheck = false;
+      for (const instance of status.instances) {
+        if (instance.status === 'CONNECTED' && instance.lastStatusCheck) {
+          const lastCheck = new Date(instance.lastStatusCheck);
+          const now = new Date();
+          const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60);
+          
+          // Se não foi verificado nas últimas 2 horas, forçar verificação
+          if (minutesSinceCheck > 120) {
+            setLoadingMessage(`Verificando status da instância ${instance.phoneNumber}...`);
+            console.log(`🔄 [Guard] Forcing status check for potentially stale instance: ${instance.phoneNumber}`);
+            try {
+              await whatsappSetupApi.forceStatusCheck(instance.id);
+              needsRecheck = true;
+            } catch (error) {
+              console.error('Error forcing status check in guard:', error);
+            }
+          }
+        }
+      }
+      
+      if (needsRecheck) {
+        setLoadingMessage('Atualizando status das instâncias...');
+      }
+      
+      // Se forçamos alguma verificação, recarregar o status
+      const finalStatus = needsRecheck ? await whatsappSetupApi.getSetupStatus() : status;
+      
+      // Verificar se tem instâncias desconectadas
+      const disconnectedInstances = finalStatus.instances.filter(i => i.status === 'DISCONNECTED');
+      if (disconnectedInstances.length > 0) {
+        console.log(`⚠️ [Guard] Found ${disconnectedInstances.length} disconnected instance(s), redirecting to setup`);
+        setSetupStatus({ 
+          ...finalStatus,
+          requiresSetup: true  // Força redirecionamento para setup
+        });
+      } else {
+        setSetupStatus(finalStatus);
+      }
       
     } catch (error: unknown) {
       console.error('Error checking WhatsApp setup status:', error);
@@ -53,7 +94,7 @@ export const WhatsAppSetupGuard: React.FC<WhatsAppSetupGuardProps> = ({ children
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Spin size="large" tip="Verificando configuração WhatsApp..." />
+        <Spin size="large" tip={loadingMessage} />
       </div>
     );
   }

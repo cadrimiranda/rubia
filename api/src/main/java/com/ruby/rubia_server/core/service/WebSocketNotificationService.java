@@ -68,20 +68,55 @@ public class WebSocketNotificationService {
     }
 
     private void sendToCompanyUsers(UUID companyId, String destination, Object notification) {
-        webSocketHandler.getUserSessions().values().stream()
+        var sessions = webSocketHandler.getUserSessions();
+        log.info("📡 Trying to send to company {} - Total sessions: {}", companyId, sessions.size());
+        
+        var filteredSessions = sessions.values().stream()
                 .filter(session -> session.getCompanyId().equals(companyId))
-                .forEach(session -> {
-                    try {
-                        messagingTemplate.convertAndSendToUser(
-                                session.getSessionId(), 
-                                destination, 
-                                notification
-                        );
-                    } catch (Exception e) {
-                        log.warn("Failed to send notification to session {}: {}", 
-                                session.getSessionId(), e.getMessage());
-                    }
-                });
+                .toList();
+        
+        log.info("📡 Filtered sessions for company {}: {}", companyId, filteredSessions.size());
+        
+        filteredSessions.forEach(session -> {
+            try {
+                // For Spring WebSocket user-based messaging, we need to use the principal name
+                // The principal name should be the user's unique identifier that was set during authentication
+                // The WebSocketUserPrincipal.getName() returns the userId as string
+                String principalName = session.getUserId().toString();
+                log.info("📡 Attempting to send message to userId: {} (user: {}, session: {}, destination: {})", 
+                        principalName, session.getUsername(), session.getSessionId(), destination);
+                log.info("📡 Full destination will be: /user/{}{}", principalName, destination);
+                
+                messagingTemplate.convertAndSendToUser(
+                        principalName, 
+                        destination, 
+                        notification
+                );
+                log.info("✅ Message sent to principal: {} (user: {}) - Spring should route to /user/{}{}", 
+                        principalName, session.getUsername(), principalName, destination);
+            } catch (Exception e) {
+                log.error("❌ Failed to send notification to user {}: {}", 
+                        session.getUsername(), e.getMessage(), e);
+            }
+        });
+    }
+
+    public void sendToChannel(String channel, Map<String, Object> notification) {
+        try {
+            // For company-specific channels, extract the company ID
+            if (channel.startsWith("company-")) {
+                String companyIdStr = channel.substring("company-".length());
+                UUID companyId = UUID.fromString(companyIdStr);
+                sendToCompanyUsers(companyId, "/topic/instance-status", notification);
+                log.info("Sent notification to channel {} (company {})", channel, companyId);
+            } else {
+                // For other channels, send as broadcast
+                messagingTemplate.convertAndSend("/topic/" + channel, notification);
+                log.info("Sent broadcast notification to channel {}", channel);
+            }
+        } catch (Exception e) {
+            log.error("Error sending notification to channel {}: {}", channel, e.getMessage(), e);
+        }
     }
 
     public static class NewMessageNotification {

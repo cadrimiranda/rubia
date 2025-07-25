@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.config;
 
 import com.ruby.rubia_server.auth.UserInfo;
+import com.ruby.rubia_server.auth.WebSocketUserPrincipal;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+            log.info("=== WEBSOCKET CONNECTION ATTEMPT ===");
             String token = accessor.getFirstNativeHeader("Authorization");
+            log.info("Authorization header present: {}", token != null);
+            log.info("Token value: {}", token != null ? token.substring(0, Math.min(30, token.length())) + "..." : "null");
             
             if (token != null && token.startsWith("Bearer ")) {
                 try {
@@ -41,7 +45,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                     if (username != null && jwtService.isTokenValid(jwt, username)) {
                         // Get user from database to build UserInfo
-                        User user = userRepository.findByEmail(username).orElse(null);
+                        User user = userRepository.findByEmailWithCompanyAndDepartment(username).orElse(null);
                         if (user != null) {
                             UserInfo userInfo = UserInfo.builder()
                                     .id(user.getId())
@@ -49,24 +53,36 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                                     .email(user.getEmail())
                                     .role(user.getRole().name())
                                     .companyId(user.getCompany().getId())
-                                    .companyGroupId(user.getCompany().getCompanyGroup().getId())
+                                    .companyGroupId(user.getCompany().getCompanyGroup() != null ? 
+                                        user.getCompany().getCompanyGroup().getId() : null)
                                     .companySlug(user.getCompany().getSlug())
-                                    .departmentId(user.getDepartment().getId())
-                                    .departmentName(user.getDepartment().getName())
+                                    .departmentId(user.getDepartment() != null ? 
+                                        user.getDepartment().getId() : null)
+                                    .departmentName(user.getDepartment() != null ? 
+                                        user.getDepartment().getName() : null)
                                     .avatarUrl(user.getAvatarUrl())
                                     .isOnline(true)
                                     .build();
                                     
+                            // Use WebSocketUserPrincipal to ensure correct principal name for user-based messaging
+                            WebSocketUserPrincipal principal = new WebSocketUserPrincipal(userInfo);
                             UsernamePasswordAuthenticationToken authToken = 
-                                new UsernamePasswordAuthenticationToken(userInfo, null, userDetails.getAuthorities());
+                                new UsernamePasswordAuthenticationToken(principal, null, userDetails.getAuthorities());
                             
                             accessor.setUser(authToken);
-                            log.debug("WebSocket connection authenticated for user: {}", username);
+                            log.info("✅ WebSocket connection authenticated for user: {} (principal name: {})", 
+                                    username, principal.getName());
+                        } else {
+                            log.warn("❌ User not found in database: {}", username);
                         }
+                    } else {
+                        log.warn("❌ Invalid JWT token for user: {}", username);
                     }
                 } catch (Exception e) {
-                    log.warn("WebSocket authentication failed: {}", e.getMessage());
+                    log.error("❌ WebSocket authentication failed: {}", e.getMessage(), e);
                 }
+            } else {
+                log.warn("❌ No valid Authorization header found");
             }
         }
         

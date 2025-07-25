@@ -28,6 +28,7 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import { authService } from "../auth/authService";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
+import { WhatsAppConnectionMonitor } from "./WhatsAppConnectionMonitor";
 
 interface NewContactData {
   name: string;
@@ -1302,6 +1303,9 @@ export const BloodCenterChat: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Monitor de conexão WhatsApp */}
+      <WhatsAppConnectionMonitor checkInterval={180000} /> {/* 3 minutos */}
     </div>
   );
 };

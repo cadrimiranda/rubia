@@ -137,9 +137,17 @@ public class ZApiAdapter implements MessagingAdapter {
 
             String messageId = (String) payload.get("messageId");
             String phone = (String) payload.get("phone");
-            String fromMe = (String) payload.get("fromMe");
             
-            if ("true".equals(fromMe)) {
+            // Handle fromMe as either boolean or string for compatibility
+            Object fromMeObj = payload.get("fromMe");
+            boolean isFromMe = false;
+            if (fromMeObj instanceof Boolean) {
+                isFromMe = (Boolean) fromMeObj;
+            } else if (fromMeObj instanceof String) {
+                isFromMe = "true".equals(fromMeObj);
+            }
+            
+            if (isFromMe) {
                 return null;
             }
 
@@ -151,7 +159,14 @@ public class ZApiAdapter implements MessagingAdapter {
             String mimeType = null;
 
             if (message != null) {
-                messageBody = (String) message.get("conversation");
+                // Try official Z-API format first (text.message)
+                Map<String, Object> textMessage = (Map<String, Object>) message.get("text");
+                if (textMessage != null) {
+                    messageBody = (String) textMessage.get("message");
+                } else {
+                    // Fallback to legacy format
+                    messageBody = (String) message.get("conversation");
+                }
                 
                 Map<String, Object> imageMessage = (Map<String, Object>) message.get("imageMessage");
                 if (imageMessage != null) {
@@ -186,10 +201,15 @@ public class ZApiAdapter implements MessagingAdapter {
                 }
             }
 
-            Long timestamp = (Long) payload.get("momment");
-            LocalDateTime messageTime = timestamp != null ? 
-                LocalDateTime.ofEpochSecond(timestamp, 0, ZoneOffset.UTC) : 
-                LocalDateTime.now();
+            Object timestampObj = payload.get("momment");
+            LocalDateTime messageTime;
+            if (timestampObj instanceof Long) {
+                messageTime = LocalDateTime.ofEpochSecond((Long) timestampObj, 0, ZoneOffset.UTC);
+            } else if (timestampObj instanceof Integer) {
+                messageTime = LocalDateTime.ofEpochSecond(((Integer) timestampObj).longValue(), 0, ZoneOffset.UTC);
+            } else {
+                messageTime = LocalDateTime.now();
+            }
 
             return IncomingMessage.builder()
                 .messageId(messageId)

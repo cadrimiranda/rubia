@@ -35,4 +35,8 @@ public interface WhatsAppInstanceRepository extends JpaRepository<WhatsAppInstan
     List<WhatsAppInstance> findByCompanyAndStatusInAndIsActiveTrue(@Param("company") Company company, @Param("statuses") List<WhatsAppInstanceStatus> statuses);
 
     boolean existsByCompanyAndPhoneNumberAndIsActiveTrue(Company company, String phoneNumber);
+
+    Optional<WhatsAppInstance> findByInstanceId(String instanceId);
+
+    List<WhatsAppInstance> findByIsActiveTrueAndInstanceIdIsNotNullAndAccessTokenIsNotNull();
 }

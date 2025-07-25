@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.config;
 
 import com.ruby.rubia_server.auth.UserInfo;
+import com.ruby.rubia_server.auth.WebSocketUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -30,7 +31,8 @@ public class ChatWebSocketHandler {
         String sessionId = headerAccessor.getSessionId();
         
         Authentication authentication = (Authentication) headerAccessor.getUser();
-        if (authentication != null && authentication.getPrincipal() instanceof UserInfo userInfo) {
+        if (authentication != null && authentication.getPrincipal() instanceof WebSocketUserPrincipal principal) {
+            UserInfo userInfo = principal.getUserInfo();
             UserSessionInfo sessionInfo = UserSessionInfo.builder()
                     .sessionId(sessionId)
                     .userId(userInfo.getId())

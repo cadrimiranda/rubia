@@ -9,9 +9,7 @@ class WebSocketManager {
   async initialize() {
     if (this.isInitialized) return
 
-    // WebSocket temporariamente desabilitado
-    console.log('WebSocket temporariamente desabilitado')
-    return
+    console.log('🚀 Initializing WebSocket Manager...')
 
     // Verificar se usuário está autenticado
     const isAuthenticated = useAuthStore.getState().isAuthenticated
