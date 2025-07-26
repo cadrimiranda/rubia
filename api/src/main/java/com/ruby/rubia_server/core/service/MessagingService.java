@@ -10,6 +10,7 @@ import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.SenderType;
@@ -17,6 +18,7 @@ import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.repository.WhatsAppInstanceRepository;
 import com.ruby.rubia_server.core.service.CustomerService;
 import com.ruby.rubia_server.core.service.ConversationService;
 import com.ruby.rubia_server.core.service.MessageService;
@@ -49,6 +51,9 @@ public class MessagingService {
     
     @Autowired
     private CompanyRepository companyRepository;
+    
+    @Autowired
+    private WhatsAppInstanceRepository whatsAppInstanceRepository;
     
     @Autowired
     private CustomerService customerService;
@@ -174,7 +179,15 @@ public class MessagingService {
             
             Company company;
             if ("z-api".equals(incomingMessage.getProvider())) {
-                company = findCompanyByZApiInstance("default");
+                // Use connectedPhone from Z-API webhook to identify the correct company
+                String connectedPhone = incomingMessage.getConnectedPhone();
+                if (connectedPhone != null && !connectedPhone.trim().isEmpty()) {
+                    company = findCompanyByWhatsAppInstance(connectedPhone);
+                } else {
+                    // Fallback to old method if connectedPhone is not available
+                    logger.warn("No connectedPhone in Z-API webhook, using fallback method");
+                    company = findCompanyByZApiInstance("default");
+                }
             } else {
                 String toNumber = extractPhoneNumber(incomingMessage.getTo());
                 company = findCompanyByWhatsAppNumber(toNumber);
@@ -189,6 +202,7 @@ public class MessagingService {
             Customer customer;
             try {
                 CustomerDTO customerDTO = customerService.findByPhoneAndCompany(fromNumber, company.getId());
+                logger.info("Found existing customer: {} ({})", customerDTO.getId(), customerDTO.getPhone());
                 customer = Customer.builder()
                     .id(customerDTO.getId())
                     .phone(customerDTO.getPhone())
@@ -197,6 +211,7 @@ public class MessagingService {
                     .build();
             } catch (IllegalArgumentException e) {
                 // Customer not found, create new one
+                logger.info("Customer not found for phone {}, creating new one", fromNumber);
                 customer = createCustomerFromWhatsApp(fromNumber, company);
             }
             
@@ -281,9 +296,18 @@ public class MessagingService {
     }
     
     private ConversationDTO findOrCreateConversation(Customer customer) {
+        logger.info("Looking for existing conversation for customer: {} ({})", customer.getId(), customer.getPhone());
+        
         // First, try to find existing active WhatsApp conversations for this customer
         List<ConversationDTO> customerConversations = conversationService
             .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
+        
+        logger.info("Found {} total conversations for customer {}", customerConversations.size(), customer.getId());
+        
+        // Log all conversations for debug
+        customerConversations.forEach(conv -> 
+            logger.info("Existing conversation - ID: {}, Channel: {}, Status: {}", 
+                conv.getId(), conv.getChannel(), conv.getStatus()));
         
         // Look for active WhatsApp conversations (ENTRADA or ESPERANDO status)
         Optional<ConversationDTO> existingConversation = customerConversations.stream()
@@ -316,6 +340,45 @@ public class MessagingService {
             .filter(Company::getIsActive)
             .findFirst()
             .orElse(null);
+    }
+
+    /**
+     * Encontra a empresa pela instância WhatsApp usando o número conectado
+     */
+    public Company findCompanyByWhatsAppInstance(String connectedPhone) {
+        if (connectedPhone == null || connectedPhone.trim().isEmpty()) {
+            logger.warn("Connected phone is null or empty");
+            return null;
+        }
+        
+        logger.info("Looking for company with WhatsApp instance phone: {}", connectedPhone);
+
+        // Tentar diferentes formatos do número
+        String[] phoneVariations = {
+            connectedPhone,                                    // Formato original (5548991208536)
+            connectedPhone.startsWith("55") ? connectedPhone.substring(2) : connectedPhone,  // Sem código país (48991208536)
+            customerService.normalizePhoneNumber(connectedPhone),  // Normalizado (+5548991208536)
+            connectedPhone.startsWith("+") ? connectedPhone.substring(1) : connectedPhone    // Sem + se houver
+        };
+
+        for (String phoneVariation : phoneVariations) {
+            logger.info("Trying phone variation: {}", phoneVariation);
+            
+            Optional<WhatsAppInstance> instanceOptional = whatsAppInstanceRepository
+                .findByPhoneNumberAndIsActiveTrue(phoneVariation);
+
+            if (instanceOptional.isPresent()) {
+                WhatsAppInstance instance = instanceOptional.get();
+                Company company = instance.getCompany();
+                
+                logger.info("Found company {} for WhatsApp phone {} using variation {}", 
+                    company.getName(), connectedPhone, phoneVariation);
+                return company;
+            }
+        }
+
+        logger.warn("No company found for WhatsApp instance with phone: {} (tried all variations)", connectedPhone);
+        return null;
     }
 
     public MessageResult sendImageByUrl(String to, String imageUrl, String caption) {

@@ -135,8 +135,14 @@ public class ZApiAdapter implements MessagingAdapter {
             @SuppressWarnings("unchecked")
             Map<String, Object> payload = (Map<String, Object>) webhookPayload;
 
+            log.info("Z-API webhook payload: {}", payload);
+
             String messageId = (String) payload.get("messageId");
             String phone = (String) payload.get("phone");
+            String connectedPhone = (String) payload.get("connectedPhone");
+            
+            log.info("Extracted from payload - messageId: {}, phone: {}, connectedPhone: {}", 
+                messageId, phone, connectedPhone);
             
             // Handle fromMe as either boolean or string for compatibility
             Object fromMeObj = payload.get("fromMe");
@@ -215,6 +221,7 @@ public class ZApiAdapter implements MessagingAdapter {
                 .messageId(messageId)
                 .from(phone)
                 .to(null)
+                .connectedPhone(connectedPhone)
                 .body(messageBody)
                 .mediaUrl(mediaUrl)
                 .mediaType(mediaType)

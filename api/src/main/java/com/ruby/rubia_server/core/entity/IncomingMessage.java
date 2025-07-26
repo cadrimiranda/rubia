@@ -15,6 +15,7 @@ public class IncomingMessage {
     private String messageId;
     private String from;
     private String to;
+    private String connectedPhone;
     private String body;
     private String mediaUrl;
     private String mediaType;

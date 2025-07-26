@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,9 +56,19 @@ public class MessageService {
                     .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         }
         
-        if (createDTO.getExternalMessageId() != null && 
-            messageRepository.existsByExternalMessageId(createDTO.getExternalMessageId())) {
-            throw new IllegalArgumentException("Mensagem com ID externo já existe");
+        // Check if message with external ID already exists (avoid duplicates from webhooks)
+        if (createDTO.getExternalMessageId() != null) {
+            Optional<Message> existingMessage = messageRepository.findByExternalMessageId(createDTO.getExternalMessageId());
+            if (existingMessage.isPresent()) {
+                log.info("Message with external ID {} already exists, returning existing message", 
+                    createDTO.getExternalMessageId());
+                
+                User existingSender = null;
+                if (existingMessage.get().getSenderType() == SenderType.AGENT && existingMessage.get().getSenderId() != null) {
+                    existingSender = userRepository.findById(existingMessage.get().getSenderId()).orElse(null);
+                }
+                return toDTO(existingMessage.get(), existingSender);
+            }
         }
         
         MessageTemplate messageTemplate = null;
