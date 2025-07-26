@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -31,7 +31,6 @@ import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
 import type { ConversationTemplate } from "../../types/types";
 import { campaignService, type CampaignData } from "../../services/campaignService";
-import { useChatStore } from "../../store/useChatStore";
 import {
   messageTemplateService,
   type CreateMessageTemplateRequest,
@@ -47,9 +46,13 @@ const { RangePicker } = DatePicker;
 
 interface AgentConfig {
   name: string;
-  avatar: string;
-  speechProfile: string;
-  llmType: string;
+  description: string;
+  avatarUrl: string;
+  aiModelType: string;
+  temperament: string;
+  maxResponseLength: number;
+  temperature: number;
+  isActive: boolean;
 }
 
 interface ConfigurationPageProps {
@@ -59,7 +62,6 @@ interface ConfigurationPageProps {
 export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   onBack,
 }) => {
-  const { refreshConversations } = useChatStore();
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<
@@ -67,9 +69,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   >("agent");
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",
-    avatar: "",
-    speechProfile: "amigavel",
-    llmType: "medio",
+    description: "",
+    avatarUrl: "",
+    aiModelType: "GPT-4",
+    temperament: "AMIGAVEL",
+    maxResponseLength: 500,
+    temperature: 0.7,
+    isActive: true,
   });
   const [campaignData, setCampaignData] = useState<CampaignData>({
     name: "",
@@ -94,7 +100,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Carregar templates da API
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     setIsLoadingTemplates(true);
     try {
       // Carregar todos os templates ou apenas da empresa do usuário
@@ -119,7 +125,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     } finally {
       setIsLoadingTemplates(false);
     }
-  };
+  }, [user?.companyId]);
 
   // Carregar templates excluídos da API
   const loadDeletedTemplates = async () => {
@@ -150,7 +156,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     if (user?.companyId) {
       loadTemplates();
     }
-  }, [user?.companyId]);
+  }, [user?.companyId, loadTemplates]);
 
   // Função para obter ícone e cor do tipo de revisão
   const getRevisionTypeInfo = (type: RevisionType) => {
@@ -269,6 +275,66 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     if (template) {
       setEditingTemplate(template);
       setShowTemplateModal(true);
+    }
+  };
+
+  const handleSaveAgent = async () => {
+    if (!agentConfig.name || !agentConfig.aiModelType || !agentConfig.temperament) {
+      message.error("Preencha todos os campos obrigatórios!");
+      return;
+    }
+
+    if (!user?.companyId) {
+      message.error("Erro: Usuário não possui empresa associada");
+      return;
+    }
+
+    try {
+      const createAgentData = {
+        companyId: user.companyId,
+        name: agentConfig.name,
+        description: agentConfig.description || null,
+        avatarUrl: agentConfig.avatarUrl || null,
+        aiModelType: agentConfig.aiModelType,
+        temperament: agentConfig.temperament,
+        maxResponseLength: agentConfig.maxResponseLength,
+        temperature: agentConfig.temperature,
+        isActive: agentConfig.isActive,
+      };
+
+      const response = await fetch('/api/ai-agents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(createAgentData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao criar agente');
+      }
+
+      const createdAgent = await response.json();
+      
+      message.success(`Agente "${createdAgent.name}" criado com sucesso!`);
+      
+      // Reset form
+      setAgentConfig({
+        name: "",
+        description: "",
+        avatarUrl: "",
+        aiModelType: "GPT-4",
+        temperament: "AMIGAVEL",
+        maxResponseLength: 500,
+        temperature: 0.7,
+        isActive: true,
+      });
+
+    } catch (error: unknown) {
+      console.error("Erro ao criar agente:", error);
+      const errorMessage = (error as Error)?.message || "Erro ao criar agente";
+      message.error(errorMessage);
     }
   };
 
@@ -492,15 +558,16 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         console.log("❌ Resultado inválido:", result);
         message.error(result ? "Erro ao criar campanha!" : "Erro na comunicação com o servidor!");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao criar campanha:", error);
       
       // Tentar extrair mensagem de erro específica
       let errorMessage = "Erro ao criar campanha!";
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = `Erro: ${error.message}`;
+      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = `Erro: ${err.message}`;
       }
       
       message.error(errorMessage);
@@ -522,7 +589,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          handleAgentConfigChange("avatar", e.target.result as string);
+          handleAgentConfigChange("avatarUrl", e.target.result as string);
         }
       };
       reader.readAsDataURL(file);
@@ -638,9 +705,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                 <div className="flex items-start gap-8 mb-8 p-6 bg-gray-50 rounded-xl">
                   <div className="relative">
                     <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                      {agentConfig.avatar ? (
+                      {agentConfig.avatarUrl ? (
                         <img
-                          src={agentConfig.avatar}
+                          src={agentConfig.avatarUrl}
                           alt="Agent Avatar"
                           className="w-full h-full object-cover rounded-xl"
                         />
@@ -654,22 +721,38 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                       </button>
                     </AntUpload>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Nome do Agente
-                    </label>
-                    <Input
-                      value={agentConfig.name}
-                      onChange={(e) =>
-                        handleAgentConfigChange("name", e.target.value)
-                      }
-                      placeholder="Ex: Sofia, Ana, João..."
-                      size="large"
-                      className="font-medium"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      O nome será usado nas conversas com os doadores
-                    </p>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Nome do Agente *
+                      </label>
+                      <Input
+                        value={agentConfig.name}
+                        onChange={(e) =>
+                          handleAgentConfigChange("name", e.target.value)
+                        }
+                        placeholder="Ex: Sofia, Ana, João..."
+                        size="large"
+                        className="font-medium"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        O nome será usado nas conversas com os usuários
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Descrição
+                      </label>
+                      <TextArea
+                        value={agentConfig.description}
+                        onChange={(e) =>
+                          handleAgentConfigChange("description", e.target.value)
+                        }
+                        placeholder="Descreva a função e especialidade do agente..."
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -678,14 +761,14 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-4">
-                        Perfil de Comunicação
+                        Temperamento *
                       </label>
                       <div className="space-y-2">
                         <Radio.Group
-                          value={agentConfig.speechProfile}
+                          value={agentConfig.temperament}
                           onChange={(e: RadioChangeEvent) =>
                             handleAgentConfigChange(
-                              "speechProfile",
+                              "temperament",
                               e.target.value
                             )
                           }
@@ -693,7 +776,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                         >
                           <div className="space-y-2">
                             <Radio.Button
-                              value="formal"
+                              value="FORMAL"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -701,7 +784,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="amigavel"
+                              value="AMIGAVEL"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -709,7 +792,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="descontraido"
+                              value="DESCONTRAIDO"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -717,7 +800,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="serio"
+                              value="SERIO"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -725,11 +808,11 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="animado"
+                              value="EMPATICO"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
-                                Animado e Entusiasmado
+                                Empático e Compreensivo
                               </span>
                             </Radio.Button>
                           </div>
@@ -741,35 +824,35 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-4">
-                        Inteligência do Agente
+                        Modelo de IA *
                       </label>
                       <div className="space-y-2">
                         <Radio.Group
-                          value={agentConfig.llmType}
+                          value={agentConfig.aiModelType}
                           onChange={(e: RadioChangeEvent) =>
-                            handleAgentConfigChange("llmType", e.target.value)
+                            handleAgentConfigChange("aiModelType", e.target.value)
                           }
                           className="w-full"
                         >
                           <div className="space-y-2">
                             <Radio.Button
-                              value="barato"
+                              value="GPT-3.5"
                               className="w-full h-16 flex items-center text-left"
                             >
                               <div>
-                                <div className="font-medium">Econômico</div>
+                                <div className="font-medium">GPT-3.5</div>
                                 <div className="text-xs text-gray-500">
                                   Respostas rápidas e diretas
                                 </div>
                               </div>
                             </Radio.Button>
                             <Radio.Button
-                              value="medio"
+                              value="GPT-4"
                               className="w-full h-16 flex items-center text-left"
                             >
                               <div>
                                 <div className="font-medium">
-                                  Padrão (Recomendado)
+                                  GPT-4 (Recomendado)
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   Equilibrio entre custo e qualidade
@@ -777,13 +860,24 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </div>
                             </Radio.Button>
                             <Radio.Button
-                              value="caro"
+                              value="Claude 3.5"
                               className="w-full h-16 flex items-center text-left"
                             >
                               <div>
-                                <div className="font-medium">Premium</div>
+                                <div className="font-medium">Claude 3.5</div>
                                 <div className="text-xs text-gray-500">
                                   Máxima qualidade e contextualização
+                                </div>
+                              </div>
+                            </Radio.Button>
+                            <Radio.Button
+                              value="Gemini Pro"
+                              className="w-full h-16 flex items-center text-left"
+                            >
+                              <div>
+                                <div className="font-medium">Gemini Pro</div>
+                                <div className="text-xs text-gray-500">
+                                  Alta performance com multimodalidade
                                 </div>
                               </div>
                             </Radio.Button>
@@ -794,10 +888,75 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                   </div>
                 </div>
 
+                {/* Configurações avançadas */}
+                <div className="mt-8 p-6 bg-gray-50 rounded-xl">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                    Configurações Avançadas
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Limite de Caracteres
+                      </label>
+                      <Input
+                        type="number"
+                        value={agentConfig.maxResponseLength}
+                        onChange={(e) =>
+                          handleAgentConfigChange("maxResponseLength", parseInt(e.target.value) || 500)
+                        }
+                        min={1}
+                        max={10000}
+                        size="large"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Máximo de caracteres por resposta (1-10000)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Criatividade (Temperature)
+                      </label>
+                      <Input
+                        type="number"
+                        value={agentConfig.temperature}
+                        onChange={(e) =>
+                          handleAgentConfigChange("temperature", parseFloat(e.target.value) || 0.7)
+                        }
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        size="large"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nível de criatividade (0.0 - 1.0)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Status
+                      </label>
+                      <Radio.Group
+                        value={agentConfig.isActive}
+                        onChange={(e: RadioChangeEvent) =>
+                          handleAgentConfigChange("isActive", e.target.value)
+                        }
+                        className="w-full"
+                      >
+                        <Radio.Button value={true} className="w-20">
+                          Ativo
+                        </Radio.Button>
+                        <Radio.Button value={false} className="w-20">
+                          Inativo
+                        </Radio.Button>
+                      </Radio.Group>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Botões de ação */}
                 <div className="flex items-center justify-between pt-8 border-t border-gray-200 mt-8">
                   <div className="text-sm text-gray-500">
-                    Última atualização: Hoje, 14:30
+                    Configure todos os campos obrigatórios
                   </div>
                   <div className="flex gap-3">
                     <Button size="large" className="px-6">
@@ -806,9 +965,11 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                     <Button
                       type="primary"
                       size="large"
+                      onClick={handleSaveAgent}
+                      disabled={!agentConfig.name || !agentConfig.aiModelType || !agentConfig.temperament}
                       className="px-8 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                     >
-                      Salvar Configurações
+                      Salvar Agente
                     </Button>
                   </div>
                 </div>
@@ -829,16 +990,16 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                         {agentConfig.name}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {agentConfig.speechProfile === "formal" &&
-                          "Bom dia! Sou a assistente virtual do Centro de Sangue. Como posso ajudá-lo hoje?"}
-                        {agentConfig.speechProfile === "amigavel" &&
-                          "Oi! 😊 Eu sou a assistente do Centro de Sangue! Como posso te ajudar hoje?"}
-                        {agentConfig.speechProfile === "descontraido" &&
-                          "E aí! Tudo bem? Sou a assistente aqui do Centro. Em que posso te ajudar?"}
-                        {agentConfig.speechProfile === "serio" &&
-                          "Olá. Sou a assistente do Centro de Sangue. Estou aqui para ajudá-lo."}
-                        {agentConfig.speechProfile === "animado" &&
-                          "Oi, oi! 🎉 Que alegria ter você aqui! Sou a assistente do Centro de Sangue!"}
+                        {agentConfig.temperament === "FORMAL" &&
+                          "Bom dia! Sou o assistente virtual da empresa. Como posso ajudá-lo hoje?"}
+                        {agentConfig.temperament === "AMIGAVEL" &&
+                          "Oi! 😊 Eu sou o assistente da empresa! Como posso te ajudar hoje?"}
+                        {agentConfig.temperament === "DESCONTRAIDO" &&
+                          "E aí! Tudo bem? Sou o assistente aqui da empresa. Em que posso te ajudar?"}
+                        {agentConfig.temperament === "SERIO" &&
+                          "Olá. Sou o assistente da empresa. Estou aqui para ajudá-lo."}
+                        {agentConfig.temperament === "EMPATICO" &&
+                          "Olá! Entendo que você precisa de ajuda. Estou aqui para te apoiar no que precisar! 💙"}
                       </div>
                     </div>
                   </div>
