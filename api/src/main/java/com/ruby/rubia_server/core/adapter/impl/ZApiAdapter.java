@@ -153,6 +153,11 @@ public class ZApiAdapter implements MessagingAdapter {
             log.info("Extracted from payload - messageId: {}, phone: {}, connectedPhone: {}", 
                 messageId, phone, connectedPhone);
             
+            if (phone != null && phone.contains("@newsletter")) {
+                log.info("Ignoring newsletter message from: {}", phone);
+                return null;
+            }
+            
             // Handle fromMe as either boolean or string for compatibility
             Object fromMeObj = payload.get("fromMe");
             boolean isFromMe = false;
