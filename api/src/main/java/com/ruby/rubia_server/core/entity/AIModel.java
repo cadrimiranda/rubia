@@ -30,7 +30,19 @@ public class AIModel {
     private String displayName; // Nome amigável para exibição (ex: "GPT-4.1", "GPT-4 Mini", "O3")
 
     @Column(columnDefinition = "TEXT")
-    private String description; // Descrição do modelo
+    private String description; // Descrição básica do modelo
+
+    @Column(name = "capabilities", columnDefinition = "TEXT")
+    private String capabilities; // Descrição detalhada das capacidades do modelo
+
+    @Column(name = "impact_description", columnDefinition = "TEXT")
+    private String impactDescription; // Descrição do impacto e casos de uso recomendados
+
+    @Column(name = "cost_per_1k_tokens")
+    private Integer costPer1kTokens; // Custo em créditos por 1000 tokens
+
+    @Column(name = "performance_level")
+    private String performanceLevel; // Nível de performance: "BASICO", "INTERMEDIARIO", "AVANCADO", "PREMIUM"
 
     @Column(name = "provider", nullable = false)
     private String provider; // Provedor do modelo (ex: "OpenAI", "Anthropic", "Google")
