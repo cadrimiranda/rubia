@@ -95,15 +95,33 @@ public class MessagingController {
         );
     }
     
+    @GetMapping("/webhook/zapi/test")
+    public ResponseEntity<String> testZApiWebhook() {
+        log.info("🧪 Z-API webhook test endpoint accessed");
+        return ResponseEntity.ok("Z-API webhook endpoint is working! Timestamp: " + System.currentTimeMillis());
+    }
+    
     @PostMapping("/webhook/zapi")
     public ResponseEntity<String> handleZApiWebhook(
             @RequestBody Map<String, Object> payload,
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent,
+            @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
         
         try {
-            log.info("=== Z-API WEBHOOK RECEIVED ===");
-            log.info("Payload: {}", payload);
-            log.info("Authorization header: {}", authorization);
+            log.info("=== Z-API WEBHOOK DEBUG - RECEIVED ===");
+            log.info("🔍 Full payload received: {}", payload);
+            log.info("🔑 Authorization header: '{}'", authorization);
+            log.info("🤖 User-Agent: '{}'", userAgent);
+            log.info("🌐 X-Forwarded-For: '{}'", forwardedFor);
+            log.info("📋 Payload keys: {}", payload.keySet());
+            log.info("📏 Payload size: {} entries", payload.size());
+            
+            // Log each field individually for better debugging
+            payload.forEach((key, value) -> {
+                log.info("🔸 Field '{}' = '{}' (type: {})", 
+                    key, value, value != null ? value.getClass().getSimpleName() : "null");
+            });
             
             Object fromMeObj = payload.get("fromMe");
             boolean isFromMe = false;
@@ -112,31 +130,56 @@ public class MessagingController {
             } else if (fromMeObj instanceof String) {
                 isFromMe = "true".equals(fromMeObj);
             }
-            log.info("Message fromMe: {}", isFromMe);
+            log.info("📤 Message fromMe: {} (original: {})", isFromMe, fromMeObj);
+            
+            // Extract key fields for debugging
+            String phone = (String) payload.get("phone");
+            String connectedPhone = (String) payload.get("connectedPhone");
+            String messageId = (String) payload.get("messageId");
+            String type = (String) payload.get("type");
+            String status = (String) payload.get("status");
+            Object textObj = payload.get("text");
+            
+            log.info("📱 Phone: '{}'", phone);
+            log.info("🔗 Connected Phone: '{}'", connectedPhone);
+            log.info("🆔 Message ID: '{}'", messageId);
+            log.info("📝 Type: '{}'", type);
+            log.info("🔄 Status: '{}'", status);
+            log.info("💬 Text object: {} (type: {})", textObj, textObj != null ? textObj.getClass().getSimpleName() : "null");
+            
+            if (textObj instanceof Map) {
+                Map<String, Object> textMap = (Map<String, Object>) textObj;
+                log.info("💬 Text map contents: {}", textMap);
+                textMap.forEach((key, value) -> {
+                    log.info("💬   Text field '{}' = '{}'", key, value);
+                });
+            }
             
             if (isFromMe) {
-                log.info("Ignoring message from me");
-                return ResponseEntity.ok("OK");
+                log.info("⏭️ IMPORTANTE: Mensagem ignorada porque fromMe=true");
+                log.info("⏭️ Isso significa que a mensagem foi enviada PELA sua instância, não recebida");
+                log.info("⏭️ Para testar, envie mensagem DE OUTRO WHATSAPP para este número");
+                log.info("⏭️ DEBUG MODE COMPLETE");
+                return ResponseEntity.ok("OK - DEBUG: Message from me ignored");
             }
 
-            log.info("Validating webhook...");
+            log.info("✅ Webhook validation...");
             boolean isValid = messagingService.validateWebhook(payload, authorization);
-            log.info("Webhook validation result: {}", isValid);
+            log.info("✅ Webhook validation result: {}", isValid);
             
             if (!isValid) {
-                log.warn("Webhook validation failed");
-                return ResponseEntity.status(401).body("Unauthorized");
+                log.warn("❌ Webhook validation failed - DEBUG MODE COMPLETE");
+                return ResponseEntity.status(401).body("Unauthorized - DEBUG: Validation failed");
             }
             
-            log.info("Parsing incoming message...");
+            log.info("🔄 Parsing incoming message...");
             IncomingMessage message = messagingService.parseIncomingMessage(payload);
-            log.info("Parsed message: from={}, body={}, messageId={}", 
-                message.getFrom(), message.getBody(), message.getMessageId());
+            log.info("📨 Parsed message: from='{}', body='{}'", message.getFrom(), message.getBody());
             
-            log.info("Processing incoming message...");
+            log.info("🚀 Processing incoming message...");
             messagingService.processIncomingMessage(message);
-            log.info("Message processed successfully");
             
+            log.info("✅ Z-API webhook processed successfully");
             return ResponseEntity.ok("OK");
             
         } catch (Exception e) {

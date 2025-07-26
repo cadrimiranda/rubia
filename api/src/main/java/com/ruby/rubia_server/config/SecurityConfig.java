@@ -39,7 +39,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/messaging/webhook", "/api/messaging/webhook/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/messaging/webhook/**").permitAll()
+                .requestMatchers("/api/messaging/**").permitAll()  // Permit all messaging endpoints
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
@@ -53,25 +55,17 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Allowed origins - use setAllowedOrigins for exact matches
-        configuration.setAllowedOrigins(Arrays.asList("http://rubia.localhost:3000", "http://localhost:3000", "http://localhost:5173"));
-        
-        // Allowed methods
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        
-        // Allowed headers
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        
-        // Allow credentials (important for authentication)
-        configuration.setAllowCredentials(true);
-        
-        // Expose headers that frontend might need
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "X-Company-Slug"));
-        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        
+        // Permissive configuration for ALL endpoints (debugging)
+        CorsConfiguration permissiveConfig = new CorsConfiguration();
+        permissiveConfig.setAllowedOriginPatterns(Arrays.asList("*"));
+        permissiveConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        permissiveConfig.setAllowedHeaders(Arrays.asList("*"));
+        permissiveConfig.setAllowCredentials(false);
+        
+        // Apply to all endpoints
+        source.registerCorsConfiguration("/**", permissiveConfig);
         
         return source;
     }
