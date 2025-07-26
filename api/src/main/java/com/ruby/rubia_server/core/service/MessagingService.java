@@ -175,7 +175,7 @@ public class MessagingService {
             logger.info("Processing incoming message from: {} via {}", 
                 incomingMessage.getFrom(), incomingMessage.getProvider());
             
-            String fromNumber = extractPhoneNumber(incomingMessage.getFrom());
+            String fromNumber = customerService.normalizePhoneNumber(extractPhoneNumber(incomingMessage.getFrom()));
             
             Company company;
             if ("z-api".equals(incomingMessage.getProvider())) {
@@ -184,9 +184,8 @@ public class MessagingService {
                 if (connectedPhone != null && !connectedPhone.trim().isEmpty()) {
                     company = findCompanyByWhatsAppInstance(connectedPhone);
                 } else {
-                    // Fallback to old method if connectedPhone is not available
-                    logger.warn("No connectedPhone in Z-API webhook, using fallback method");
-                    company = findCompanyByZApiInstance("default");
+                    logger.error("No connectedPhone in Z-API webhook. Cannot identify company.");
+                    throw new RuntimeException("Missing connectedPhone in Z-API webhook");
                 }
             } else {
                 String toNumber = extractPhoneNumber(incomingMessage.getTo());
@@ -353,31 +352,23 @@ public class MessagingService {
         
         logger.info("Looking for company with WhatsApp instance phone: {}", connectedPhone);
 
-        // Tentar diferentes formatos do número
-        String[] phoneVariations = {
-            connectedPhone,                                    // Formato original (5548991208536)
-            connectedPhone.startsWith("55") ? connectedPhone.substring(2) : connectedPhone,  // Sem código país (48991208536)
-            customerService.normalizePhoneNumber(connectedPhone),  // Normalizado (+5548991208536)
-            connectedPhone.startsWith("+") ? connectedPhone.substring(1) : connectedPhone    // Sem + se houver
-        };
+        // Normalize phone to standard format (+55DDDnúmero)
+        String normalizedPhone = customerService.normalizePhoneNumber(connectedPhone);
+        logger.info("Normalized connected phone: {} -> {}", connectedPhone, normalizedPhone);
+        
+        Optional<WhatsAppInstance> instanceOptional = whatsAppInstanceRepository
+            .findByPhoneNumberAndIsActiveTrue(normalizedPhone);
 
-        for (String phoneVariation : phoneVariations) {
-            logger.info("Trying phone variation: {}", phoneVariation);
+        if (instanceOptional.isPresent()) {
+            WhatsAppInstance instance = instanceOptional.get();
+            Company company = instance.getCompany();
             
-            Optional<WhatsAppInstance> instanceOptional = whatsAppInstanceRepository
-                .findByPhoneNumberAndIsActiveTrue(phoneVariation);
-
-            if (instanceOptional.isPresent()) {
-                WhatsAppInstance instance = instanceOptional.get();
-                Company company = instance.getCompany();
-                
-                logger.info("Found company {} for WhatsApp phone {} using variation {}", 
-                    company.getName(), connectedPhone, phoneVariation);
-                return company;
-            }
+            logger.info("Found company {} for WhatsApp phone {}", 
+                company.getName(), normalizedPhone);
+            return company;
         }
 
-        logger.warn("No company found for WhatsApp instance with phone: {} (tried all variations)", connectedPhone);
+        logger.warn("No company found for WhatsApp instance with phone: {} (normalized: {})", connectedPhone, normalizedPhone);
         return null;
     }
 

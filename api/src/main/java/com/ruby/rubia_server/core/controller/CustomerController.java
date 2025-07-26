@@ -58,7 +58,8 @@ public class CustomerController {
         
         try {
             UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
-            CustomerDTO customer = customerService.findByPhoneAndCompany(phone, currentCompanyId);
+            String normalizedPhone = customerService.normalizePhoneNumber(phone);
+            CustomerDTO customer = customerService.findByPhoneAndCompany(normalizedPhone, currentCompanyId);
             return ResponseEntity.ok(customer);
         } catch (IllegalArgumentException e) {
             log.warn("Customer not found: {}", phone);
