@@ -28,9 +28,8 @@ public class CreateAIAgentDTO {
     @Size(max = 500, message = "Avatar URL must not exceed 500 characters")
     private String avatarUrl;
 
-    @NotBlank(message = "AI Model Type is required")
-    @Size(max = 100, message = "AI Model Type must not exceed 100 characters")
-    private String aiModelType;
+    @NotNull(message = "AI Model ID is required")
+    private UUID aiModelId;
 
     @NotBlank(message = "Temperament is required")
     @Size(max = 50, message = "Temperament must not exceed 50 characters")

@@ -37,8 +37,9 @@ public class AIAgent {
     @Column(name = "avatar_url")
     private String avatarUrl; // URL da foto do agente
 
-    @Column(name = "ai_model_type", nullable = false)
-    private String aiModelType; // Tipo do modelo de IA (ex: "GPT-4", "Claude 3.5", "Gemini Pro")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ai_model_id", nullable = false)
+    private AIModel aiModel; // Modelo de IA associado ao agente
 
     @Column(name = "temperament", nullable = false)
     private String temperament; // Temperamento/Personalidade (ex: "ENGRAÇADO", "SÉRIO", "NORMAL", "EMPATICO")

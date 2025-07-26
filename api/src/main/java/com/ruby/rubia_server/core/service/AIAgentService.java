@@ -3,8 +3,10 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
 import com.ruby.rubia_server.core.dto.UpdateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
+import com.ruby.rubia_server.core.entity.AIModel;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.repository.AIAgentRepository;
+import com.ruby.rubia_server.core.repository.AIModelRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ public class AIAgentService {
 
     private final AIAgentRepository aiAgentRepository;
     private final CompanyRepository companyRepository;
+    private final AIModelRepository aiModelRepository;
 
     public AIAgent createAIAgent(CreateAIAgentDTO createDTO) {
         log.info("Creating AI agent with name: {} for company: {}", createDTO.getName(), createDTO.getCompanyId());
@@ -33,13 +36,17 @@ public class AIAgentService {
         Company company = companyRepository.findById(createDTO.getCompanyId())
                 .orElseThrow(() -> new RuntimeException("Company not found with ID: " + createDTO.getCompanyId()));
 
+        // Validate AI model exists
+        AIModel aiModel = aiModelRepository.findById(createDTO.getAiModelId())
+                .orElseThrow(() -> new RuntimeException("AI Model not found with ID: " + createDTO.getAiModelId()));
+
         // Create AI agent
         AIAgent aiAgent = AIAgent.builder()
                 .company(company)
+                .aiModel(aiModel)
                 .name(createDTO.getName())
                 .description(createDTO.getDescription())
                 .avatarUrl(createDTO.getAvatarUrl())
-                .aiModelType(createDTO.getAiModelType())
                 .temperament(createDTO.getTemperament())
                 .maxResponseLength(createDTO.getMaxResponseLength())
                 .temperature(createDTO.getTemperature())
@@ -49,7 +56,9 @@ public class AIAgentService {
         aiAgent = aiAgentRepository.save(aiAgent);
         log.info("AI agent created successfully with id: {}", aiAgent.getId());
         
-        return aiAgent;
+        // Força refresh para garantir que timestamps do banco sejam carregados
+        aiAgentRepository.flush();
+        return aiAgentRepository.findById(aiAgent.getId()).orElse(aiAgent);
     }
 
     @Transactional(readOnly = true)
@@ -103,8 +112,10 @@ public class AIAgentService {
         if (updateDTO.getAvatarUrl() != null) {
             aiAgent.setAvatarUrl(updateDTO.getAvatarUrl());
         }
-        if (updateDTO.getAiModelType() != null) {
-            aiAgent.setAiModelType(updateDTO.getAiModelType());
+        if (updateDTO.getAiModelId() != null) {
+            AIModel aiModel = aiModelRepository.findById(updateDTO.getAiModelId())
+                    .orElseThrow(() -> new RuntimeException("AI Model not found with ID: " + updateDTO.getAiModelId()));
+            aiAgent.setAiModel(aiModel);
         }
         if (updateDTO.getTemperament() != null) {
             aiAgent.setTemperament(updateDTO.getTemperament());
@@ -157,9 +168,15 @@ public class AIAgentService {
     }
 
     @Transactional(readOnly = true)
-    public List<AIAgent> getAIAgentsByModelType(String modelType) {
-        log.debug("Fetching AI agents by model type: {}", modelType);
-        return aiAgentRepository.findByAiModelType(modelType);
+    public List<AIAgent> getAIAgentsByModelId(UUID modelId) {
+        log.debug("Fetching AI agents by model id: {}", modelId);
+        return aiAgentRepository.findByAiModelId(modelId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AIAgent> getAIAgentsByModelName(String modelName) {
+        log.debug("Fetching AI agents by model name: {}", modelName);
+        return aiAgentRepository.findByAiModelName(modelName);
     }
 
     @Transactional(readOnly = true)

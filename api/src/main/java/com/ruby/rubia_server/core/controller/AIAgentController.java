@@ -191,11 +191,23 @@ public class AIAgentController {
         return ResponseEntity.ok(exists);
     }
 
-    @GetMapping("/model-type/{modelType}")
-    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelType(@PathVariable String modelType) {
-        log.debug("Fetching AI agents by model type: {}", modelType);
+    @GetMapping("/model/{modelName}")
+    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelName(@PathVariable String modelName) {
+        log.debug("Fetching AI agents by model name: {}", modelName);
 
-        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelType(modelType);
+        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelName(modelName);
+        List<AIAgentDTO> responseDTOs = aiAgents.stream()
+                .map(this::convertToDTO)
+                .toList();
+
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @GetMapping("/model-id/{modelId}")
+    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelId(@PathVariable UUID modelId) {
+        log.debug("Fetching AI agents by model id: {}", modelId);
+
+        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelId(modelId);
         List<AIAgentDTO> responseDTOs = aiAgents.stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -223,7 +235,9 @@ public class AIAgentController {
                 .name(aiAgent.getName())
                 .description(aiAgent.getDescription())
                 .avatarUrl(aiAgent.getAvatarUrl())
-                .aiModelType(aiAgent.getAiModelType())
+                .aiModelId(aiAgent.getAiModel().getId())
+                .aiModelName(aiAgent.getAiModel().getName())
+                .aiModelDisplayName(aiAgent.getAiModel().getDisplayName())
                 .temperament(aiAgent.getTemperament())
                 .maxResponseLength(aiAgent.getMaxResponseLength())
                 .temperature(aiAgent.getTemperature())

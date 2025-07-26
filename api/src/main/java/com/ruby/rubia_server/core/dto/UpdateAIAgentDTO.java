@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -23,8 +24,7 @@ public class UpdateAIAgentDTO {
     @Size(max = 500, message = "Avatar URL must not exceed 500 characters")
     private String avatarUrl;
 
-    @Size(max = 100, message = "AI Model Type must not exceed 100 characters")
-    private String aiModelType;
+    private UUID aiModelId;
 
     @Size(max = 50, message = "Temperament must not exceed 50 characters")
     private String temperament;

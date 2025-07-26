@@ -97,13 +97,9 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         assertEquals(BigDecimal.valueOf(0.7), createdAgent.getTemperature());
         assertTrue(createdAgent.getIsActive());
         
-        // Debug timestamps
-        System.out.println("Created At: " + createdAgent.getCreatedAt());
-        System.out.println("Updated At: " + createdAgent.getUpdatedAt());
-        
-        // Timestamps might be null if @CreationTimestamp/@UpdateTimestamp aren't working properly
-        // This is actually revealing a potential configuration issue
-        // For now, let's test the core functionality
+        // Timestamps should now be properly set after fix
+        assertNotNull(createdAgent.getCreatedAt());
+        assertNotNull(createdAgent.getUpdatedAt());
 
         // Test database relationship
         assertNotNull(createdAgent.getCompany());
