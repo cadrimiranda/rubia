@@ -174,6 +174,12 @@ public class MessagingController {
             
             log.info("🔄 Parsing incoming message...");
             IncomingMessage message = messagingService.parseIncomingMessage(payload);
+            
+            if (message == null) {
+                log.info("📋 Webhook ignored (likely status update)");
+                return ResponseEntity.ok("OK - Ignored");
+            }
+            
             log.info("📨 Parsed message: from='{}', body='{}'", message.getFrom(), message.getBody());
             
             log.info("🚀 Processing incoming message...");

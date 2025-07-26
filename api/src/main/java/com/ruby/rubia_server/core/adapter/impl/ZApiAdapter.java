@@ -140,6 +140,12 @@ public class ZApiAdapter implements MessagingAdapter {
 
             log.info("Z-API webhook payload: {}", payload);
 
+            String type = (String) payload.get("type");
+            if ("DeliveryCallback".equals(type)) {
+                log.info("Ignoring DeliveryCallback webhook - not a message");
+                return null;
+            }
+
             String messageId = (String) payload.get("messageId");
             String phone = (String) payload.get("phone");
             String connectedPhone = (String) payload.get("connectedPhone");
