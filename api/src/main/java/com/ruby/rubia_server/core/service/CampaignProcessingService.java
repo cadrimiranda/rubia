@@ -43,6 +43,7 @@ public class CampaignProcessingService {
     private final CampaignService campaignService;
     private final CampaignContactService campaignContactService;
     private final CustomerService customerService;
+    private final PhoneService phoneService;
     private final MessageTemplateService messageTemplateService;
     private final ConversationService conversationService;
     private final MessageService messageService;
@@ -468,7 +469,7 @@ public class CampaignProcessingService {
     private CustomerDTO findOrCreateCustomer(ContactData contactData, UUID companyId) {
         // Tentar encontrar por telefone primeiro
         if (contactData.getPhone() != null) {
-            String normalizedPhone = customerService.normalizePhoneNumber(contactData.getPhone());
+            String normalizedPhone = phoneService.normalize(contactData.getPhone());
             CustomerDTO existingCustomer = customerService.findByPhoneAndCompany(normalizedPhone, companyId);
             if (existingCustomer != null) {
                 // Customer existe - verificar se precisa atualizar dados

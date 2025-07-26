@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.adapter.impl;
 import com.ruby.rubia_server.core.adapter.MessagingAdapter;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
+import com.ruby.rubia_server.core.service.PhoneService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -36,9 +37,11 @@ public class ZApiAdapter implements MessagingAdapter {
     private String webhookToken;
 
     private final RestTemplate restTemplate;
+    private final PhoneService phoneService;
 
-    public ZApiAdapter() {
+    public ZApiAdapter(PhoneService phoneService) {
         this.restTemplate = new RestTemplate();
+        this.phoneService = phoneService;
     }
 
     @Override
@@ -49,7 +52,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String url = instanceUrl + "/token/" + token + "/send-text";
             log.info("Z-API URL: {}", url);
             
-            String formattedPhone = formatPhoneNumber(to);
+            String formattedPhone = phoneService.formatForZApi(to);
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", formattedPhone);
             requestBody.put("message", message);
@@ -93,7 +96,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String url = instanceUrl + "/token/" + token + "/send-file-url";
             
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("phone", formatPhoneNumber(to));
+            requestBody.put("phone", phoneService.formatForZApi(to));
             requestBody.put("url", mediaUrl);
             if (caption != null && !caption.trim().isEmpty()) {
                 requestBody.put("caption", caption);
@@ -251,21 +254,6 @@ public class ZApiAdapter implements MessagingAdapter {
         return "z-api";
     }
 
-    private String formatPhoneNumber(String phoneNumber) {
-        if (phoneNumber == null) {
-            return null;
-        }
-
-        String digitsOnly = phoneNumber.replaceAll("\\D", "");
-        
-        if (digitsOnly.startsWith("55")) {
-            return digitsOnly;
-        } else if (digitsOnly.startsWith("+55")) {
-            return digitsOnly.substring(1);
-        } else {
-            return "55" + digitsOnly;
-        }
-    }
 
     public MessageResult sendImageByUrl(String to, String imageUrl, String caption) {
         return sendMediaByUrl(to, imageUrl, caption, "image");
@@ -278,7 +266,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String url = instanceUrl + "/token/" + token + "/send-file-url";
             
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("phone", formatPhoneNumber(to));
+            requestBody.put("phone", phoneService.formatForZApi(to));
             requestBody.put("url", documentUrl);
             if (caption != null && !caption.trim().isEmpty()) {
                 requestBody.put("caption", caption);
@@ -316,7 +304,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String url = instanceUrl + "/token/" + token + "/send-file-base64";
             
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("phone", formatPhoneNumber(to));
+            requestBody.put("phone", phoneService.formatForZApi(to));
             requestBody.put("base64", base64Data);
             requestBody.put("fileName", fileName);
             if (caption != null && !caption.trim().isEmpty()) {
@@ -390,7 +378,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String url = instanceUrl + "/token/" + token + "/send-file-url";
             
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("phone", formatPhoneNumber(to));
+            requestBody.put("phone", phoneService.formatForZApi(to));
             requestBody.put("url", mediaUrl);
             if (caption != null && !caption.trim().isEmpty()) {
                 requestBody.put("caption", caption);

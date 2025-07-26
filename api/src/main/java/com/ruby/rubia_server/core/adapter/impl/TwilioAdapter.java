@@ -4,6 +4,7 @@ import com.ruby.rubia_server.core.adapter.MessagingAdapter;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.config.WhatsAppProviderConfig;
+import com.ruby.rubia_server.core.service.PhoneService;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
@@ -26,6 +27,9 @@ public class TwilioAdapter implements MessagingAdapter {
     @Autowired
     private WhatsAppProviderConfig config;
     
+    @Autowired
+    private PhoneService phoneService;
+    
     @PostConstruct
     public void init() {
         Twilio.init(config.getAccountId(), config.getAuthToken());
@@ -47,8 +51,8 @@ public class TwilioAdapter implements MessagingAdapter {
             }
             
             Message twilioMessage = Message.creator(
-                new PhoneNumber(formatPhoneNumber(to)),
-                new PhoneNumber(formatPhoneNumber(fromPhoneNumber)),
+                new PhoneNumber(phoneService.formatForTwilio(to, config.getPhoneNumber())),
+                new PhoneNumber(phoneService.formatForTwilio(fromPhoneNumber, config.getPhoneNumber())),
                 message
             ).create();
             
@@ -81,8 +85,8 @@ public class TwilioAdapter implements MessagingAdapter {
             }
             
             var messageCreator = Message.creator(
-                new PhoneNumber(formatPhoneNumber(to)),
-                new PhoneNumber(formatPhoneNumber(fromPhoneNumber)),
+                new PhoneNumber(phoneService.formatForTwilio(to, config.getPhoneNumber())),
+                new PhoneNumber(phoneService.formatForTwilio(fromPhoneNumber, config.getPhoneNumber())),
                 caption != null ? caption : ""
             );
             
@@ -138,13 +142,6 @@ public class TwilioAdapter implements MessagingAdapter {
         return "twilio";
     }
     
-    String formatPhoneNumber(String phoneNumber) {
-        String configPhoneNumber = config.getPhoneNumber();
-        if (configPhoneNumber != null && configPhoneNumber.startsWith("whatsapp:")) {
-            return phoneNumber.startsWith("whatsapp:") ? phoneNumber : "whatsapp:" + phoneNumber;
-        }
-        return phoneNumber;
-    }
     
     String cleanPhoneNumber(String phoneNumber) {
         return phoneNumber != null ? phoneNumber.replace("whatsapp:", "") : null;

@@ -68,6 +68,9 @@ public class MessagingService {
     private WebSocketNotificationService webSocketNotificationService;
     
     @Autowired
+    private PhoneService phoneService;
+    
+    @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
         this.adapters = adapters;
         this.currentAdapter = adapters.isEmpty() ? null : adapters.get(0);
@@ -175,7 +178,7 @@ public class MessagingService {
             logger.info("Processing incoming message from: {} via {}", 
                 incomingMessage.getFrom(), incomingMessage.getProvider());
             
-            String fromNumber = customerService.normalizePhoneNumber(extractPhoneNumber(incomingMessage.getFrom()));
+            String fromNumber = phoneService.extractFromProvider(incomingMessage.getFrom());
             
             Company company;
             if ("z-api".equals(incomingMessage.getProvider())) {
@@ -188,7 +191,7 @@ public class MessagingService {
                     throw new RuntimeException("Missing connectedPhone in Z-API webhook");
                 }
             } else {
-                String toNumber = extractPhoneNumber(incomingMessage.getTo());
+                String toNumber = phoneService.extractFromProvider(incomingMessage.getTo());
                 company = findCompanyByWhatsAppNumber(toNumber);
             }
             
@@ -230,17 +233,6 @@ public class MessagingService {
         }
     }
     
-    private String extractPhoneNumber(String twilioNumber) {
-        if (twilioNumber == null) {
-            return null;
-        }
-        
-        // Remove 'whatsapp:' prefix if present
-        String cleanNumber = twilioNumber.replace("whatsapp:", "");
-        
-        // Normalize the phone number using existing logic
-        return customerService.normalizePhoneNumber(cleanNumber);
-    }
     
     private Company findCompanyByWhatsAppNumber(String whatsappNumber) {
         if (whatsappNumber == null || whatsappNumber.trim().isEmpty()) {
@@ -249,7 +241,7 @@ public class MessagingService {
         }
         
         // Normalize the WhatsApp number to match stored format
-        String normalizedNumber = customerService.normalizePhoneNumber(whatsappNumber);
+        String normalizedNumber = phoneService.normalize(whatsappNumber);
         
         // Find active user with this WhatsApp number across all companies
         Optional<User> userOptional = userRepository.findActiveByWhatsappNumber(normalizedNumber);
@@ -275,7 +267,7 @@ public class MessagingService {
             phoneNumber, company.getName());
         
         // Generate default name from phone number
-        String defaultName = "WhatsApp " + phoneNumber.substring(Math.max(0, phoneNumber.length() - 4));
+        String defaultName = phoneService.generateDefaultName(phoneNumber);
         
         CreateCustomerDTO createDTO = CreateCustomerDTO.builder()
             .phone(phoneNumber)
@@ -353,7 +345,7 @@ public class MessagingService {
         logger.info("Looking for company with WhatsApp instance phone: {}", connectedPhone);
 
         // Normalize phone to standard format (+55DDDnúmero)
-        String normalizedPhone = customerService.normalizePhoneNumber(connectedPhone);
+        String normalizedPhone = phoneService.normalize(connectedPhone);
         logger.info("Normalized connected phone: {} -> {}", connectedPhone, normalizedPhone);
         
         Optional<WhatsAppInstance> instanceOptional = whatsAppInstanceRepository

@@ -4,6 +4,7 @@ import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.UpdateCustomerDTO;
 import com.ruby.rubia_server.core.service.CustomerService;
+import com.ruby.rubia_server.core.service.PhoneService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class CustomerController {
     
     private final CustomerService customerService;
+    private final PhoneService phoneService;
     private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
@@ -58,7 +60,7 @@ public class CustomerController {
         
         try {
             UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
-            String normalizedPhone = customerService.normalizePhoneNumber(phone);
+            String normalizedPhone = phoneService.normalize(phone);
             CustomerDTO customer = customerService.findByPhoneAndCompany(normalizedPhone, currentCompanyId);
             return ResponseEntity.ok(customer);
         } catch (IllegalArgumentException e) {

@@ -24,6 +24,7 @@ public class CustomerService {
     
     private final CustomerRepository customerRepository;
     private final CompanyRepository companyRepository;
+    private final PhoneService phoneService;
     
     public CustomerDTO create(CreateCustomerDTO createDTO, UUID companyId) {
         log.info("Creating customer with phone: {} for company: {}", createDTO.getPhone(), companyId);
@@ -33,7 +34,7 @@ public class CustomerService {
                 .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
         
         // Normalizar telefone antes de verificar duplicação
-        String normalizedPhone = normalizePhoneNumber(createDTO.getPhone());
+        String normalizedPhone = phoneService.normalize(createDTO.getPhone());
         
         if (customerRepository.existsByPhoneAndCompanyId(normalizedPhone, companyId)) {
             throw new IllegalArgumentException("Cliente com telefone '" + normalizedPhone + "' já existe nesta empresa");
@@ -102,7 +103,7 @@ public class CustomerService {
         
         if (updateDTO.getPhone() != null) {
             // Normalizar telefone antes de verificar duplicação
-            String normalizedPhone = normalizePhoneNumber(updateDTO.getPhone());
+            String normalizedPhone = phoneService.normalize(updateDTO.getPhone());
             if (!normalizedPhone.equals(customer.getPhone())) {
                 if (customerRepository.existsByPhoneAndCompanyId(normalizedPhone, companyId)) {
                     throw new IllegalArgumentException("Cliente com telefone '" + normalizedPhone + "' já existe nesta empresa");
@@ -205,37 +206,6 @@ public class CustomerService {
         log.info("Customer deleted successfully");
     }
     
-    @Transactional(readOnly = true)
-    public String normalizePhoneNumber(String phone) {
-        if (phone == null || phone.trim().isEmpty()) {
-            return null;
-        }
-        
-        // Remove all non-digit characters
-        String digitsOnly = phone.replaceAll("\\D", "");
-        
-        // Handle Brazilian phone numbers with standard format +55DDDnúmero
-        if (digitsOnly.length() == 10 || digitsOnly.length() == 11) {
-            // Brazilian phone without country code (DDDnúmero)
-            return "+55" + digitsOnly;
-        } else if (digitsOnly.length() == 12 && digitsOnly.startsWith("55")) {
-            // Brazilian phone with country code but without + (55DDDnúmero)
-            return "+" + digitsOnly;
-        } else if (digitsOnly.length() == 13 && digitsOnly.startsWith("55")) {
-            // Phone with + removed during regex (was +55DDDnúmero)
-            return "+" + digitsOnly;
-        }
-        
-        // For unexpected formats, log warning and return normalized format
-        logger.warn("Unexpected phone format: '{}' (digits: '{}'). Attempting normalization.", phone, digitsOnly);
-        
-        // Try to extract Brazilian number from international formats
-        if (digitsOnly.startsWith("55") && digitsOnly.length() >= 12) {
-            return "+" + digitsOnly.substring(0, 13); // Keep +55 + 11 digits max
-        }
-        
-        return "+55" + digitsOnly; // Fallback: assume it's Brazilian
-    }
     
     // Company-scoped methods
     @Transactional(readOnly = true)

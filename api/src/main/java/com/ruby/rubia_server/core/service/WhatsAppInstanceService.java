@@ -20,6 +20,7 @@ import java.util.UUID;
 public class WhatsAppInstanceService {
 
     private final WhatsAppInstanceRepository whatsappInstanceRepository;
+    private final PhoneService phoneService;
     
     public Optional<WhatsAppInstance> findByPhoneNumber(String phoneNumber) {
         return whatsappInstanceRepository.findByPhoneNumberAndIsActiveTrue(phoneNumber);
@@ -61,7 +62,7 @@ public class WhatsAppInstanceService {
         log.info("Creating new WhatsApp instance for company {} with phone {}", company.getId(), phoneNumber);
         
         // Validate phone number format
-        if (!isValidPhoneNumber(phoneNumber)) {
+        if (!phoneService.isValid(phoneNumber)) {
             throw new IllegalArgumentException("Invalid phone number format. Must be in format +5511999999999 or 5511999999999");
         }
         
@@ -81,17 +82,6 @@ public class WhatsAppInstanceService {
         return whatsappInstanceRepository.save(instance);
     }
     
-    private boolean isValidPhoneNumber(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            return false;
-        }
-        
-        // Remove any spaces and formatting
-        String cleanPhone = phoneNumber.replaceAll("\\s+", "");
-        
-        // Must match Brazilian format: +5511999999999 or 5511999999999 (11-15 digits total)
-        return cleanPhone.matches("^\\+?[1-9]\\d{10,14}$");
-    }
 
     @Transactional
     public WhatsAppInstance updateInstanceStatus(UUID instanceId, WhatsAppInstanceStatus status) {
