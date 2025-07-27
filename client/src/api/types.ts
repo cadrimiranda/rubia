@@ -17,7 +17,7 @@ export interface PageResponse<T> {
 
 // Enums do backend (mapeados como ordinal no PostgreSQL)
 export type ConversationStatus = 'ENTRADA' | 'ESPERANDO' | 'FINALIZADOS'
-export type ConversationChannel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'WEB_CHAT' | 'EMAIL'
+export type ConversationChannel = 'WHATSAPP'
 export type MessageType = 'TEXT' | 'IMAGE' | 'AUDIO' | 'FILE' | 'LOCATION' | 'CONTACT'
 export type MessageStatus = 'DRAFT' | 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
 export type SenderType = 'CUSTOMER' | 'AGENT' | 'AI' | 'SYSTEM'

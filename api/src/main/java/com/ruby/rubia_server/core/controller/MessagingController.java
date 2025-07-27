@@ -109,83 +109,25 @@ public class MessagingController {
             @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
         
         try {
-            log.info("=== Z-API WEBHOOK DEBUG - RECEIVED ===");
-            log.info("🔍 Full payload received: {}", payload);
-            log.info("🔑 Authorization header: '{}'", authorization);
-            log.info("🤖 User-Agent: '{}'", userAgent);
-            log.info("🌐 X-Forwarded-For: '{}'", forwardedFor);
-            log.info("📋 Payload keys: {}", payload.keySet());
-            log.info("📏 Payload size: {} entries", payload.size());
+            log.debug("Z-API webhook received from: {}", payload.get("phone"));
             
-            // Log each field individually for better debugging
-            payload.forEach((key, value) -> {
-                log.info("🔸 Field '{}' = '{}' (type: {})", 
-                    key, value, value != null ? value.getClass().getSimpleName() : "null");
-            });
-            
-            Object fromMeObj = payload.get("fromMe");
-            boolean isFromMe = false;
-            if (fromMeObj instanceof Boolean) {
-                isFromMe = (Boolean) fromMeObj;
-            } else if (fromMeObj instanceof String) {
-                isFromMe = "true".equals(fromMeObj);
-            }
-            log.info("📤 Message fromMe: {} (original: {})", isFromMe, fromMeObj);
-            
-            // Extract key fields for debugging
-            String phone = (String) payload.get("phone");
-            String connectedPhone = (String) payload.get("connectedPhone");
-            String messageId = (String) payload.get("messageId");
-            String type = (String) payload.get("type");
-            String status = (String) payload.get("status");
-            Object textObj = payload.get("text");
-            
-            log.info("📱 Phone: '{}'", phone);
-            log.info("🔗 Connected Phone: '{}'", connectedPhone);
-            log.info("🆔 Message ID: '{}'", messageId);
-            log.info("📝 Type: '{}'", type);
-            log.info("🔄 Status: '{}'", status);
-            log.info("💬 Text object: {} (type: {})", textObj, textObj != null ? textObj.getClass().getSimpleName() : "null");
-            
-            if (textObj instanceof Map) {
-                Map<String, Object> textMap = (Map<String, Object>) textObj;
-                log.info("💬 Text map contents: {}", textMap);
-                textMap.forEach((key, value) -> {
-                    log.info("💬   Text field '{}' = '{}'", key, value);
-                });
-            }
-            
-            if (isFromMe) {
-                log.info("⏭️ IMPORTANTE: Mensagem ignorada porque fromMe=true");
-                log.info("⏭️ Isso significa que a mensagem foi enviada PELA sua instância, não recebida");
-                log.info("⏭️ Para testar, envie mensagem DE OUTRO WHATSAPP para este número");
-                log.info("⏭️ DEBUG MODE COMPLETE");
-                return ResponseEntity.ok("OK - DEBUG: Message from me ignored");
-            }
-
-            log.info("✅ Webhook validation...");
+            // Validate webhook
             boolean isValid = messagingService.validateWebhook(payload, authorization);
-            log.info("✅ Webhook validation result: {}", isValid);
-            
             if (!isValid) {
-                log.warn("❌ Webhook validation failed - DEBUG MODE COMPLETE");
-                return ResponseEntity.status(401).body("Unauthorized - DEBUG: Validation failed");
+                log.warn("Invalid webhook signature - rejecting request");
+                return ResponseEntity.status(401).body("Invalid webhook signature");
             }
             
-            log.info("🔄 Parsing incoming message...");
+            // Parse the incoming message
             IncomingMessage message = messagingService.parseIncomingMessage(payload);
-            
             if (message == null) {
-                log.info("📋 Webhook ignored (likely status update)");
-                return ResponseEntity.ok("OK - Ignored");
+                log.debug("Webhook ignored (not a message)");
+                return ResponseEntity.ok("Webhook ignored - not a message");
             }
             
-            log.info("📨 Parsed message: from='{}', body='{}'", message.getFrom(), message.getBody());
-            
-            log.info("🚀 Processing incoming message...");
+            // Process the message
             messagingService.processIncomingMessage(message);
-            
-            log.info("✅ Z-API webhook processed successfully");
+            log.info("Z-API webhook processed successfully");
             return ResponseEntity.ok("OK");
             
         } catch (Exception e) {

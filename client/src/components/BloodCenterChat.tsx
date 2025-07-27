@@ -886,7 +886,7 @@ export const BloodCenterChat: React.FC = () => {
         // Criar conversa para este cliente usando o adapter
         const createRequest = conversationAdapter.toCreateRequest(
           state.selectedDonor.id,
-          'WEB_CHAT'
+          'WHATSAPP'
         );
         
         const newConversation = await conversationApi.create(createRequest);
