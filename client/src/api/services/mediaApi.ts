@@ -23,10 +23,9 @@ export const mediaApi = {
     try {
       // Tentar acessar a conversa primeiro
       const response = await apiClient.get(`/api/conversations/${conversationId}`);
-      console.log('✅ Conversation access test passed:', response);
       return true;
     } catch (error) {
-      console.error('❌ Conversation access test failed:', error);
+      console.error('Conversation access test failed:', error);
       return false;
     }
   },
@@ -43,31 +42,13 @@ export const mediaApi = {
     formData.append('file', request.file);
     formData.append('mediaType', request.mediaType);
     
-    // Debug FormData contents
-    console.log('📋 FormData contents:');
-    for (let [key, value] of formData.entries()) {
-      console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
-    }
     
-    console.log('📤 Uploading file:', {
-      fileName: request.file.name,
-      fileSize: request.file.size,
-      mediaType: request.mediaType,
-      conversationId: request.conversationId
-    });
     
-    // Debug auth info
-    console.log('🔑 Auth info:', {
-      hasToken: !!localStorage.getItem('auth_token'),
-      companySlug: localStorage.getItem('auth_company_slug'),
-      hostname: window.location.hostname
-    });
     
     try {
       const response = await apiClient.post<MediaUploadResponse>(`/api/conversations/${request.conversationId}/media`, formData);
       return response;
     } catch (error) {
-      console.error('❌ Media upload failed, trying alternative endpoint...');
       
       // Tentar endpoint alternativo sem /conversations/
       try {
@@ -79,7 +60,7 @@ export const mediaApi = {
         const altResponse = await apiClient.post<MediaUploadResponse>(`/api/media/upload`, altFormData);
         return altResponse;
       } catch (altError) {
-        console.error('❌ Alternative endpoint also failed:', altError);
+        console.error('Alternative endpoint also failed:', altError);
         throw error; // Re-throw original error
       }
     }
@@ -241,7 +222,7 @@ export const mediaApi = {
 
       return response.json();
     } catch (error) {
-      console.error('❌ Erro no upload Z-API:', error);
+      console.error('Erro no upload Z-API:', error);
       throw error;
     }
   },
@@ -268,7 +249,7 @@ export const mediaApi = {
 
       return response.json();
     } catch (error) {
-      console.error('❌ Erro ao enviar imagem Z-API:', error);
+      console.error('Erro ao enviar imagem Z-API:', error);
       throw error;
     }
   },
@@ -296,7 +277,7 @@ export const mediaApi = {
 
       return response.json();
     } catch (error) {
-      console.error('❌ Erro ao enviar documento Z-API:', error);
+      console.error('Erro ao enviar documento Z-API:', error);
       throw error;
     }
   },
@@ -343,7 +324,7 @@ export const mediaApi = {
 
       return response.json();
     } catch (error) {
-      console.error('❌ Erro ao enviar arquivo base64 Z-API:', error);
+      console.error('Erro ao enviar arquivo base64 Z-API:', error);
       throw error;
     }
   }

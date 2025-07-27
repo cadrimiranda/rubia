@@ -37,7 +37,6 @@ class AuthService {
   async login(credentials: LoginRequest): Promise<AuthUser> {
     try {
       // Login real com API
-      console.log('🌐 Usando autenticação da API');
       
       // Obter contexto da empresa atual
       const companyInfo = getCompanyFromSubdomain()
@@ -355,7 +354,6 @@ class AuthService {
       keysToCheck.forEach(key => {
         const value = localStorage.getItem(key);
         if (value && value.length > 1000) {
-          console.log(`🧹 Removendo chave grande do localStorage: ${key} (${value.length} chars)`);
           localStorage.removeItem(key);
         }
       });
@@ -379,7 +377,6 @@ class AuthService {
       if (typeof window !== 'undefined') {
         const totalSize = new Blob(Object.values(localStorage)).size;
         if (totalSize > 50000) { // Se localStorage > 50KB
-          console.log('🧹 localStorage muito grande, limpando dados desnecessários');
           Object.keys(localStorage).forEach(key => {
             if (!key.startsWith('auth_') && !key.startsWith('token_')) {
               localStorage.removeItem(key);
@@ -405,7 +402,6 @@ class AuthService {
           localStorage.setItem(key, value);
         });
         
-        console.log('🧹 localStorage completamente limpo e refeito');
       } catch (e) {
         console.error('Erro crítico na limpeza:', e);
       }

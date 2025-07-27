@@ -9,7 +9,6 @@ class WebSocketManager {
   async initialize() {
     if (this.isInitialized) return
 
-    console.log('🚀 Initializing WebSocket Manager...')
 
     // Verificar se usuário está autenticado
     const isAuthenticated = useAuthStore.getState().isAuthenticated
@@ -22,7 +21,6 @@ class WebSocketManager {
       // Marcar como inicializado
       this.isInitialized = true
       
-      console.log('WebSocket Manager inicializado com sucesso')
     } catch (error) {
       console.error('Erro ao inicializar WebSocket Manager:', error)
     }
@@ -34,7 +32,6 @@ class WebSocketManager {
     try {
       webSocketClient.disconnect()
       this.isInitialized = false
-      console.log('WebSocket Manager desconectado')
     } catch (error) {
       console.error('Erro ao desconectar WebSocket Manager:', error)
     }

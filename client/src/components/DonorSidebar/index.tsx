@@ -71,6 +71,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
     (d) => d.lastMessage || d.hasActiveConversation
   );
 
+
   // Handler para scroll infinito
   const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;

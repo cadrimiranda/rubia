@@ -34,13 +34,11 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
       
       if (disconnected.length > 0 && disconnectedInstances.length === 0) {
         // Nova desconexão detectada
-        console.log('🚨 [Monitor] Detected disconnected instances:', disconnected.map(i => i.phoneNumber));
         setDisconnectedInstances(disconnected);
         setCurrentInstance(disconnected[0]); // Mostrar a primeira
         setShowReconnectModal(true);
       } else if (disconnected.length === 0 && disconnectedInstances.length > 0) {
         // Instâncias reconectadas
-        console.log('✅ [Monitor] All instances reconnected');
         setDisconnectedInstances([]);
         setShowReconnectModal(false);
         setCurrentInstance(null);

@@ -60,17 +60,6 @@ class ApiClient {
         };
       }
       
-      // Debug para upload de mídia
-      if (endpoint.includes('/media')) {
-        console.log('🔍 Media upload request:', {
-          endpoint,
-          hasToken: !!token,
-          companySlug,
-          tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
-          headers: Object.keys(config.headers || {}),
-          isFormData: config.body instanceof FormData
-        });
-      }
     }
 
     // Debug: verificar tamanho dos headers

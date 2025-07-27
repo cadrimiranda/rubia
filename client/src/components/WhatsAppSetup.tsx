@@ -26,11 +26,6 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   
   const [form] = Form.useForm();
 
-  // Debug log
-  console.log('🚀 WhatsApp Setup Render:', { 
-    currentStep, 
-    selectedInstance: selectedInstance ? { id: selectedInstance.id, status: selectedInstance.status } : null 
-  });
 
   useEffect(() => {
     loadSetupStatus();
@@ -42,17 +37,12 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     let interval: NodeJS.Timeout | null = null;
     
     if (currentStep === 2 && selectedInstance && selectedInstance.status !== 'CONNECTED') {
-      console.log('🔄 Starting status polling for instance:', selectedInstance.id);
       interval = setInterval(async () => {
         try {
           const status = await whatsappSetupApi.getSetupStatus();
           const updatedInstance = status.instances.find(i => i.id === selectedInstance.id);
           
           if (updatedInstance && updatedInstance.status !== selectedInstance.status) {
-            console.log('📱 Instance status changed:', {
-              from: selectedInstance.status,
-              to: updatedInstance.status
-            });
             setSelectedInstance(updatedInstance);
             setSetupStatus(status);
             
@@ -68,7 +58,6 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     
     return () => {
       if (interval) {
-        console.log('🛑 Stopping status polling');
         clearInterval(interval);
       }
     };
@@ -88,7 +77,6 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
           
           // Se não foi verificado nas últimas 5 horas, forçar verificação
           if (minutesSinceCheck > 300) {
-            console.log(`🔄 Forcing status check for potentially stale instance: ${instance.phoneNumber}`);
             try {
               await whatsappSetupApi.forceStatusCheck(instance.id);
             } catch (error) {
@@ -111,37 +99,23 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       
       const disconnectedInstances = updatedStatus.instances.filter(i => i.status === 'DISCONNECTED');
       
-      console.log('🔍 Status Analysis:', {
-        totalInstances: updatedStatus.totalInstances,
-        hasConnectedInstance: updatedStatus.hasConnectedInstance,
-        disconnectedCount: disconnectedInstances.length,
-        instanceNeedingSetup: instanceNeedingSetup ? {
-          id: instanceNeedingSetup.id,
-          status: instanceNeedingSetup.status
-        } : null
-      });
       
       if (instanceNeedingSetup) {
         // If there's an instance that needs setup, handle it first
         setSelectedInstance(instanceNeedingSetup);
         if (instanceNeedingSetup.status === 'NOT_CONFIGURED') {
-          console.log('📍 Setting currentStep to 1 (configuration)');
           setCurrentStep(1); // Go to configuration step
         } else if (instanceNeedingSetup.status === 'CONFIGURING' || instanceNeedingSetup.status === 'AWAITING_QR_SCAN') {
-          console.log('📍 Setting currentStep to 2 (activation)');
           setCurrentStep(2); // Go to activation step
         }
       } else if (updatedStatus.hasConnectedInstance || disconnectedInstances.length > 0) {
         // If has connected instances OR disconnected instances, show management
-        console.log('📍 Setting currentStep to 3 (management)');
         setCurrentStep(3);
       } else if (updatedStatus.totalInstances === 0) {
         // If no instances, stay at step 0 for creating new instance
-        console.log('📍 Setting currentStep to 0 (create new)');
         setCurrentStep(0);
       } else {
         // Fallback: if has instances but none need setup and none connected, go to management
-        console.log('📍 Setting currentStep to 3 (management - fallback)');
         setCurrentStep(3);
       }
       
@@ -267,7 +241,6 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
         onSetupComplete();
       } else {
         // Se não há callback, navegar para a página principal
-        console.log('📍 Setup complete, navigating to home page');
         navigate('/', { replace: true });
       }
     } catch (error) {

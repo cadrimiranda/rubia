@@ -164,7 +164,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
     // Tentar carregar conversas mock primeiro (campanhas)
     try {
       const mockConversations = getAllCampaignConversations()
-      console.log('📞 Verificando conversas de campanha:', mockConversations.length)
       
       if (mockConversations.length > 0) {
         // Filtrar conversas por status
@@ -186,7 +185,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
           error: null
         })
         
-        console.log(`✅ Carregadas ${mockChats.length} conversas de campanha para status: ${targetStatus}`)
         return
       }
     } catch (mockError) {
@@ -270,7 +268,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       // Fallback para mensagens de campanha mock
       try {
         const mockMessages = getCampaignConversationMessages(chatId)
-        console.log('💬 Carregando mensagens da conversa:', chatId, mockMessages.length)
         
         if (mockMessages.length > 0) {
           const convertedMessages = messageAdapter.toMessageArray(mockMessages)
@@ -297,7 +294,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
             })
           }
           
-          console.log(`✅ Carregadas ${convertedMessages.length} mensagens`)
         } else {
           set({ 
             error: 'Nenhuma mensagem encontrada', 
@@ -317,7 +313,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
   // Refresh das conversas
   refreshConversations: async () => {
     const state = get()
-    console.log('🔄 Refreshing conversas para status:', state.currentStatus)
     set({ currentPage: 0, hasMore: true, chats: [] })
     await get().loadConversations(state.currentStatus, 0)
   },
@@ -642,7 +637,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
   searchMessages: async (query: string) => {
     try {
       const response = await messageApi.search(query)
-      console.log('Resultados da busca de mensagens:', response)
       // TODO: implementar exibição dos resultados
       
     } catch (error) {
@@ -681,36 +675,48 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
 
   // WebSocket/Tempo real
   addMessage: (conversationId: string, message: Message) => {
-    console.log('🗂️ Store addMessage called:', conversationId, message)
     const state = get()
     const cached = state.messagesCache[conversationId]
     
     if (cached) {
-      const updatedMessages = [...cached.messages, message]
-      console.log('🗂️ Updating existing cache with', updatedMessages.length, 'messages')
+      // Adicionar mensagem e ordenar por timestamp para manter ordem cronológica
+      const allMessages = [...cached.messages, message]
+      const sortedMessages = allMessages.sort((a, b) => {
+        // Converter timestamp HH:MM para minutos para comparação numérica
+        const parseTime = (timeStr: string) => {
+          if (!timeStr) return 0;
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          return (hours * 60) + minutes;
+        };
+        
+        const timeA = parseTime(a.timestamp || '00:00');
+        const timeB = parseTime(b.timestamp || '00:00');
+        
+        
+        return timeA - timeB;
+      })
+      
       
       set({
         messagesCache: {
           ...state.messagesCache,
           [conversationId]: {
             ...cached,
-            messages: updatedMessages
+            messages: sortedMessages
           }
         }
       })
       
       // Atualiza chat ativo se for o mesmo
       if (state.activeChat?.id === conversationId) {
-        console.log('🗂️ Updating active chat messages')
         set({
           activeChat: {
             ...state.activeChat,
-            messages: updatedMessages
+            messages: sortedMessages
           }
         })
       }
     } else {
-      console.log('🗂️ Creating new cache for conversation:', conversationId)
       // Se não há cache, cria um novo com a mensagem
       set({
         messagesCache: {
@@ -725,7 +731,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       
       // Se é o chat ativo, também atualiza
       if (state.activeChat?.id === conversationId) {
-        console.log('🗂️ Setting active chat messages')
         set({
           activeChat: {
             ...state.activeChat,

@@ -36,7 +36,6 @@ export const WhatsAppSetupGuard: React.FC<WhatsAppSetupGuardProps> = ({ children
           // Se não foi verificado nas últimas 2 horas, forçar verificação
           if (minutesSinceCheck > 120) {
             setLoadingMessage(`Verificando status da instância ${instance.phoneNumber}...`);
-            console.log(`🔄 [Guard] Forcing status check for potentially stale instance: ${instance.phoneNumber}`);
             try {
               await whatsappSetupApi.forceStatusCheck(instance.id);
               needsRecheck = true;
@@ -57,7 +56,6 @@ export const WhatsAppSetupGuard: React.FC<WhatsAppSetupGuardProps> = ({ children
       // Verificar se tem instâncias desconectadas
       const disconnectedInstances = finalStatus.instances.filter(i => i.status === 'DISCONNECTED');
       if (disconnectedInstances.length > 0) {
-        console.log(`⚠️ [Guard] Found ${disconnectedInstances.length} disconnected instance(s), redirecting to setup`);
         setSetupStatus({ 
           ...finalStatus,
           requiresSetup: true  // Força redirecionamento para setup
