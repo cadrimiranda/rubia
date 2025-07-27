@@ -1082,17 +1082,26 @@ export const BloodCenterChat: React.FC = () => {
       if (zapiResult) {
         console.log('✅ Mensagem com mídia enviada via Z-API:', zapiResult.messageId);
         
-        // Atualizar UI para mostrar sucesso
-        updateState({
-          messages: state.messages.map(msg => 
-            msg.id === tempMessage.id 
-              ? {
-                  ...msg,
-                  id: zapiResult.messageId,
-                  timestamp: getCurrentTimestamp()
-                }
-              : msg
-          )
+        // Atualizar UI para mostrar sucesso usando setState callback
+        setState(currentState => {
+          console.log('🔄 Substituindo mensagem temporária de mídia:', {
+            tempMessageId: tempMessage.id,
+            realMessageId: zapiResult.messageId,
+            currentMessagesCount: currentState.messages.length
+          });
+          
+          return {
+            ...currentState,
+            messages: currentState.messages.map(msg => 
+              msg.id === tempMessage.id 
+                ? {
+                    ...msg,
+                    id: zapiResult.messageId,
+                    timestamp: getCurrentTimestamp()
+                  }
+                : msg
+            )
+          };
         });
 
         // Atualizar lastMessage do doador na sidebar para mensagens com mídia
@@ -1132,21 +1141,48 @@ export const BloodCenterChat: React.FC = () => {
 
       console.log('✅ Mensagem enviada com sucesso:', sentMessage.id);
 
-      // Substituir mensagem temporária pela real (apenas localmente)
-      updateState({
-        messages: state.messages.map(msg => 
-          msg.id === tempMessage.id 
-            ? {
-                ...msg,
-                id: sentMessage.id,
-                timestamp: sentMessage.createdAt ? 
-                  new Date(sentMessage.createdAt).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }) : msg.timestamp
-              }
-            : msg
-        )
+      // Substituir mensagem temporária pela real - usando setState callback para ter estado atualizado
+      setState(currentState => {
+        const tempExists = currentState.messages.some(msg => msg.id === tempMessage.id);
+        console.log('🔄 Substituindo mensagem temporária:', {
+          tempMessageId: tempMessage.id,
+          realMessageId: sentMessage.id,
+          tempExists,
+          currentMessagesCount: currentState.messages.length
+        });
+        
+        if (!tempExists) {
+          console.log('⚠️ Mensagem temporária não encontrada - adicionando a real');
+          return {
+            ...currentState,
+            messages: [...currentState.messages, {
+              ...tempMessage,
+              id: sentMessage.id,
+              timestamp: sentMessage.createdAt ? 
+                new Date(sentMessage.createdAt).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : tempMessage.timestamp
+            }]
+          };
+        }
+        
+        return {
+          ...currentState,
+          messages: currentState.messages.map(msg => 
+            msg.id === tempMessage.id 
+              ? {
+                  ...msg,
+                  id: sentMessage.id,
+                  timestamp: sentMessage.createdAt ? 
+                    new Date(sentMessage.createdAt).toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : msg.timestamp
+                }
+              : msg
+          )
+        };
       });
 
       // Atualizar lastMessage do doador na sidebar para mensagens não iniciais
