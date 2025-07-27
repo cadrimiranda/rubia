@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Steps, Form, Input, Select, Typography, Alert, Space, Table, Tag, message, Modal } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { PhoneOutlined, QrcodeOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ReloadOutlined, DisconnectOutlined, SyncOutlined } from '@ant-design/icons';
 import { whatsappSetupApi } from '../api/services/whatsappSetupApi';
 import ZApiActivation from './ZApiActivation';
@@ -14,6 +15,7 @@ interface WhatsAppSetupProps {
 }
 
 const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [setupStatus, setSetupStatus] = useState<WhatsAppSetupStatus | null>(null);
@@ -34,6 +36,43 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     loadSetupStatus();
     loadProviders();
   }, []);
+
+  // Polling para atualizar status da instância quando estiver no step 2 (QR code)
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (currentStep === 2 && selectedInstance && selectedInstance.status !== 'CONNECTED') {
+      console.log('🔄 Starting status polling for instance:', selectedInstance.id);
+      interval = setInterval(async () => {
+        try {
+          const status = await whatsappSetupApi.getSetupStatus();
+          const updatedInstance = status.instances.find(i => i.id === selectedInstance.id);
+          
+          if (updatedInstance && updatedInstance.status !== selectedInstance.status) {
+            console.log('📱 Instance status changed:', {
+              from: selectedInstance.status,
+              to: updatedInstance.status
+            });
+            setSelectedInstance(updatedInstance);
+            setSetupStatus(status);
+            
+            if (updatedInstance.status === 'CONNECTED') {
+              message.success('WhatsApp conectado com sucesso!');
+            }
+          }
+        } catch (error) {
+          console.error('Error polling status:', error);
+        }
+      }, 3000); // Poll a cada 3 segundos
+    }
+    
+    return () => {
+      if (interval) {
+        console.log('🛑 Stopping status polling');
+        clearInterval(interval);
+      }
+    };
+  }, [currentStep, selectedInstance]);
 
   const loadSetupStatus = async () => {
     try {
@@ -209,10 +248,33 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     }
   };
 
-  const handleSetupComplete = () => {
-    message.success('Configuração do WhatsApp concluída!');
-    if (onSetupComplete) {
-      onSetupComplete();
+  const handleSetupComplete = async () => {
+    try {
+      // Verificar status atual antes de concluir
+      setLoading(true);
+      const currentStatus = await whatsappSetupApi.getSetupStatus();
+      
+      // Verificar se há pelo menos uma instância conectada
+      const hasConnectedInstance = currentStatus.instances.some(instance => instance.status === 'CONNECTED');
+      
+      if (!hasConnectedInstance) {
+        message.warning('Por favor, complete o scan do QR code antes de concluir a configuração.');
+        return;
+      }
+      
+      message.success('Configuração do WhatsApp concluída!');
+      if (onSetupComplete) {
+        onSetupComplete();
+      } else {
+        // Se não há callback, navegar para a página principal
+        console.log('📍 Setup complete, navigating to home page');
+        navigate('/', { replace: true });
+      }
+    } catch (error) {
+      console.error('Error checking setup status:', error);
+      message.error('Erro ao verificar status da configuração');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -583,6 +645,21 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
             className="mb-6"
           />
 
+          {/* Status da instância atual */}
+          {selectedInstance && (
+            <Alert
+              type={selectedInstance.status === 'CONNECTED' ? 'success' : 'info'}
+              message={`Status: ${getStatusText(selectedInstance.status)}`}
+              description={
+                selectedInstance.status === 'CONNECTED' 
+                  ? 'Instância conectada com sucesso! Você pode concluir a configuração.' 
+                  : 'Escaneie o QR code abaixo para conectar a instância.'
+              }
+              showIcon
+              className="mb-6"
+            />
+          )}
+
           <ZApiActivation />
 
           <div className="text-center mt-6">
@@ -590,10 +667,15 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
               <Button type="primary" onClick={handleActivateInstance} loading={loading}>
                 Ativar Instância
               </Button>
-              <Button type="default" onClick={handleSetupComplete}>
+              <Button 
+                type="default" 
+                onClick={handleSetupComplete}
+                loading={loading}
+                disabled={selectedInstance?.status !== 'CONNECTED'}
+              >
                 Concluir Configuração
               </Button>
-              <Button onClick={() => setCurrentStep(1)}>
+              <Button onClick={() => setCurrentStep(1)} disabled={loading}>
                 Voltar
               </Button>
             </Space>
