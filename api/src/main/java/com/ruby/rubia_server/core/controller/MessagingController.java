@@ -109,6 +109,12 @@ public class MessagingController {
             @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
         
         try {
+            // Ignore MessageStatusCallback webhooks to reduce noise
+            String type = (String) payload.get("type");
+            if ("MessageStatusCallback".equals(type)) {
+                return ResponseEntity.ok("MessageStatusCallback ignored");
+            }
+            
             log.debug("Z-API webhook received from: {}", payload.get("phone"));
             
             // Validate webhook
