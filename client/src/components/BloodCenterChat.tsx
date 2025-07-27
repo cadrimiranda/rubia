@@ -140,16 +140,10 @@ export const BloodCenterChat: React.FC = () => {
   }, [state.selectedDonor, state.messages, messagesCache]);
   
   useEffect(() => {
-    console.log('🔍 WebSocket status check - isConnected:', webSocket.isConnected);
-    console.log('🔍 Auth status:', authService.isAuthenticated());
-    
     if (webSocket.isConnected) {
-      console.log('✅ WebSocket conectado!');
+      // WebSocket connected
     } else if (authService.isAuthenticated()) {
-      console.log('🔄 Tentando conectar WebSocket...');
       webSocket.connect();
-    } else {
-      console.log('❌ Não autenticado, não conectando WebSocket');
     }
   }, [webSocket.isConnected]);
 
@@ -163,10 +157,8 @@ export const BloodCenterChat: React.FC = () => {
         return;
       }
 
-      console.log('🔄 Carregando campanhas da API...');
       const activeCampaigns = await campaignApi.getActiveCampaigns(companyId);
       setCampaigns(activeCampaigns);
-      console.log('✅ Campanhas carregadas:', activeCampaigns.length);
     } catch (error) {
       console.error('❌ Erro ao carregar campanhas:', error);
       setCampaigns([]);
@@ -245,14 +237,11 @@ export const BloodCenterChat: React.FC = () => {
       }
       setError(null);
 
-      console.log(`🔄 Carregando conversas para status: ${statusToLoad}, página: ${pageToLoad}...`);
-      
       // Mapear status do frontend para backend
       const backendStatus = conversationAdapter.mapStatusToBackend(statusToLoad);
       
       // Buscar conversas da API com paginação
       const response = await conversationApi.getByStatus(backendStatus as ConversationStatus, pageToLoad, 20);
-      console.log(`📊 API retornou ${response.content.length} conversas (página ${pageToLoad} de ${response.page.totalPages})`);
       
       // Converter ConversationDTO para formato Donor (compatibilidade)
       const conversationsAsDonors = response.content.map(conv => {
@@ -290,33 +279,12 @@ export const BloodCenterChat: React.FC = () => {
       setHasMorePages(hasMore);
       
       if (!hasMore) {
-        console.log(`🏁 Última página carregada (${pageToLoad + 1}/${response.page.totalPages})`);
       }
 
       if (reset) {
-        console.log(`✅ Carregadas ${conversationsAsDonors.length} conversas para status ${statusToLoad} (página ${pageToLoad})`);
-        console.log('📋 [SIDEBAR UPDATE] Carregamento inicial de donors:', {
-          totalConversations: conversationsAsDonors.length,
-          status: statusToLoad,
-          donors: conversationsAsDonors.map(d => ({
-            id: d.id,
-            name: d.name,
-            lastMessage: d.lastMessage,
-            hasActiveConversation: d.hasActiveConversation
-          }))
-        });
         setDonors(conversationsAsDonors);
       } else {
-        console.log(`✅ Carregadas ${conversationsAsDonors.length} conversas adicionais para status ${statusToLoad} (página ${pageToLoad})`);
-        console.log('📋 [SIDEBAR UPDATE] Carregamento adicional de donors:', {
-          novosConversations: conversationsAsDonors.length,
-          status: statusToLoad
-        });
-        setDonors(prevDonors => {
-          const updated = [...prevDonors, ...conversationsAsDonors];
-          console.log('📋 [SIDEBAR UPDATE] Total donors após carregamento:', updated.length);
-          return updated;
-        });
+        setDonors(prevDonors => [...prevDonors, ...conversationsAsDonors]);
       }
       
     } catch (err) {
@@ -341,7 +309,6 @@ export const BloodCenterChat: React.FC = () => {
   const loadMoreConversations = React.useCallback(async () => {
     if (!hasMorePages || isLoadingMore) return;
     
-    console.log('🔄 Carregando mais conversas...');
     await loadConversations(currentStatus, false);
   }, [currentStatus, hasMorePages, isLoadingMore, loadConversations]);
 
@@ -349,11 +316,9 @@ export const BloodCenterChat: React.FC = () => {
   const loadAllContacts = React.useCallback(async () => {
     try {
       setIsLoadingContacts(true);
-      console.log('👥 Carregando todos os contatos...');
 
       // Buscar todos os customers
       const customersResponse = await customerApi.getAll({ size: 200 });
-      console.log('👥 Carregando customers - recebidos:', Array.isArray(customersResponse) ? customersResponse.length : 0);
       
       // A API retorna array direto de customers
       let customers = [];
@@ -390,7 +355,6 @@ export const BloodCenterChat: React.FC = () => {
         };
       });
 
-      console.log(`✅ Carregados ${contactsAsDonors.length} contatos para modal`);
       setAllContacts(contactsAsDonors);
     } catch (err) {
       console.error('❌ Erro ao carregar contatos:', err);
@@ -421,7 +385,6 @@ export const BloodCenterChat: React.FC = () => {
 
   // Função para trocar status de uma conversa específica
   const handleConversationStatusChange = React.useCallback(async (donorId: string, newStatus: ChatStatus) => {
-    console.log(`🔄 Mudando status da conversa ${donorId} para: ${newStatus}`);
     
     // Encontrar o donor atual
     const donor = donors.find(d => d.id === donorId);
@@ -433,7 +396,6 @@ export const BloodCenterChat: React.FC = () => {
     try {
       // Chamar API para mudar status no backend
       const backendStatus = conversationAdapter.mapStatusToBackend(newStatus);
-      console.log(`📡 Chamando API para mudar status da conversa ${conversationId} para: ${backendStatus}`);
       
       await conversationApi.changeStatus(conversationId, backendStatus as any);
       
@@ -455,7 +417,6 @@ export const BloodCenterChat: React.FC = () => {
         finalizados: 'Finalizados'
       };
       
-      console.log(`✅ Conversa de ${donor.name} movida para ${statusLabels[newStatus]} no backend`);
       
       // Se mudou para o status atual, recarregar para mostrar na lista
       if (newStatus === currentStatus) {
@@ -493,7 +454,6 @@ export const BloodCenterChat: React.FC = () => {
     const donor = state.scheduleTarget;
     if (!donor) return;
 
-    console.log(`📅 Agendamento criado para ${donor.name}:`, scheduleData);
     
     const typeLabels = {
       doacao: 'doação',
@@ -524,7 +484,6 @@ export const BloodCenterChat: React.FC = () => {
       scheduleTarget: null
     });
 
-    console.log(`✅ Agendamento confirmado para ${donor.name}`);
   }, [state.scheduleTarget, state.selectedDonor, state.messages, updateState]);
 
   // Função para agendamento direto via botão do header
@@ -540,7 +499,6 @@ export const BloodCenterChat: React.FC = () => {
 
   // Carregar dados ao montar componente
   useEffect(() => {
-    console.log('🚀 BloodCenterChat montado - carregando dados...');
     callLoadConversations();
   }, [callLoadConversations]);
 
@@ -691,18 +649,15 @@ export const BloodCenterChat: React.FC = () => {
     // Armazenar referência da mensagem DRAFT para o MessageInput
     setCurrentDraftMessage(draftMessage);
     if (draftMessage) {
-      console.log('📝 DRAFT carregado no input:', draftMessage.content);
     }
   }, [updateState]);
 
   // Função reutilizável para carregar dados completos do customer e abrir modal (DRY)
   const handleOpenDonorProfile = React.useCallback(async (donor: Donor) => {
     try {
-      console.log('📋 Carregando dados completos do customer:', donor.id);
       
       // Buscar dados completos do customer na API
       const customerData = await customerApi.getById(donor.id);
-      console.log('📋 Dados do customer recebidos:', customerData);
       
       // Atualizar o donor com os dados completos
       const updatedDonor = customerAdapter.updateDonorWithCustomerData(donor, customerData);
@@ -748,7 +703,6 @@ export const BloodCenterChat: React.FC = () => {
   };
 
   const handleNewContactCreate = React.useCallback(async (contactData: NewContactData) => {
-    console.log('📝 Criando novo contato:', contactData.name);
     
     // Se o donor foi criado via API, usar ele diretamente
     if (contactData.donor) {
@@ -956,7 +910,6 @@ export const BloodCenterChat: React.FC = () => {
       setIsCreatingConversation(true);
       
       try {
-        console.log('🚀 Criando conversa para:', state.selectedDonor.name);
         
         // Criar conversa para este cliente usando o adapter
         const createRequest = conversationAdapter.toCreateRequest(
@@ -994,21 +947,17 @@ export const BloodCenterChat: React.FC = () => {
             updated = prev.map(d => 
               d.id === state.selectedDonor?.id ? updatedDonor : d
             );
-            console.log('📋 [SIDEBAR UPDATE] Doador existente atualizado');
           } else {
             // Doador não existe, adicionar
             updated = [...prev, updatedDonor];
-            console.log('📋 [SIDEBAR UPDATE] Novo doador adicionado à lista');
           }
           
-          console.log('📋 [SIDEBAR UPDATE] Donors após atualização:', updated.length, 'donors total');
           return updated;
         });
 
         // Atualizar selectedDonor
         updateState({ selectedDonor: updatedDonor });
 
-        console.log('✅ Conversa criada para novo contato:', updatedDonor.name);
       } catch (error) {
         console.error('❌ Erro ao criar conversa:', error);
         
@@ -1164,7 +1113,6 @@ export const BloodCenterChat: React.FC = () => {
             const updated = prev.map(d => 
               d.id === state.selectedDonor?.id ? updatedDonor : d
             );
-            console.log('📋 [SIDEBAR UPDATE] Donors após envio mídia:', updated.length, 'donors total');
             return updated;
           });
 
@@ -1224,7 +1172,6 @@ export const BloodCenterChat: React.FC = () => {
           const updated = prev.map(d => 
             d.id === state.selectedDonor?.id ? updatedDonor : d
           );
-          console.log('📋 [SIDEBAR UPDATE] Donors após envio texto:', updated.length, 'donors total');
           return updated;
         });
 
@@ -1313,7 +1260,6 @@ export const BloodCenterChat: React.FC = () => {
     if (state.showConfiguration) {
       setWasInConfiguration(true);
     } else if (wasInConfiguration) {
-      console.log('🔄 Voltando da configuração - recarregando dados...');
       callLoadConversations();
       loadCampaigns();
       setWasInConfiguration(false);
