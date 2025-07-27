@@ -247,7 +247,7 @@ export const BloodCenterChat: React.FC = () => {
               hour: '2-digit',
               minute: '2-digit'
             }) : '',
-          unread: statusToLoad === 'aguardando' ? 0 : 1,
+          unread: 0, // TODO: Implementar contagem real de mensagens não lidas
           status: 'offline' as const,
           bloodType: conv.customerBloodType || 'Não informado',
           phone: conv.customerPhone || '',
@@ -276,10 +276,28 @@ export const BloodCenterChat: React.FC = () => {
 
       if (reset) {
         console.log(`✅ Carregadas ${conversationsAsDonors.length} conversas para status ${statusToLoad} (página ${pageToLoad})`);
+        console.log('📋 [SIDEBAR UPDATE] Carregamento inicial de donors:', {
+          totalConversations: conversationsAsDonors.length,
+          status: statusToLoad,
+          donors: conversationsAsDonors.map(d => ({
+            id: d.id,
+            name: d.name,
+            lastMessage: d.lastMessage,
+            hasActiveConversation: d.hasActiveConversation
+          }))
+        });
         setDonors(conversationsAsDonors);
       } else {
         console.log(`✅ Carregadas ${conversationsAsDonors.length} conversas adicionais para status ${statusToLoad} (página ${pageToLoad})`);
-        setDonors(prevDonors => [...prevDonors, ...conversationsAsDonors]);
+        console.log('📋 [SIDEBAR UPDATE] Carregamento adicional de donors:', {
+          novosConversations: conversationsAsDonors.length,
+          status: statusToLoad
+        });
+        setDonors(prevDonors => {
+          const updated = [...prevDonors, ...conversationsAsDonors];
+          console.log('📋 [SIDEBAR UPDATE] Total donors após carregamento:', updated.length);
+          return updated;
+        });
       }
       
     } catch (err) {
@@ -681,10 +699,14 @@ export const BloodCenterChat: React.FC = () => {
     
     // Se o donor foi criado via API, usar ele diretamente
     if (contactData.donor) {
-      // Adicionar à lista de donors (conversas ativas) se tiver lastMessage
-      if (contactData.donor.lastMessage) {
-        setDonors((prev) => [...prev, contactData.donor!]);
-      }
+      // Adicionar à lista de donors (conversas ativas) sempre que tiver uma conversa criada
+      // Mesmo sem lastMessage, para que apareça na sidebar imediatamente
+      setDonors((prev) => {
+        const exists = prev.some(d => d.id === contactData.donor!.id);
+        if (exists) return prev;
+        console.log('📋 [SIDEBAR UPDATE] Adicionando novo donor à lista:', contactData.donor!.name);
+        return [...prev, contactData.donor!];
+      });
       
       // Sempre adicionar à lista de todos os contatos
       setAllContacts((prev) => {
@@ -903,9 +925,32 @@ export const BloodCenterChat: React.FC = () => {
         };
 
         // Atualizar lista de donors
-        setDonors(prev => prev.map(d => 
-          d.id === state.selectedDonor?.id ? updatedDonor : d
-        ));
+        console.log('🔄 [SIDEBAR UPDATE] Atualizando donors após criação de conversa:', {
+          donorId: state.selectedDonor?.id,
+          donorName: updatedDonor.name,
+          lastMessage: updatedDonor.lastMessage,
+          hasActiveConversation: updatedDonor.hasActiveConversation,
+          conversationId: updatedDonor.conversationId
+        });
+        setDonors(prev => {
+          const existingDonorIndex = prev.findIndex(d => d.id === state.selectedDonor?.id);
+          let updated;
+          
+          if (existingDonorIndex >= 0) {
+            // Doador existe, atualizar
+            updated = prev.map(d => 
+              d.id === state.selectedDonor?.id ? updatedDonor : d
+            );
+            console.log('📋 [SIDEBAR UPDATE] Doador existente atualizado');
+          } else {
+            // Doador não existe, adicionar
+            updated = [...prev, updatedDonor];
+            console.log('📋 [SIDEBAR UPDATE] Novo doador adicionado à lista');
+          }
+          
+          console.log('📋 [SIDEBAR UPDATE] Donors após atualização:', updated.length, 'donors total');
+          return updated;
+        });
 
         // Atualizar selectedDonor
         updateState({ selectedDonor: updatedDonor });
@@ -1039,6 +1084,31 @@ export const BloodCenterChat: React.FC = () => {
               : msg
           )
         });
+
+        // Atualizar lastMessage do doador na sidebar para mensagens com mídia
+        if (state.selectedDonor) {
+          const updatedDonor = {
+            ...state.selectedDonor,
+            lastMessage: messageContent || "Anexo enviado",
+            timestamp: getCurrentTimestamp(),
+          };
+
+          console.log('🔄 [SIDEBAR UPDATE] Atualizando donors após envio com mídia:', {
+            donorId: state.selectedDonor?.id,
+            donorName: updatedDonor.name,
+            lastMessage: updatedDonor.lastMessage,
+            timestamp: updatedDonor.timestamp
+          });
+          setDonors(prev => {
+            const updated = prev.map(d => 
+              d.id === state.selectedDonor?.id ? updatedDonor : d
+            );
+            console.log('📋 [SIDEBAR UPDATE] Donors após envio mídia:', updated.length, 'donors total');
+            return updated;
+          });
+
+          updateState({ selectedDonor: updatedDonor });
+        }
         
         return; // Não precisa enviar mensagem separada
       }
@@ -1069,6 +1139,36 @@ export const BloodCenterChat: React.FC = () => {
             : msg
         )
       });
+
+      // Atualizar lastMessage do doador na sidebar para mensagens não iniciais
+      if (state.selectedDonor && !isFirstMessage) {
+        const updatedDonor = {
+          ...state.selectedDonor,
+          lastMessage: messageContent,
+          timestamp: sentMessage.createdAt ? 
+            new Date(sentMessage.createdAt).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : getCurrentTimestamp(),
+        };
+
+        console.log('🔄 [SIDEBAR UPDATE] Atualizando donors após envio de texto:', {
+          donorId: state.selectedDonor?.id,
+          donorName: updatedDonor.name,
+          lastMessage: updatedDonor.lastMessage,
+          timestamp: updatedDonor.timestamp,
+          isFirstMessage: isFirstMessage
+        });
+        setDonors(prev => {
+          const updated = prev.map(d => 
+            d.id === state.selectedDonor?.id ? updatedDonor : d
+          );
+          console.log('📋 [SIDEBAR UPDATE] Donors após envio texto:', updated.length, 'donors total');
+          return updated;
+        });
+
+        updateState({ selectedDonor: updatedDonor });
+      }
 
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);

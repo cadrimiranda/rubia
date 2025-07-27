@@ -23,6 +23,8 @@ public class MessageDTO {
     private SenderType senderType;
     private UUID senderId;
     private String senderName;
+    private String messageType; // TEXT, IMAGE, AUDIO, VIDEO, DOCUMENT
+    private String mediaUrl; // URL da mídia, se houver
     private String externalMessageId;
     private Boolean isAiGenerated;
     private Double aiConfidence;

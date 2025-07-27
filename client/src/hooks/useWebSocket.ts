@@ -26,6 +26,7 @@ interface UseWebSocketReturn {
 export const useWebSocket = (): UseWebSocketReturn => {
   const [isConnected, setIsConnected] = useState(false)
   const clientRef = useRef<Client | null>(null)
+  const subscriptionsRef = useRef<boolean>(false)
   const { user } = useAuthStore()
   const accessToken = authService.getAccessToken()
   const { addMessage, updateConversation, setTypingUser: setUserTyping } = useChatStore()
@@ -82,8 +83,8 @@ export const useWebSocket = (): UseWebSocketReturn => {
     console.log('👤 User:', user)
     console.log('🔌 Current connection:', clientRef.current?.connected ? '✅ Already connected' : '⚡ Connecting...')
     
-    if (!accessToken || clientRef.current?.connected) {
-      console.log('⏹️ Connection aborted - token missing or already connected')
+    if (!accessToken || !user || clientRef.current?.connected) {
+      console.log('⏹️ Connection aborted - token/user missing or already connected')
       return
     }
 
@@ -116,6 +117,12 @@ export const useWebSocket = (): UseWebSocketReturn => {
 
       if (!user?.companyId) {
         console.log('❌ No company ID found, skipping subscriptions')
+        return
+      }
+
+      // Prevent duplicate subscriptions
+      if (subscriptionsRef.current) {
+        console.log('🔄 Subscriptions already exist, skipping re-subscription')
         return
       }
 
@@ -152,6 +159,9 @@ export const useWebSocket = (): UseWebSocketReturn => {
         }
       })
 
+      // Mark subscriptions as created
+      subscriptionsRef.current = true
+
       // Send join message
       client.publish({
         destination: '/app/join',
@@ -163,18 +173,21 @@ export const useWebSocket = (): UseWebSocketReturn => {
       console.error('❌ STOMP error:', frame)
       console.error('❌ Error details:', frame.headers, frame.body)
       setIsConnected(false)
+      subscriptionsRef.current = false
     }
 
     client.onWebSocketClose = (event: any) => {
       console.log('🔌 WebSocket connection closed')
       console.log('🔌 Close event:', event)
       setIsConnected(false)
+      subscriptionsRef.current = false
     }
 
     client.onDisconnect = (frame: IFrame) => {
       console.log('🔌 STOMP disconnected')
       console.log('🔌 Disconnect frame:', frame)
       setIsConnected(false)
+      subscriptionsRef.current = false
     }
 
     client.activate()
@@ -186,6 +199,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
       clientRef.current.deactivate()
       clientRef.current = null
       setIsConnected(false)
+      subscriptionsRef.current = false
     }
   }, [])
 
@@ -219,7 +233,6 @@ export const useWebSocket = (): UseWebSocketReturn => {
     console.log('🔄 WebSocket useEffect triggered')
     console.log('🔄 - accessToken exists:', !!accessToken)
     console.log('🔄 - user exists:', !!user)
-    console.log('🔄 - connect function:', typeof connect)
     
     if (accessToken && user) {
       console.log('✅ Conditions met, calling connect()')
@@ -238,13 +251,8 @@ export const useWebSocket = (): UseWebSocketReturn => {
     return () => {
       disconnect()
     }
-  }, [accessToken, user, connect, disconnect])
+  }, [accessToken, user?.id])
 
-  useEffect(() => {
-    return () => {
-      disconnect()
-    }
-  }, [disconnect])
 
   return {
     isConnected,
