@@ -155,9 +155,10 @@ public class ZApiAdapter implements MessagingAdapter {
             String messageId = (String) payload.get("messageId");
             String phone = (String) payload.get("phone");
             String connectedPhone = (String) payload.get("connectedPhone");
+            String senderName = (String) payload.get("senderName");
             
-            log.info("Extracted from payload - messageId: {}, phone: {}, connectedPhone: {}", 
-                messageId, phone, connectedPhone);
+            log.info("Extracted from payload - messageId: {}, phone: {}, connectedPhone: {}, senderName: {}", 
+                messageId, phone, connectedPhone, senderName);
             
             if (phone != null && phone.contains("@newsletter")) {
                 log.info("Ignoring newsletter message from: {}", phone);
@@ -250,6 +251,7 @@ public class ZApiAdapter implements MessagingAdapter {
                 .mimeType(mimeType)
                 .timestamp(messageTime)
                 .provider("z-api")
+                .senderName(senderName)
                 .rawPayload(payload)
                 .build();
 

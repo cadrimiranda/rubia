@@ -201,7 +201,7 @@ public class MessagingService {
             }
             
             // Find or create customer with phone variations
-            Customer customer = findOrCreateCustomerWithVariations(fromNumber, company);
+            Customer customer = findOrCreateCustomerWithVariations(incomingMessage, company);
             
             // Find or create conversation
             logger.info("🔍 Finding or creating conversation for customer: {}", customer.getId());
@@ -280,7 +280,8 @@ public class MessagingService {
         return null;
     }
 
-    private Customer findOrCreateCustomerWithVariations(String fromNumber, Company company) {
+    private Customer findOrCreateCustomerWithVariations(IncomingMessage incomingMessage, Company company) {
+        String fromNumber = phoneService.extractFromProvider(incomingMessage.getFrom());
         String[] phoneVariations = phoneService.generatePhoneVariations(fromNumber);
         logger.info("🔍 Trying to find customer with phone variations: {} and {}", 
             phoneVariations[0], phoneVariations[1]);
@@ -306,19 +307,27 @@ public class MessagingService {
         
         // Customer not found with any variation, create new one with original number
         logger.info("💡 Customer not found with any phone variation, creating new one with: {}", fromNumber);
-        return createCustomerFromWhatsApp(fromNumber, company);
+        return createCustomerFromWhatsApp(incomingMessage, company);
     }
     
-    private Customer createCustomerFromWhatsApp(String phoneNumber, Company company) {
+    private Customer createCustomerFromWhatsApp(IncomingMessage incomingMessage, Company company) {
+        String phoneNumber = phoneService.extractFromProvider(incomingMessage.getFrom());
         logger.info("Creating new customer for WhatsApp number: {} in company: {}", 
             phoneNumber, company.getName());
         
-        // Generate default name from phone number
-        String defaultName = phoneService.generateDefaultName(phoneNumber);
+        // Use senderName from Z-API if available, otherwise generate default name
+        String customerName;
+        if (incomingMessage.getSenderName() != null && !incomingMessage.getSenderName().trim().isEmpty()) {
+            customerName = incomingMessage.getSenderName().trim();
+            logger.info("📝 Using senderName from Z-API: {}", customerName);
+        } else {
+            customerName = phoneService.generateDefaultName(phoneNumber);
+            logger.info("📝 Using generated name: {}", customerName);
+        }
         
         CreateCustomerDTO createDTO = CreateCustomerDTO.builder()
             .phone(phoneNumber)
-            .name(defaultName)
+            .name(customerName)
             .build();
         
         CustomerDTO customerDTO = customerService.create(createDTO, company.getId());

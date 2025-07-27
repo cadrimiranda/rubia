@@ -23,5 +23,6 @@ public class IncomingMessage {
     private String mimeType;
     private LocalDateTime timestamp;
     private String provider;
+    private String senderName;
     private Object rawPayload;
 }
