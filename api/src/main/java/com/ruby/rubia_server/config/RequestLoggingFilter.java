@@ -29,32 +29,12 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
             ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
             
-            log.info("🌐 === INCOMING REQUEST DEBUG ===");
-            log.info("🌐 Method: {}", request.getMethod());
-            log.info("🌐 URI: {}", request.getRequestURI());
-            log.info("🌐 Query: {}", request.getQueryString());
-            log.info("🌐 Remote IP: {}", request.getRemoteAddr());
-            log.info("🌐 User-Agent: {}", request.getHeader("User-Agent"));
-            log.info("🌐 Content-Type: {}", request.getContentType());
-            log.info("🌐 Content-Length: {}", request.getContentLength());
-            
-            // Log all headers
-            log.info("🌐 Headers:");
-            Collections.list(request.getHeaderNames()).forEach(headerName -> {
-                log.info("🌐   {}: {}", headerName, request.getHeader(headerName));
-            });
+            // Removed excessive logging for cleaner output
             
             try {
                 filterChain.doFilter(wrappedRequest, wrappedResponse);
                 
-                // Log request body if present
-                byte[] requestBody = wrappedRequest.getContentAsByteArray();
-                if (requestBody.length > 0) {
-                    String body = new String(requestBody, StandardCharsets.UTF_8);
-                    log.info("🌐 Request Body: {}", body);
-                }
-                
-                log.info("🌐 Response Status: {}", wrappedResponse.getStatus());
+                // Minimal logging only for errors
                 
                 // Copy response content back to original response
                 wrappedResponse.copyBodyToResponse();
@@ -63,8 +43,6 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 log.error("🌐 Error processing request: {}", e.getMessage(), e);
                 throw e;
             }
-            
-            log.info("🌐 === REQUEST DEBUG COMPLETE ===");
         } else {
             filterChain.doFilter(request, response);
         }
