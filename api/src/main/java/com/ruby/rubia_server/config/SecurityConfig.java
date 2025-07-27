@@ -62,7 +62,7 @@ public class SecurityConfig {
         permissiveConfig.setAllowedOriginPatterns(Arrays.asList("*"));
         permissiveConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         permissiveConfig.setAllowedHeaders(Arrays.asList("*"));
-        permissiveConfig.setAllowCredentials(false);
+        permissiveConfig.setAllowCredentials(true);
         
         // Apply to all endpoints
         source.registerCorsConfiguration("/**", permissiveConfig);

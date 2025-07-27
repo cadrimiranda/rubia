@@ -165,4 +165,49 @@ public class PhoneService {
         
         return normalized1 != null && normalized1.equals(normalized2);
     }
+
+    /**
+     * Gera variações do número de telefone com e sem o 9º dígito
+     * Isso é necessário porque Z-API às vezes omite o 9º dígito em números móveis
+     * 
+     * @param phone número de telefone
+     * @return array com [original, variação com/sem 9]
+     */
+    public String[] generatePhoneVariations(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return new String[]{null, null};
+        }
+        
+        String normalized = normalize(phone);
+        if (normalized == null) {
+            return new String[]{null, null};
+        }
+        
+        String digitsOnly = normalized.replaceAll("\\D", "");
+        
+        // Se tem 13 dígitos (55 + DDD + 9 + número), tenta remover o 9
+        if (digitsOnly.length() == 13 && digitsOnly.startsWith("55")) {
+            String ddd = digitsOnly.substring(2, 4);
+            String ninthDigit = digitsOnly.substring(4, 5);
+            String restOfNumber = digitsOnly.substring(5);
+            
+            // Se o 9º dígito é '9', cria variação sem ele
+            if ("9".equals(ninthDigit)) {
+                String withoutNine = "+55" + ddd + restOfNumber;
+                return new String[]{normalized, withoutNine};
+            }
+        }
+        
+        // Se tem 12 dígitos (55 + DDD + número), tenta adicionar o 9
+        if (digitsOnly.length() == 12 && digitsOnly.startsWith("55")) {
+            String ddd = digitsOnly.substring(2, 4);
+            String restOfNumber = digitsOnly.substring(4);
+            
+            // Adiciona o 9 antes do número
+            String withNine = "+55" + ddd + "9" + restOfNumber;
+            return new String[]{normalized, withNine};
+        }
+        
+        return new String[]{normalized, null};
+    }
 }

@@ -185,7 +185,7 @@ public class MessagingService {
                 // Use connectedPhone from Z-API webhook to identify the correct company
                 String connectedPhone = incomingMessage.getConnectedPhone();
                 if (connectedPhone != null && !connectedPhone.trim().isEmpty()) {
-                    company = findCompanyByWhatsAppInstance(connectedPhone);
+                    company = findCompanyByWhatsAppInstanceWithVariations(connectedPhone);
                 } else {
                     logger.error("No connectedPhone in Z-API webhook. Cannot identify company.");
                     throw new RuntimeException("Missing connectedPhone in Z-API webhook");
@@ -200,29 +200,21 @@ public class MessagingService {
                 return;
             }
             
-            // Find or create customer
-            Customer customer;
-            try {
-                CustomerDTO customerDTO = customerService.findByPhoneAndCompany(fromNumber, company.getId());
-                logger.info("Found existing customer: {} ({})", customerDTO.getId(), customerDTO.getPhone());
-                customer = Customer.builder()
-                    .id(customerDTO.getId())
-                    .phone(customerDTO.getPhone())
-                    .name(customerDTO.getName())
-                    .company(company)
-                    .build();
-            } catch (IllegalArgumentException e) {
-                // Customer not found, create new one
-                logger.info("Customer not found for phone {}, creating new one", fromNumber);
-                customer = createCustomerFromWhatsApp(fromNumber, company);
-            }
+            // Find or create customer with phone variations
+            Customer customer = findOrCreateCustomerWithVariations(fromNumber, company);
             
             // Find or create conversation
+            logger.info("🔍 Finding or creating conversation for customer: {}", customer.getId());
             ConversationDTO conversation = findOrCreateConversation(customer);
+            logger.info("✅ Conversation found/created: {}", conversation.getId());
             
+            logger.info("💾 Saving message to database...");
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
+            logger.info("✅ Message saved with ID: {}", savedMessage.getId());
             
+            logger.info("📡 Sending WebSocket notification...");
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
+            logger.info("✅ WebSocket notification sent");
             
             logger.info("Successfully processed incoming message for conversation: {}", 
                 conversation.getId());
@@ -234,6 +226,32 @@ public class MessagingService {
     }
     
     
+    private Company findCompanyByWhatsAppInstanceWithVariations(String connectedPhone) {
+        if (connectedPhone == null || connectedPhone.trim().isEmpty()) {
+            logger.warn("ConnectedPhone is null or empty");
+            return null;
+        }
+        
+        String[] phoneVariations = phoneService.generatePhoneVariations(connectedPhone);
+        logger.info("🔍 Trying to find company with connectedPhone variations: {} and {}", 
+            phoneVariations[0], phoneVariations[1]);
+        
+        for (String variation : phoneVariations) {
+            if (variation != null) {
+                Company company = findCompanyByWhatsAppInstance(variation);
+                if (company != null) {
+                    logger.info("✅ Found company {} with phone variation: {}", 
+                        company.getName(), variation);
+                    return company;
+                }
+            }
+        }
+        
+        logger.warn("❌ No company found for any connectedPhone variation: {}", 
+            String.join(", ", phoneVariations));
+        return null;
+    }
+
     private Company findCompanyByWhatsAppNumber(String whatsappNumber) {
         if (whatsappNumber == null || whatsappNumber.trim().isEmpty()) {
             logger.warn("WhatsApp number is null or empty");
@@ -260,6 +278,35 @@ public class MessagingService {
             whatsappNumber);
         
         return null;
+    }
+
+    private Customer findOrCreateCustomerWithVariations(String fromNumber, Company company) {
+        String[] phoneVariations = phoneService.generatePhoneVariations(fromNumber);
+        logger.info("🔍 Trying to find customer with phone variations: {} and {}", 
+            phoneVariations[0], phoneVariations[1]);
+        
+        // Try to find existing customer with any variation
+        for (String variation : phoneVariations) {
+            if (variation != null) {
+                CustomerDTO customerDTO = customerService.findByPhoneAndCompany(variation, company.getId());
+                if (customerDTO != null) {
+                    logger.info("✅ Found existing customer: {} with phone variation: {}", 
+                        customerDTO.getId(), variation);
+                    return Customer.builder()
+                        .id(customerDTO.getId())
+                        .phone(customerDTO.getPhone())
+                        .name(customerDTO.getName())
+                        .company(company)
+                        .build();
+                } else {
+                    logger.debug("Customer not found with phone variation: {}", variation);
+                }
+            }
+        }
+        
+        // Customer not found with any variation, create new one with original number
+        logger.info("💡 Customer not found with any phone variation, creating new one with: {}", fromNumber);
+        return createCustomerFromWhatsApp(fromNumber, company);
     }
     
     private Customer createCustomerFromWhatsApp(String phoneNumber, Company company) {

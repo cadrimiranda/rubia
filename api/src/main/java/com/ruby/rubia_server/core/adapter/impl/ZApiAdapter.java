@@ -146,6 +146,12 @@ public class ZApiAdapter implements MessagingAdapter {
                 return null;
             }
 
+            Boolean isGroup = (Boolean) payload.get("isGroup");
+            if (Boolean.TRUE.equals(isGroup)) {
+                log.info("Ignoring group message - not processing group chats");
+                return null;
+            }
+
             String messageId = (String) payload.get("messageId");
             String phone = (String) payload.get("phone");
             String connectedPhone = (String) payload.get("connectedPhone");
@@ -171,23 +177,23 @@ public class ZApiAdapter implements MessagingAdapter {
                 return null;
             }
 
-            Map<String, Object> message = (Map<String, Object>) payload.get("message");
             String messageBody = null;
             String mediaUrl = null;
             String mediaType = null;
             String fileName = null;
             String mimeType = null;
 
+            // Extract text from root level (Z-API format)
+            Map<String, Object> rootText = (Map<String, Object>) payload.get("text");
+            if (rootText != null) {
+                messageBody = (String) rootText.get("message");
+                log.info("✅ Extracted message body: '{}'", messageBody);
+            }
+
+            // Handle media messages
+            Map<String, Object> message = (Map<String, Object>) payload.get("message");
+
             if (message != null) {
-                // Try official Z-API format first (text.message)
-                Map<String, Object> textMessage = (Map<String, Object>) message.get("text");
-                if (textMessage != null) {
-                    messageBody = (String) textMessage.get("message");
-                } else {
-                    // Fallback to legacy format
-                    messageBody = (String) message.get("conversation");
-                }
-                
                 Map<String, Object> imageMessage = (Map<String, Object>) message.get("imageMessage");
                 if (imageMessage != null) {
                     mediaUrl = (String) imageMessage.get("url");
@@ -231,6 +237,7 @@ public class ZApiAdapter implements MessagingAdapter {
                 messageTime = LocalDateTime.now();
             }
 
+            
             return IncomingMessage.builder()
                 .messageId(messageId)
                 .from(phone)
