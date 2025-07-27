@@ -105,7 +105,7 @@ export const BloodCenterChat: React.FC = () => {
             hour: '2-digit',
             minute: '2-digit'
           }) : "",
-          isAI: msg.isFromUser === true,
+          isAI: msg.isFromUser === false, // false = recebida do cliente (esquerda azul), true = enviada por mim/sistema (direita branco)
           attachments: msg.attachments,
           media: msg.media
         }))
@@ -585,7 +585,7 @@ export const BloodCenterChat: React.FC = () => {
                 hour: '2-digit',
                 minute: '2-digit'
               }) : "",
-              isAI: msg.senderType === 'SYSTEM' || msg.senderType === 'CUSTOMER',
+              isAI: msg.senderType === 'CUSTOMER', // true = recebida do cliente (esquerda azul), false = enviada por mim/sistema (direita branco)
               attachments: msg.mediaUrl ? [{
                 id: `media_${msg.id}`,
                 name: msg.mediaUrl.split('/').pop() || 'arquivo',
