@@ -4,7 +4,10 @@ import com.ruby.rubia_server.core.dto.EnhanceTemplateDTO;
 import com.ruby.rubia_server.core.dto.EnhancedTemplateResponseDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
 import com.ruby.rubia_server.core.entity.AIModel;
+import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.repository.AIAgentRepository;
+import com.ruby.rubia_server.core.repository.AIModelRepository;
+import com.ruby.rubia_server.core.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -20,21 +24,32 @@ import java.util.Map;
 public class TemplateEnhancementService {
 
     private final AIAgentRepository aiAgentRepository;
+    private final AIModelRepository aiModelRepository;
+    private final CompanyRepository companyRepository;
 
     public EnhancedTemplateResponseDTO enhanceTemplate(EnhanceTemplateDTO request) {
         log.info("Enhancing template for company: {} with type: {}", request.getCompanyId(), request.getEnhancementType());
 
-        // Buscar um AI Agent ativo da empresa (pegamos o primeiro disponível)
+        // Tentar buscar um AI Agent ativo da empresa
         List<AIAgent> activeAgents = aiAgentRepository.findActiveByCompanyId(request.getCompanyId());
         
-        if (activeAgents.isEmpty()) {
-            throw new RuntimeException("Nenhum agente de IA ativo encontrado para a empresa");
-        }
-
-        AIAgent selectedAgent = activeAgents.get(0); // Pega o primeiro agente ativo
-        AIModel aiModel = selectedAgent.getAiModel();
+        AIModel aiModel;
+        String modelSource;
+        boolean isUsingCompanyAgent = false;
         
-        log.info("Using AI model: {} for template enhancement", aiModel.getDisplayName());
+        if (!activeAgents.isEmpty()) {
+            // Cenário ideal: empresa tem agente configurado
+            AIAgent selectedAgent = activeAgents.get(0);
+            aiModel = selectedAgent.getAiModel();
+            modelSource = "agente da empresa";
+            isUsingCompanyAgent = true;
+            log.info("Using company's configured AI model: {} for template enhancement", aiModel.getDisplayName());
+        } else {
+            // Fallback: usar modelo padrão (mais econômico)
+            aiModel = getDefaultAIModel();
+            modelSource = "modelo padrão do sistema";
+            log.info("No company AI agent found, using default model: {} for template enhancement", aiModel.getDisplayName());
+        }
 
         // Gerar prompt baseado no tipo de melhoria
         String prompt = generatePrompt(request, aiModel);
@@ -46,14 +61,16 @@ public class TemplateEnhancementService {
         int estimatedTokens = estimateTokens(request.getOriginalContent() + enhancedContent);
         int creditsConsumed = calculateCredits(estimatedTokens, aiModel.getCostPer1kTokens());
 
+        String fullExplanation = generateExplanation(request.getEnhancementType(), aiModel, modelSource, isUsingCompanyAgent);
+        
         return EnhancedTemplateResponseDTO.builder()
                 .originalContent(request.getOriginalContent())
                 .enhancedContent(enhancedContent)
                 .enhancementType(request.getEnhancementType())
-                .aiModelUsed(aiModel.getDisplayName())
+                .aiModelUsed(aiModel.getDisplayName() + (isUsingCompanyAgent ? "" : " (Padrão)"))
                 .tokensUsed(estimatedTokens)
                 .creditsConsumed(creditsConsumed)
-                .explanation(generateExplanation(request.getEnhancementType(), aiModel))
+                .explanation(fullExplanation)
                 .build();
     }
 
@@ -157,7 +174,25 @@ public class TemplateEnhancementService {
         return (int) Math.ceil((tokens / 1000.0) * costPer1kTokens);
     }
 
-    private String generateExplanation(String enhancementType, AIModel aiModel) {
+    private AIModel getDefaultAIModel() {
+        // Buscar o modelo mais econômico ativo (GPT-4 Mini)
+        List<AIModel> activeModels = aiModelRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc();
+        
+        // Tentar encontrar o GPT-4 Mini primeiro (mais econômico)
+        AIModel defaultModel = activeModels.stream()
+                .filter(model -> "gpt-4o-mini".equals(model.getName()))
+                .findFirst()
+                .orElse(activeModels.isEmpty() ? null : activeModels.get(0));
+        
+        if (defaultModel == null) {
+            throw new RuntimeException("Nenhum modelo de IA ativo encontrado no sistema. Configure ao menos um modelo ativo.");
+        }
+        
+        log.info("Using default AI model: {} ({})", defaultModel.getDisplayName(), defaultModel.getName());
+        return defaultModel;
+    }
+
+    private String generateExplanation(String enhancementType, AIModel aiModel, String modelSource, boolean isUsingCompanyAgent) {
         Map<String, String> explanations = Map.of(
             "friendly", "Adicionei saudações calorosas e emojis para criar um tom mais acolhedor",
             "professional", "Formalizei a linguagem e adicionei estrutura profissional à mensagem",
@@ -167,7 +202,54 @@ public class TemplateEnhancementService {
         );
 
         String baseExplanation = explanations.getOrDefault(enhancementType, "Melhorei a mensagem");
-        return String.format("%s usando o modelo %s (%s tokens estimados).", 
-                           baseExplanation, aiModel.getDisplayName(), aiModel.getName());
+        String modelInfo = String.format("usando o modelo %s", aiModel.getDisplayName());
+        
+        if (!isUsingCompanyAgent) {
+            modelInfo += " (modelo padrão do sistema)";
+            baseExplanation += ". 💡 Dica: Configure um agente de IA na seção 'Configuração de Agente' para usar um modelo personalizado para sua empresa";
+        }
+        
+        return String.format("%s %s.", baseExplanation, modelInfo);
+    }
+
+    /**
+     * Método opcional para auto-configurar um agente padrão para empresas novas.
+     * Chame este método quando uma empresa for criada para facilitar o onboarding.
+     */
+    @Transactional
+    public AIAgent createDefaultAgentForCompany(UUID companyId) {
+        log.info("Creating default AI agent for company: {}", companyId);
+        
+        // Verificar se a empresa existe
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + companyId));
+        
+        // Verificar se já existe algum agente para evitar duplicatas
+        List<AIAgent> existingAgents = aiAgentRepository.findByCompanyId(companyId);
+        if (!existingAgents.isEmpty()) {
+            log.info("Company already has AI agents, skipping default creation");
+            return existingAgents.get(0);
+        }
+        
+        // Buscar modelo padrão (mais econômico)
+        AIModel defaultModel = getDefaultAIModel();
+        
+        // Criar agente padrão
+        AIAgent defaultAgent = AIAgent.builder()
+                .company(company)
+                .aiModel(defaultModel)
+                .name("Assistente " + company.getName())
+                .description("Agente de IA padrão para melhoria de templates e comunicação com doadores.")
+                .temperament("AMIGAVEL")
+                .maxResponseLength(500)
+                .temperature(java.math.BigDecimal.valueOf(0.7))
+                .isActive(true)
+                .build();
+        
+        defaultAgent = aiAgentRepository.save(defaultAgent);
+        log.info("Default AI agent created successfully for company: {} with model: {}", 
+                company.getName(), defaultModel.getDisplayName());
+        
+        return defaultAgent;
     }
 }
