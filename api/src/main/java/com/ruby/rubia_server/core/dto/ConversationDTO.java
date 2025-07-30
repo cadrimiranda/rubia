@@ -38,4 +38,5 @@ public class ConversationDTO {
     private LocalDateTime updatedAt;
     private MessageDTO lastMessage;
     private Long unreadCount;
+    private String chatLid;
 }

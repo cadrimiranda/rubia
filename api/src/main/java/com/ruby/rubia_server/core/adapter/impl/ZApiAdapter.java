@@ -157,6 +157,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String messageId = (String) payload.get("messageId");
             String phone = (String) payload.get("phone");
             String connectedPhone = (String) payload.get("connectedPhone");
+            String chatLid = (String) payload.get("chatLid");
             String senderName = (String) payload.get("senderName");
             
             log.debug("Z-API message: {} from {} via {}", messageId, phone, connectedPhone);
@@ -240,6 +241,7 @@ public class ZApiAdapter implements MessagingAdapter {
                 .from(isFromMe ? connectedPhone : phone)
                 .to(isFromMe ? phone : connectedPhone)
                 .connectedPhone(connectedPhone)
+                .chatLid(chatLid)
                 .body(messageBody)
                 .mediaUrl(mediaUrl)
                 .mediaType(mediaType)

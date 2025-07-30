@@ -203,8 +203,8 @@ public class MessagingService {
             // Find or create customer with phone variations
             Customer customer = findOrCreateCustomerWithVariations(incomingMessage, company);
             
-            // Find or create conversation
-            ConversationDTO conversation = findOrCreateConversation(customer);
+            // Find or create conversation using chatLid
+            ConversationDTO conversation = findOrCreateConversationByChatLid(incomingMessage.getChatLid(), customer);
             
             // Save message and notify
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
@@ -322,46 +322,61 @@ public class MessagingService {
             .build();
     }
     
-    private ConversationDTO findOrCreateConversation(Customer customer) {
-        logger.debug("Looking for conversation for customer: {}", customer.getId());
+    private ConversationDTO findOrCreateConversationByChatLid(String chatLid, Customer customer) {
+        logger.debug("Looking for conversation with chatLid: {} for customer: {}", chatLid, customer.getId());
         
-        // First, try to find existing active WhatsApp conversations for this customer
+        // First, try to find conversation by chatLid if provided
+        if (chatLid != null && !chatLid.trim().isEmpty()) {
+            Optional<ConversationDTO> conversationByChatLid = conversationService.findByChatLid(chatLid);
+            if (conversationByChatLid.isPresent()) {
+                logger.debug("Found existing conversation by chatLid: {}", conversationByChatLid.get().getId());
+                return conversationByChatLid.get();
+            }
+        }
+        
+        // Fallback to existing logic: find by customer and company
         List<ConversationDTO> customerConversations = conversationService
             .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
         
         logger.debug("Found {} conversations for customer {}", customerConversations.size(), customer.getId());
         
         // Look for active WhatsApp conversations (ENTRADA or ESPERANDO status)
-        logger.debug("Looking for active WhatsApp conversations for customer...");
-        for (ConversationDTO conv : customerConversations) {
-            logger.debug("Conversation {}: channel={}, status={}", conv.getId(), conv.getChannel(), conv.getStatus());
-        }
-        
         Optional<ConversationDTO> existingConversation = customerConversations.stream()
             .filter(conv -> {
                 boolean isWhatsApp = conv.getChannel() == Channel.WHATSAPP;
                 boolean isActive = conv.getStatus() == ConversationStatus.ENTRADA || conv.getStatus() == ConversationStatus.ESPERANDO;
-                logger.debug("Conversation {}: isWhatsApp={}, isActive={}", conv.getId(), isWhatsApp, isActive);
                 return isWhatsApp && isActive;
             })
             .findFirst();
         
         if (existingConversation.isPresent()) {
             logger.debug("Using existing WhatsApp conversation: {}", existingConversation.get().getId());
-            return existingConversation.get();
+            // Update the conversation with chatLid if it doesn't have one
+            ConversationDTO conversation = existingConversation.get();
+            if (chatLid != null && !chatLid.trim().isEmpty() && conversation.getChatLid() == null) {
+                logger.info("Updating conversation {} with chatLid: {}", conversation.getId(), chatLid);
+                conversationService.updateChatLid(conversation.getId(), chatLid);
+                conversation.setChatLid(chatLid);
+            }
+            return conversation;
         }
         
         // No active conversation found, create a new one
-        logger.info("Creating new conversation for customer: {}", customer.getId());
+        logger.info("Creating new conversation for customer: {} with chatLid: {}", customer.getId(), chatLid);
         
         CreateConversationDTO createDTO = CreateConversationDTO.builder()
             .customerId(customer.getId())
             .channel(Channel.WHATSAPP)
             .status(ConversationStatus.ENTRADA)
             .priority(1)
+            .chatLid(chatLid)
             .build();
         
         return conversationService.create(createDTO, customer.getCompany().getId());
+    }
+
+    private ConversationDTO findOrCreateConversation(Customer customer) {
+        return findOrCreateConversationByChatLid(null, customer);
     }
     
     public Company findCompanyByZApiInstance(String instanceId) {

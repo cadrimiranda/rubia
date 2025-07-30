@@ -62,6 +62,10 @@ public class Conversation {
     @Builder.Default
     private ConversationType conversationType = ConversationType.ONE_TO_ONE;
 
+    // Campo para vincular com o chatLid da Z-API
+    @Column(name = "chat_lid", unique = true)
+    private String chatLid;
+
     // Remove a relação direta com Customer.
     // Os participantes (incluindo Customers) são agora gerenciados pela entidade ConversationParticipant.
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

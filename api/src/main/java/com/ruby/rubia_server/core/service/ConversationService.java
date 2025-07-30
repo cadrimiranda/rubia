@@ -122,6 +122,7 @@ public class ConversationService {
                 .priority(createDTO.getPriority())
                 .campaign(campaign)
                 .conversationType(createDTO.getConversationType())
+                .chatLid(createDTO.getChatLid())
                 .build();
         
         Conversation saved = conversationRepository.save(conversation);
@@ -155,6 +156,7 @@ public class ConversationService {
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .unreadCount(0L)
+                .chatLid(saved.getChatLid())
                 .build();
     }
     
@@ -208,6 +210,7 @@ public class ConversationService {
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .unreadCount(0L)
+                .chatLid(conversation.getChatLid())
                 .build();
     }
     
@@ -454,6 +457,7 @@ public class ConversationService {
                 .updatedAt(conversation.getUpdatedAt())
                 .lastMessage(lastMessage)
                 .unreadCount(0L) // Will be calculated by message service
+                .chatLid(conversation.getChatLid())
                 .build();
     }
     
@@ -476,6 +480,32 @@ public class ConversationService {
                 .unreadCount(0L) // Will be calculated by message service
                 .lastMessageContent(null) // Will be populated by message service
                 .lastMessageTime(null) // Will be populated by message service
+                .chatLid(conversation.getChatLid())
                 .build();
+    }
+
+    /**
+     * Find conversation by Z-API chatLid
+     */
+    public Optional<ConversationDTO> findByChatLid(String chatLid) {
+        if (chatLid == null || chatLid.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        
+        return conversationRepository.findByChatLid(chatLid)
+            .map(this::toDTO);
+    }
+
+    /**
+     * Update conversation with chatLid
+     */
+    public void updateChatLid(UUID conversationId, String chatLid) {
+        log.info("Updating conversation {} with chatLid: {}", conversationId, chatLid);
+        
+        Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+        
+        conversation.setChatLid(chatLid);
+        conversationRepository.save(conversation);
     }
 }

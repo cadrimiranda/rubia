@@ -26,4 +26,5 @@ public class IncomingMessage {
     private String senderName;
     private Object rawPayload;
     private boolean isFromMe;
+    private String chatLid;
 }
