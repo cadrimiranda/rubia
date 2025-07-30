@@ -23,16 +23,19 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
     private final MessageTemplateRevisionRepository messageTemplateRevisionRepository;
     private final MessageTemplateRepository messageTemplateRepository;
     private final UserRepository userRepository;
+    private final AIAgentRepository aiAgentRepository;
 
     public MessageTemplateRevisionService(MessageTemplateRevisionRepository messageTemplateRevisionRepository,
                                          CompanyRepository companyRepository,
                                          MessageTemplateRepository messageTemplateRepository,
                                          UserRepository userRepository,
+                                         AIAgentRepository aiAgentRepository,
                                          EntityRelationshipValidator relationshipValidator) {
         super(messageTemplateRevisionRepository, companyRepository, relationshipValidator);
         this.messageTemplateRevisionRepository = messageTemplateRevisionRepository;
         this.messageTemplateRepository = messageTemplateRepository;
         this.userRepository = userRepository;
+        this.aiAgentRepository = aiAgentRepository;
     }
 
     @Override
@@ -58,8 +61,26 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
             builder.editedBy(user);
         }
 
-        // Set revision type based on revision number - first revision is CREATE, others are EDIT by default
-        RevisionType revisionType = createDTO.getRevisionNumber() == 1 ? RevisionType.CREATE : RevisionType.EDIT;
+        // Handle AI metadata
+        if (createDTO.getAiAgentId() != null) {
+            AIAgent aiAgent = aiAgentRepository.findById(createDTO.getAiAgentId())
+                    .orElseThrow(() -> new RuntimeException("AIAgent not found with ID: " + createDTO.getAiAgentId()));
+            builder.aiAgent(aiAgent);
+        }
+        
+        builder.aiEnhancementType(createDTO.getAiEnhancementType())
+               .aiTokensUsed(createDTO.getAiTokensUsed())
+               .aiCreditsConsumed(createDTO.getAiCreditsConsumed())
+               .aiModelUsed(createDTO.getAiModelUsed())
+               .aiExplanation(createDTO.getAiExplanation());
+
+        // Set revision type - AI enhancement if AI metadata present, otherwise based on revision number
+        RevisionType revisionType;
+        if (createDTO.getAiEnhancementType() != null) {
+            revisionType = RevisionType.AI_ENHANCEMENT;
+        } else {
+            revisionType = createDTO.getRevisionNumber() == 1 ? RevisionType.CREATE : RevisionType.EDIT;
+        }
         builder.revisionType(revisionType);
 
         return builder.build();
@@ -173,6 +194,55 @@ public class MessageTemplateRevisionService extends BaseCompanyEntityService<Mes
 
         MessageTemplateRevision savedRevision = messageTemplateRevisionRepository.save(revision);
         log.debug("Revision created from template with id: {} and type: {}", savedRevision.getId(), revisionType);
+
+        return savedRevision;
+    }
+
+    /**
+     * Cria uma nova revisão para um template com metadados de IA
+     */
+    public MessageTemplateRevision createAIEnhancementRevision(
+            UUID templateId, 
+            String enhancedContent, 
+            UUID editedByUserId,
+            UUID aiAgentId,
+            String enhancementType,
+            Integer tokensUsed,
+            Integer creditsConsumed,
+            String modelUsed,
+            String explanation) {
+        
+        log.debug("Creating AI enhancement revision for template: {}", templateId);
+        
+        MessageTemplate template = messageTemplateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("MessageTemplate not found with ID: " + templateId));
+
+        User editor = userRepository.findById(editedByUserId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + editedByUserId));
+
+        AIAgent aiAgent = aiAgentRepository.findById(aiAgentId)
+                .orElseThrow(() -> new RuntimeException("AIAgent not found with ID: " + aiAgentId));
+
+        Integer nextRevisionNumber = getNextRevisionNumber(templateId);
+
+        MessageTemplateRevision revision = MessageTemplateRevision.builder()
+                .company(template.getCompany())
+                .template(template)
+                .revisionNumber(nextRevisionNumber)
+                .content(enhancedContent)
+                .editedBy(editor)
+                .revisionType(RevisionType.AI_ENHANCEMENT)
+                // AI metadata
+                .aiAgent(aiAgent)
+                .aiEnhancementType(enhancementType)
+                .aiTokensUsed(tokensUsed)
+                .aiCreditsConsumed(creditsConsumed)
+                .aiModelUsed(modelUsed)
+                .aiExplanation(explanation)
+                .build();
+
+        MessageTemplateRevision savedRevision = messageTemplateRevisionRepository.save(revision);
+        log.debug("AI enhancement revision created with id: {} for template: {}", savedRevision.getId(), templateId);
 
         return savedRevision;
     }
