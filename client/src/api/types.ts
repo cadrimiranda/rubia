@@ -115,6 +115,7 @@ export interface MessageDTO {
   senderId?: string
   messageType: MessageType
   mediaUrl?: string
+  mimeType?: string
   externalMessageId?: string
   isAiGenerated: boolean
   aiConfidence?: number

@@ -93,60 +93,67 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   const progressPercentage = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
   return (
-    <div
-      className={`flex items-center space-x-3 p-3 rounded-lg min-w-[200px] ${
-        isFromCustomer
-          ? "bg-blue-600 text-white"
-          : "bg-gray-100 text-gray-800"
-      }`}
-    >
+    <div className="flex items-center space-x-3 min-w-[280px] max-w-[350px]">
       <audio ref={audioRef} preload="metadata">
         <source src={audioUrl} type={mimeType} />
         Seu navegador não suporta áudio.
       </audio>
 
+      {/* Play/Pause Button */}
       <button
         onClick={togglePlayPause}
         disabled={isLoading}
-        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${
+        className={`flex items-center justify-center w-12 h-12 rounded-full transition-all shadow-sm ${
           isFromCustomer
-            ? "bg-blue-500 hover:bg-blue-400 text-white"
-            : "bg-gray-200 hover:bg-gray-300 text-gray-600"
+            ? "bg-white text-blue-600 hover:bg-gray-50"
+            : "bg-green-500 hover:bg-green-600 text-white"
         } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         {isLoading ? (
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
         ) : isPlaying ? (
-          <Pause size={16} />
+          <Pause size={20} />
         ) : (
-          <Play size={16} className="ml-0.5" />
+          <Play size={20} className="ml-0.5" />
         )}
       </button>
 
-      <div className="flex-1">
-        <div className="flex items-center space-x-2 mb-1">
-          <Volume2 size={14} className={isFromCustomer ? "text-blue-200" : "text-gray-500"} />
-          <span className={`text-xs ${isFromCustomer ? "text-blue-200" : "text-gray-500"}`}>
-            Áudio
-          </span>
+      {/* Waveform and Time */}
+      <div className="flex-1 space-y-1">
+        {/* Waveform visualization */}
+        <div className="flex items-center space-x-0.5 h-8">
+          {Array.from({ length: 40 }).map((_, i) => {
+            const height = Math.random() * 20 + 8; // Random heights between 8-28px
+            const isActive = i < (progressPercentage / 100) * 40;
+            return (
+              <div
+                key={i}
+                className={`w-1 rounded-full transition-all duration-100 ${
+                  isActive
+                    ? isFromCustomer
+                      ? "bg-white"
+                      : "bg-green-600"
+                    : isFromCustomer
+                    ? "bg-blue-300"
+                    : "bg-gray-300"
+                }`}
+                style={{ height: `${height}px` }}
+              />
+            );
+          })}
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className={`flex-1 h-1 rounded-full ${
-            isFromCustomer ? "bg-blue-400" : "bg-gray-300"
-          }`}>
-            <div
-              className={`h-full rounded-full transition-all duration-100 ${
-                isFromCustomer ? "bg-white" : "bg-blue-500"
-              }`}
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-
+        {/* Time display */}
+        <div className="flex justify-between">
           <span className={`text-xs font-mono ${
             isFromCustomer ? "text-blue-100" : "text-gray-600"
           }`}>
-            {formatTime(currentTime)} / {formatTime(audioDuration)}
+            {formatTime(currentTime)}
+          </span>
+          <span className={`text-xs font-mono ${
+            isFromCustomer ? "text-blue-100" : "text-gray-600"
+          }`}>
+            {formatTime(audioDuration)}
           </span>
         </div>
       </div>

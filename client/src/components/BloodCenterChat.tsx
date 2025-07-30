@@ -106,6 +106,10 @@ export const BloodCenterChat: React.FC = () => {
             minute: '2-digit'
           }) : "",
           isAI: msg.isFromUser === false, // false = recebida do cliente (esquerda azul), true = enviada por mim/sistema (direita branco)
+          messageType: msg.messageType,
+          mediaUrl: msg.mediaUrl,
+          mimeType: msg.mimeType,
+          audioDuration: msg.audioDuration,
           attachments: msg.attachments,
           media: msg.media
         }))

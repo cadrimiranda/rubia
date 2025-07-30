@@ -9,9 +9,20 @@ interface MessageProps {
 }
 
 export const Message: React.FC<MessageProps> = ({ message }) => {
-  // isAI = true significa mensagem recebida do cliente (esquerda, azul)
+  // isAI = true significa mensagem recebida do cliente (esquerda, azul)  
   // isAI = false significa mensagem enviada por mim/sistema (direita, branco)
   const isFromCustomer = message.isAI;
+  
+  // Debug log para investigar mensagens de áudio
+  if (message.messageType === "audio" || message.mediaUrl || (message.media && message.media.length > 0)) {
+    console.log("🎵 Audio message detected:", {
+      messageType: message.messageType,
+      mediaUrl: message.mediaUrl,
+      mimeType: message.mimeType,
+      media: message.media,
+      content: message.content
+    });
+  }
   
   return (
     <div className={`flex ${isFromCustomer ? "justify-start" : "justify-end"}`}>
@@ -22,12 +33,14 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
             : "bg-white text-gray-800 shadow-sm"
         }`}
       >
-        {message.messageType === "audio" && message.mediaUrl ? (
+        {/* Check if it's an audio message (either direct or in media array) */}
+        {(message.messageType === "audio" && message.mediaUrl) || 
+         (message.media && message.media.length > 0 && message.media[0].mediaType === "AUDIO") ? (
           <AudioMessage
-            audioUrl={message.mediaUrl}
+            audioUrl={message.mediaUrl || message.media?.[0]?.fileUrl || ""}
             duration={message.audioDuration}
             isFromCustomer={isFromCustomer}
-            mimeType={message.mimeType}
+            mimeType={message.mimeType || message.media?.[0]?.mimeType}
           />
         ) : (
           <>
