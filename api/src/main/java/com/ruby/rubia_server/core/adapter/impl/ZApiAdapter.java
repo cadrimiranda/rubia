@@ -14,6 +14,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -157,8 +159,7 @@ public class ZApiAdapter implements MessagingAdapter {
             String connectedPhone = (String) payload.get("connectedPhone");
             String senderName = (String) payload.get("senderName");
             
-            log.info("Extracted from payload - messageId: {}, phone: {}, connectedPhone: {}, senderName: {}", 
-                messageId, phone, connectedPhone, senderName);
+            log.debug("Z-API message: {} from {} via {}", messageId, phone, connectedPhone);
             
             if (phone != null && phone.contains("@newsletter")) {
                 log.info("Ignoring newsletter message from: {}", phone);
@@ -173,10 +174,6 @@ public class ZApiAdapter implements MessagingAdapter {
             } else if (fromMeObj instanceof String) {
                 isFromMe = "true".equals(fromMeObj);
             }
-            
-            if (isFromMe) {
-                return null;
-            }
 
             String messageBody = null;
             String mediaUrl = null;
@@ -188,7 +185,6 @@ public class ZApiAdapter implements MessagingAdapter {
             Map<String, Object> rootText = (Map<String, Object>) payload.get("text");
             if (rootText != null) {
                 messageBody = (String) rootText.get("message");
-                log.info("✅ Extracted message body: '{}'", messageBody);
             }
 
             // Handle media messages
@@ -241,8 +237,8 @@ public class ZApiAdapter implements MessagingAdapter {
             
             return IncomingMessage.builder()
                 .messageId(messageId)
-                .from(phone)
-                .to(null)
+                .from(isFromMe ? connectedPhone : phone)
+                .to(isFromMe ? phone : connectedPhone)
                 .connectedPhone(connectedPhone)
                 .body(messageBody)
                 .mediaUrl(mediaUrl)
@@ -251,7 +247,8 @@ public class ZApiAdapter implements MessagingAdapter {
                 .mimeType(mimeType)
                 .timestamp(messageTime)
                 .provider("z-api")
-                .senderName(senderName)
+                .senderName(isFromMe ? "Eu" : senderName)
+                .isFromMe(isFromMe)
                 .rawPayload(payload)
                 .build();
 
@@ -317,6 +314,38 @@ public class ZApiAdapter implements MessagingAdapter {
         }
     }
 
+    public MessageResult sendAudio(String to, String audioUrl) {
+        try {
+            log.info("Sending Z-API audio to: {}", to);
+
+            String url = instanceUrl + "/token/" + token + "/send-audio";
+            
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("phone", phoneService.formatForZApi(to));
+            requestBody.put("audio", audioUrl);
+
+            HttpHeaders headers = createHeaders();
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, request, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String messageId = (String) response.getBody().get("messageId");
+                log.info("Z-API audio sent successfully. Message ID: {}", messageId);
+                return MessageResult.success(messageId, "sent", "z-api");
+            } else {
+                String error = "Failed to send audio via Z-API";
+                log.error(error);
+                return MessageResult.error(error, "z-api");
+            }
+
+        } catch (Exception e) {
+            String error = "Error sending audio: " + e.getMessage();
+            log.error(error, e);
+            return MessageResult.error(error, "z-api");
+        }
+    }
+
     public MessageResult sendFileBase64(String to, String base64Data, String fileName, String caption) {
         try {
             log.info("Sending Z-API base64 file to: {}", to);
@@ -350,6 +379,30 @@ public class ZApiAdapter implements MessagingAdapter {
             String error = "Error sending file: " + e.getMessage();
             log.error(error, e);
             return MessageResult.error(error, "z-api");
+        }
+    }
+
+    public InputStream downloadAudio(String audioUrl) throws Exception {
+        try {
+            log.info("Downloading audio from URL: {}", audioUrl);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0");
+            
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                audioUrl, HttpMethod.GET, entity, byte[].class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return new ByteArrayInputStream(response.getBody());
+            } else {
+                throw new Exception("Failed to download audio file");
+            }
+            
+        } catch (Exception e) {
+            log.error("Error downloading audio: {}", e.getMessage());
+            throw new Exception("Failed to download audio file", e);
         }
     }
 

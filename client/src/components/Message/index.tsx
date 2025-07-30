@@ -2,6 +2,7 @@ import React from "react";
 import type { Message as MessageType } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
 import { MediaPreview } from "../MediaPreview";
+import { AudioMessage } from "../AudioMessage";
 
 interface MessageProps {
   message: MessageType;
@@ -21,39 +22,50 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
             : "bg-white text-gray-800 shadow-sm"
         }`}
       >
-        {message.content && (
-          <p
-            className={`m-0 mb-2 ${
-              isFromCustomer ? "text-white" : "text-gray-800"
-            }`}
-          >
-            {message.content}
-          </p>
-        )}
+        {message.messageType === "audio" && message.mediaUrl ? (
+          <AudioMessage
+            audioUrl={message.mediaUrl}
+            duration={message.audioDuration}
+            isFromCustomer={isFromCustomer}
+            mimeType={message.mimeType}
+          />
+        ) : (
+          <>
+            {message.content && (
+              <p
+                className={`m-0 mb-2 ${
+                  isFromCustomer ? "text-white" : "text-gray-800"
+                }`}
+              >
+                {message.content}
+              </p>
+            )}
 
-        {message.attachments && message.attachments.length > 0 && (
-          <div className="space-y-2">
-            {message.attachments.map((attachment) => (
-              <FileAttachment
-                key={attachment.id}
-                attachment={attachment}
-                isAI={isFromCustomer}
-                variant="message"
-              />
-            ))}
-          </div>
-        )}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="space-y-2">
+                {message.attachments.map((attachment) => (
+                  <FileAttachment
+                    key={attachment.id}
+                    attachment={attachment}
+                    isAI={isFromCustomer}
+                    variant="message"
+                  />
+                ))}
+              </div>
+            )}
 
-        {message.media && message.media.length > 0 && (
-          <div className="space-y-2">
-            {message.media.map((mediaItem) => (
-              <MediaPreview
-                key={mediaItem.id}
-                media={mediaItem}
-                variant="message"
-              />
-            ))}
-          </div>
+            {message.media && message.media.length > 0 && (
+              <div className="space-y-2">
+                {message.media.map((mediaItem) => (
+                  <MediaPreview
+                    key={mediaItem.id}
+                    media={mediaItem}
+                    variant="message"
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         <div className="mt-1">

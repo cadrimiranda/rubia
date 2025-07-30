@@ -96,13 +96,17 @@ public class MessageService {
     }
     
     public MessageDTO createFromIncomingMessage(IncomingMessage incomingMessage, UUID conversationId) {
-        log.info("Creating message from incoming message for conversation: {}", conversationId);
+        log.info("Creating message from incoming message for conversation: {} (isFromMe: {})", 
+            conversationId, incomingMessage.isFromMe());
+        
+        // Determine sender type based on whether message is from us or customer
+        SenderType senderType = incomingMessage.isFromMe() ? SenderType.AGENT : SenderType.CUSTOMER;
         
         CreateMessageDTO createDTO = CreateMessageDTO.builder()
                 .conversationId(conversationId)
                 .content(incomingMessage.getBody())
-                .senderType(SenderType.CUSTOMER)
-                .senderId(null)
+                .senderType(senderType)
+                .senderId(null) // TODO: Could identify which agent sent if needed
                 .externalMessageId(incomingMessage.getMessageId())
                 .isAiGenerated(false)
                 .build();

@@ -25,4 +25,5 @@ public class IncomingMessage {
     private String provider;
     private String senderName;
     private Object rawPayload;
+    private boolean isFromMe;
 }

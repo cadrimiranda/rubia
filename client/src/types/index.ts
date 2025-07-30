@@ -56,6 +56,8 @@ export interface Message {
   aiConfidence?: number
   deliveredAt?: Date
   readAt?: Date
+  audioDuration?: number
+  mimeType?: string
 }
 
 export interface Chat {
