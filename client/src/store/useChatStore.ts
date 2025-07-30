@@ -369,43 +369,20 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>((set, get)
       )
       set({ chats: updatedChats })
       
-      // Envia mensagem para API
-      const sentMessage = await messageApi.send(
-        chatId, 
-        messageAdapter.toCreateRequest(content)
-      )
-      
-      const realMessage = messageAdapter.toMessage(sentMessage)
-      
-      // Substitui mensagem temporária pela real
-      const finalMessages = messageAdapter.replaceTempMessage(
-        updatedMessages, 
-        tempMessage.id, 
-        realMessage
-      )
-      
-      // Atualiza cache final
-      set({
-        messagesCache: {
-          ...state.messagesCache,
-          [chatId]: {
-            ...cached,
-            messages: finalMessages
-          }
-        },
-        isSending: false
-      })
-      
-      // Atualiza chat ativo final
-      if (state.activeChat?.id === chatId) {
-        set({
-          activeChat: {
-            ...state.activeChat,
-            messages: finalMessages,
-            lastMessage: realMessage
-          }
-        })
+      // Envia mensagem via Z-API diretamente
+      if (!chat.contact?.phone) {
+        throw new Error('Telefone do contato não encontrado')
       }
+      
+      const result = await messageApi.sendText(chat.contact.phone, content)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Falha ao enviar mensagem')
+      }
+      
+      // A mensagem será recebida via webhook, então não precisamos processar aqui
+      // Apenas removemos o loading e mantemos a mensagem temporária até o webhook chegar
+      set({ isSending: false })
       
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)

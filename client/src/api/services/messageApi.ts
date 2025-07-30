@@ -151,6 +151,27 @@ export class MessageAPI {
   }
 
   // Novos métodos para Z-API
+  async sendText(to: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const response = await fetch('/api/messaging/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+      body: JSON.stringify({
+        to,
+        message
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Erro ao enviar mensagem: ${error}`)
+    }
+
+    return response.json()
+  }
+
   async sendImage(to: string, imageUrl: string, caption?: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
     const formData = new FormData()
     formData.append('to', to)
