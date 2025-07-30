@@ -161,7 +161,8 @@ class ZApiActivationServiceTest {
     void getQrCodeImage_WithSuccessfulResponse_ShouldReturnBase64Image() {
         // Arrange
         String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
-        Map<String, Object> mockResponse = Map.of("image", base64Image);
+        String dataUrl = "data:image/png;base64," + base64Image;
+        Map<String, Object> mockResponse = Map.of("value", dataUrl);
         
         ResponseEntity<Map> responseEntity = new ResponseEntity<>(mockResponse, HttpStatus.OK);
         when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))

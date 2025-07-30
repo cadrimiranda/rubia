@@ -165,6 +165,7 @@ public class ZApiActivationService {
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
         headers.set("client-token", clientToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;

@@ -22,12 +22,16 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class WhatsAppInstanceServiceTest {
 
     @Mock
     private WhatsAppInstanceRepository whatsappInstanceRepository;
+
+    @Mock
+    private PhoneService phoneService;
 
     @InjectMocks
     private WhatsAppInstanceService whatsappInstanceService;
@@ -61,6 +65,9 @@ class WhatsAppInstanceServiceTest {
             .isPrimary(true)
             .createdAt(LocalDateTime.now())
             .build();
+
+        // Configure PhoneService mock to return valid for all phone numbers (lenient to avoid unnecessary stubbing errors)
+        lenient().when(phoneService.isValid(anyString())).thenReturn(true);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.adapter.impl;
 
 import com.ruby.rubia_server.core.entity.MessageResult;
+import com.ruby.rubia_server.core.service.PhoneService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,11 +36,26 @@ class ZApiAdapterTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private PhoneService phoneService;
+
     @InjectMocks
     private ZApiAdapter zApiAdapter;
 
     @BeforeEach
     void setUp() {
+        // Configurar mock do PhoneService
+        lenient().when(phoneService.formatForZApi(anyString())).thenAnswer(invocation -> {
+            String phone = invocation.getArgument(0);
+            // Simular formatação para Z-API
+            String cleaned = phone.replaceAll("[^0-9]", "");
+            // Se não começar com 55 (Brasil), adicionar
+            if (!cleaned.startsWith("55") && cleaned.length() == 11) {
+                cleaned = "55" + cleaned;
+            }
+            return cleaned;
+        });
+        
         ReflectionTestUtils.setField(zApiAdapter, "instanceUrl", "https://api.z-api.io/instances/test");
         ReflectionTestUtils.setField(zApiAdapter, "token", "test-token");
         ReflectionTestUtils.setField(zApiAdapter, "webhookToken", "webhook-token");
