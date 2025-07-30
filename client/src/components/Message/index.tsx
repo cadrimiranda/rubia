@@ -9,12 +9,16 @@ interface MessageProps {
 }
 
 export const Message: React.FC<MessageProps> = ({ message }) => {
-  // isAI = true significa mensagem recebida do cliente (esquerda, azul)  
+  // isAI = true significa mensagem recebida do cliente (esquerda, azul)
   // isAI = false significa mensagem enviada por mim/sistema (direita, branco)
   const isFromCustomer = message.isAI;
-  
+
   // Debug log para investigar mensagens de áudio
-  if (message.messageType?.toLowerCase() === "audio" || message.mediaUrl || (message.media && message.media.length > 0)) {
+  if (
+    message.messageType?.toLowerCase() === "audio" ||
+    message.mediaUrl ||
+    (message.media && message.media.length > 0)
+  ) {
     console.log("🎵 Audio message detected:", {
       messageType: message.messageType,
       messageTypeLower: message.messageType?.toLowerCase(),
@@ -22,10 +26,15 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
       mimeType: message.mimeType,
       media: message.media,
       content: message.content,
-      isAudioConditionMet: (message.messageType && message.messageType.toLowerCase() === "audio" && message.mediaUrl)
+      isAudioConditionMet:
+        message.messageType &&
+        message.messageType.toLowerCase() === "audio" &&
+        message.mediaUrl,
     });
   }
-  
+
+  console.log({ message });
+
   return (
     <div className={`flex ${isFromCustomer ? "justify-start" : "justify-end"}`}>
       <div
@@ -36,8 +45,12 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
         }`}
       >
         {/* Check if it's an audio message (either direct or in media array) */}
-        {(message.messageType && message.messageType.toLowerCase() === "audio" && message.mediaUrl) || 
-         (message.media && message.media.length > 0 && message.media[0].mediaType === "AUDIO") ? (
+        {(message.messageType &&
+          message.messageType.toLowerCase() === "audio" &&
+          message.mediaUrl) ||
+        (message.media &&
+          message.media.length > 0 &&
+          message.media[0].mediaType === "AUDIO") ? (
           <AudioMessage
             audioUrl={message.mediaUrl || message.media?.[0]?.fileUrl || ""}
             duration={message.audioDuration}
