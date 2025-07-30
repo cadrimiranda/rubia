@@ -227,6 +227,28 @@ public class AIAgentController {
         return ResponseEntity.ok(responseDTOs);
     }
 
+    @GetMapping("/company/{companyId}/can-create")
+    public ResponseEntity<Boolean> canCreateAgent(@PathVariable UUID companyId) {
+        log.debug("Checking if company can create more AI agents: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        boolean canCreate = aiAgentService.canCreateAgent(companyId);
+        return ResponseEntity.ok(canCreate);
+    }
+
+    @GetMapping("/company/{companyId}/remaining-slots")
+    public ResponseEntity<Integer> getRemainingAgentSlots(@PathVariable UUID companyId) {
+        log.debug("Fetching remaining agent slots for company: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        int remainingSlots = aiAgentService.getRemainingAgentSlots(companyId);
+        return ResponseEntity.ok(remainingSlots);
+    }
+
     private AIAgentDTO convertToDTO(AIAgent aiAgent) {
         return AIAgentDTO.builder()
                 .id(aiAgent.getId())
@@ -234,7 +256,7 @@ public class AIAgentController {
                 .companyName(aiAgent.getCompany().getName())
                 .name(aiAgent.getName())
                 .description(aiAgent.getDescription())
-                .avatarUrl(aiAgent.getAvatarUrl())
+                .avatarBase64(aiAgent.getAvatarBase64())
                 .aiModelId(aiAgent.getAiModel().getId())
                 .aiModelName(aiAgent.getAiModel().getName())
                 .aiModelDisplayName(aiAgent.getAiModel().getDisplayName())

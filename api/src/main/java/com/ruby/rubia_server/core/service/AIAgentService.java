@@ -36,6 +36,15 @@ public class AIAgentService {
         Company company = companyRepository.findById(createDTO.getCompanyId())
                 .orElseThrow(() -> new RuntimeException("Company not found with ID: " + createDTO.getCompanyId()));
 
+        // Verificar limite de agentes para a empresa
+        long currentAgentCount = countAIAgentsByCompanyId(createDTO.getCompanyId());
+        if (currentAgentCount >= company.getMaxAiAgents()) {
+            throw new RuntimeException(String.format(
+                "Limite de agentes IA atingido. Plano atual permite %d agente(s), empresa já possui %d.",
+                company.getMaxAiAgents(), currentAgentCount
+            ));
+        }
+
         // Validate AI model exists
         AIModel aiModel = aiModelRepository.findById(createDTO.getAiModelId())
                 .orElseThrow(() -> new RuntimeException("AI Model not found with ID: " + createDTO.getAiModelId()));
@@ -46,7 +55,7 @@ public class AIAgentService {
                 .aiModel(aiModel)
                 .name(createDTO.getName())
                 .description(createDTO.getDescription())
-                .avatarUrl(createDTO.getAvatarUrl())
+                .avatarBase64(createDTO.getAvatarBase64())
                 .temperament(createDTO.getTemperament())
                 .maxResponseLength(createDTO.getMaxResponseLength())
                 .temperature(createDTO.getTemperature())
@@ -109,8 +118,8 @@ public class AIAgentService {
         if (updateDTO.getDescription() != null) {
             aiAgent.setDescription(updateDTO.getDescription());
         }
-        if (updateDTO.getAvatarUrl() != null) {
-            aiAgent.setAvatarUrl(updateDTO.getAvatarUrl());
+        if (updateDTO.getAvatarBase64() != null) {
+            aiAgent.setAvatarBase64(updateDTO.getAvatarBase64());
         }
         if (updateDTO.getAiModelId() != null) {
             AIModel aiModel = aiModelRepository.findById(updateDTO.getAiModelId())
@@ -165,6 +174,24 @@ public class AIAgentService {
     public boolean existsByNameAndCompanyId(String name, UUID companyId) {
         log.debug("Checking if AI agent exists with name: {} for company: {}", name, companyId);
         return aiAgentRepository.existsByNameAndCompanyId(name, companyId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canCreateAgent(UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + companyId));
+        
+        long currentCount = countAIAgentsByCompanyId(companyId);
+        return currentCount < company.getMaxAiAgents();
+    }
+
+    @Transactional(readOnly = true)
+    public int getRemainingAgentSlots(UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + companyId));
+        
+        long currentCount = countAIAgentsByCompanyId(companyId);
+        return Math.max(0, company.getMaxAiAgents() - (int) currentCount);
     }
 
     @Transactional(readOnly = true)
