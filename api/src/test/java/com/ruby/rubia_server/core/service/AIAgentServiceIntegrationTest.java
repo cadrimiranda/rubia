@@ -3,9 +3,11 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
+import com.ruby.rubia_server.core.entity.AIModel;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.CompanyGroup;
 import com.ruby.rubia_server.core.repository.AIAgentRepository;
+import com.ruby.rubia_server.core.repository.AIModelRepository;
 import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,8 +42,13 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private CompanyGroupRepository companyGroupRepository;
 
+    @Autowired
+    private AIModelRepository aiModelRepository;
+
     private Company testCompany;
     private UUID testCompanyId;
+    private AIModel testGPT4Model;
+    private AIModel testClaudeModel;
 
     @BeforeEach
     void setUp() {
@@ -49,6 +56,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         aiAgentRepository.deleteAll();
         companyRepository.deleteAll();
         companyGroupRepository.deleteAll();
+        aiModelRepository.deleteAll();
 
         // Create test company group
         CompanyGroup companyGroup = CompanyGroup.builder()
@@ -62,9 +70,37 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
                 .name("Test Company")
                 .slug("test-company")
                 .companyGroup(companyGroup)
+                .maxAiAgents(10) // Permitir múltiplos agentes para testes
                 .build();
         testCompany = companyRepository.save(testCompany);
         testCompanyId = testCompany.getId();
+
+        // Create test AI models
+        testGPT4Model = AIModel.builder()
+                .name("gpt-4")
+                .displayName("GPT-4")
+                .provider("OpenAI")
+                .capabilities("Conversação avançada, análise de texto, geração de conteúdo")
+                .impactDescription("Modelo premium com alta qualidade de resposta")
+                .costPer1kTokens(30)
+                .performanceLevel("HIGH")
+                .isActive(true)
+                .sortOrder(1)
+                .build();
+        testGPT4Model = aiModelRepository.save(testGPT4Model);
+
+        testClaudeModel = AIModel.builder()
+                .name("claude-3.5-sonnet")
+                .displayName("Claude 3.5 Sonnet")
+                .provider("Anthropic")
+                .capabilities("Conversação natural, análise detalhada, raciocínio lógico")
+                .impactDescription("Modelo equilibrado entre qualidade e custo")
+                .costPer1kTokens(15)
+                .performanceLevel("MEDIUM")
+                .isActive(true)
+                .sortOrder(2)
+                .build();
+        testClaudeModel = aiModelRepository.save(testClaudeModel);
     }
 
     @Test
@@ -74,8 +110,8 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
                 .companyId(testCompanyId)
                 .name("Sofia")
                 .description("Assistente virtual especializada em atendimento ao cliente")
-                .avatarUrl("https://example.com/avatar.jpg")
-                .aiModelType("GPT-4")
+                .avatarBase64("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .maxResponseLength(500)
                 .temperature(BigDecimal.valueOf(0.7))
@@ -90,8 +126,8 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         assertNotNull(createdAgent.getId());
         assertEquals("Sofia", createdAgent.getName());
         assertEquals("Assistente virtual especializada em atendimento ao cliente", createdAgent.getDescription());
-        assertEquals("https://example.com/avatar.jpg", createdAgent.getAvatarUrl());
-        assertEquals("GPT-4", createdAgent.getAiModelType());
+        assertEquals("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD", createdAgent.getAvatarBase64());
+        assertEquals(testGPT4Model.getId(), createdAgent.getAiModel().getId());
         assertEquals("AMIGAVEL", createdAgent.getTemperament());
         assertEquals(500, createdAgent.getMaxResponseLength());
         assertEquals(BigDecimal.valueOf(0.7), createdAgent.getTemperature());
@@ -121,7 +157,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO createDTO = CreateAIAgentDTO.builder()
                 .companyId(nonExistentCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .build();
 
@@ -138,7 +174,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO createDTO = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .temperature(BigDecimal.valueOf(1.5)) // Invalid - exceeds 1.0
                 .build();
@@ -158,14 +194,14 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO agent1 = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .build();
 
         CreateAIAgentDTO agent2 = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Ana")
-                .aiModelType("Claude 3.5")
+                .aiModelId(testClaudeModel.getId())
                 .temperament("FORMAL")
                 .build();
 
@@ -185,7 +221,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO agent3 = CreateAIAgentDTO.builder()
                 .companyId(anotherCompany.getId())
                 .name("Carlos")
-                .aiModelType("Gemini Pro")
+                .aiModelId(testClaudeModel.getId())
                 .temperament("SERIO")
                 .build();
 
@@ -220,7 +256,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO activeAgent = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .isActive(true)
                 .build();
@@ -228,7 +264,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO inactiveAgent = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Ana")
-                .aiModelType("Claude 3.5")
+                .aiModelId(testClaudeModel.getId())
                 .temperament("FORMAL")
                 .isActive(false)
                 .build();
@@ -251,14 +287,14 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO agent1 = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .build();
 
         CreateAIAgentDTO agent2 = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Ana")
-                .aiModelType("Claude 3.5")
+                .aiModelId(testClaudeModel.getId())
                 .temperament("FORMAL")
                 .build();
 
@@ -277,7 +313,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO agent = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .build();
 
@@ -296,7 +332,7 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO createDTO = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .build();
 
@@ -324,14 +360,14 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         CreateAIAgentDTO agent1 = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia")
-                .aiModelType("GPT-4")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("AMIGAVEL")
                 .build();
 
         CreateAIAgentDTO agent2 = CreateAIAgentDTO.builder()
                 .companyId(testCompanyId)
                 .name("Sofia") // Same name
-                .aiModelType("Claude 3.5")
+                .aiModelId(testClaudeModel.getId())
                 .temperament("FORMAL")
                 .build();
 
