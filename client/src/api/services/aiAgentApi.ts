@@ -8,8 +8,10 @@ export interface AIAgent {
   companyName: string
   name: string
   description?: string
-  avatarUrl?: string
-  aiModelType: string
+  avatarBase64?: string
+  aiModelId: string
+  aiModelName: string
+  aiModelDisplayName: string
   temperament: string
   maxResponseLength: number
   temperature: number
@@ -22,8 +24,8 @@ export interface CreateAIAgentDTO {
   companyId: string
   name: string
   description?: string
-  avatarUrl?: string
-  aiModelType: string
+  avatarBase64?: string
+  aiModelId: string
   temperament: string
   maxResponseLength?: number
   temperature?: number
@@ -33,8 +35,8 @@ export interface CreateAIAgentDTO {
 export interface UpdateAIAgentDTO {
   name?: string
   description?: string
-  avatarUrl?: string
-  aiModelType?: string
+  avatarBase64?: string
+  aiModelId?: string
   temperament?: string
   maxResponseLength?: number
   temperature?: number
@@ -172,10 +174,10 @@ class AIAgentApi {
     return response.data
   }
 
-  // Get AI Agents by model type
-  async getAIAgentsByModelType(modelType: string): Promise<AIAgent[]> {
+  // Get AI Agents by model ID
+  async getAIAgentsByModelId(modelId: string): Promise<AIAgent[]> {
     const response = await axios.get(
-      `${API_BASE_URL}/api/ai-agents/model-type/${encodeURIComponent(modelType)}`,
+      `${API_BASE_URL}/api/ai-agents/model-id/${encodeURIComponent(modelId)}`,
       { headers: this.getAuthHeaders() }
     )
     return response.data
@@ -185,6 +187,24 @@ class AIAgentApi {
   async getAIAgentsByTemperament(temperament: string): Promise<AIAgent[]> {
     const response = await axios.get(
       `${API_BASE_URL}/api/ai-agents/temperament/${encodeURIComponent(temperament)}`,
+      { headers: this.getAuthHeaders() }
+    )
+    return response.data
+  }
+
+  // Check if company can create more AI agents
+  async canCreateAgent(companyId: string): Promise<boolean> {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/ai-agents/company/${companyId}/can-create`,
+      { headers: this.getAuthHeaders() }
+    )
+    return response.data
+  }
+
+  // Get remaining agent slots for company
+  async getRemainingAgentSlots(companyId: string): Promise<number> {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/ai-agents/company/${companyId}/remaining-slots`,
       { headers: this.getAuthHeaders() }
     )
     return response.data
