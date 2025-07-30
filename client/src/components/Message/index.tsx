@@ -14,13 +14,15 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
   const isFromCustomer = message.isAI;
   
   // Debug log para investigar mensagens de áudio
-  if (message.messageType === "audio" || message.mediaUrl || (message.media && message.media.length > 0)) {
+  if (message.messageType?.toLowerCase() === "audio" || message.mediaUrl || (message.media && message.media.length > 0)) {
     console.log("🎵 Audio message detected:", {
       messageType: message.messageType,
+      messageTypeLower: message.messageType?.toLowerCase(),
       mediaUrl: message.mediaUrl,
       mimeType: message.mimeType,
       media: message.media,
-      content: message.content
+      content: message.content,
+      isAudioConditionMet: (message.messageType && message.messageType.toLowerCase() === "audio" && message.mediaUrl)
     });
   }
   
@@ -34,7 +36,7 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
         }`}
       >
         {/* Check if it's an audio message (either direct or in media array) */}
-        {(message.messageType === "audio" && message.mediaUrl) || 
+        {(message.messageType && message.messageType.toLowerCase() === "audio" && message.mediaUrl) || 
          (message.media && message.media.length > 0 && message.media[0].mediaType === "AUDIO") ? (
           <AudioMessage
             audioUrl={message.mediaUrl || message.media?.[0]?.fileUrl || ""}

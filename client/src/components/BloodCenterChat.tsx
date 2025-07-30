@@ -97,22 +97,34 @@ export const BloodCenterChat: React.FC = () => {
     
     // Mensagens do WebSocket (apenas de outros usuários)
     const webSocketMessages = conversationId && messagesCache[conversationId] 
-      ? messagesCache[conversationId].messages.map(msg => ({
-          id: msg.id,
-          senderId: msg.senderId || "unknown",
-          content: msg.content,
-          timestamp: msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : "",
-          isAI: msg.isFromUser === false, // false = recebida do cliente (esquerda azul), true = enviada por mim/sistema (direita branco)
-          messageType: msg.messageType,
-          mediaUrl: msg.mediaUrl,
-          mimeType: msg.mimeType,
-          audioDuration: msg.audioDuration,
-          attachments: msg.attachments,
-          media: msg.media
-        }))
+      ? messagesCache[conversationId].messages.map(msg => {
+          // Debug log para mensagens de áudio
+          if (msg.messageType === "audio" || msg.mediaUrl) {
+            console.log("🎵 WebSocket audio message:", {
+              messageType: msg.messageType,
+              mediaUrl: msg.mediaUrl,
+              mimeType: msg.mimeType,
+              isFromUser: msg.isFromUser
+            });
+          }
+          
+          return {
+            id: msg.id,
+            senderId: msg.senderId || "unknown",
+            content: msg.content,
+            timestamp: msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : "",
+            isAI: msg.isFromUser === false, // false = recebida do cliente (esquerda azul), true = enviada por mim/sistema (direita branco)
+            messageType: msg.messageType,
+            mediaUrl: msg.mediaUrl,
+            mimeType: msg.mimeType,
+            audioDuration: msg.audioDuration,
+            attachments: msg.attachments,
+            media: msg.media
+          };
+        })
       : [];
     
     // Combinar e remover duplicatas (apenas por ID exato)
@@ -130,6 +142,18 @@ export const BloodCenterChat: React.FC = () => {
       return timeA - timeB;
     });
     
+    // Debug log para mensagens finais
+    sortedMessages.forEach(msg => {
+      if (msg.messageType?.toLowerCase() === "audio" || msg.mediaUrl) {
+        console.log("🎵 Final message for rendering:", {
+          id: msg.id,
+          messageType: msg.messageType,
+          mediaUrl: msg.mediaUrl,
+          mimeType: msg.mimeType,
+          isAI: msg.isAI
+        });
+      }
+    });
     
     return sortedMessages;
   }, [state.selectedDonor, state.messages, messagesCache]);
