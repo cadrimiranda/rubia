@@ -188,10 +188,18 @@ public class ZApiAdapter implements MessagingAdapter {
                 messageBody = (String) rootText.get("message");
             }
 
-            // Handle media messages
-            Map<String, Object> message = (Map<String, Object>) payload.get("message");
+            // Handle audio messages from root level (new format)
+            Map<String, Object> audio = (Map<String, Object>) payload.get("audio");
+            if (audio != null) {
+                mediaUrl = (String) audio.get("audioUrl");
+                mediaType = "audio";
+                mimeType = (String) audio.get("mimeType");
+                // Audio messages don't have captions, messageBody stays null
+            }
 
-            if (message != null) {
+            // Handle media messages from message object (legacy format)
+            Map<String, Object> message = (Map<String, Object>) payload.get("message");
+            if (message != null && mediaUrl == null) { // Only process if no audio found above
                 Map<String, Object> imageMessage = (Map<String, Object>) message.get("imageMessage");
                 if (imageMessage != null) {
                     mediaUrl = (String) imageMessage.get("url");
