@@ -1173,6 +1173,7 @@ export const BloodCenterChat: React.FC = () => {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              agentAvatar={undefined} // TODO: Buscar avatar do agente IA da empresa
             />
 
             <MessageInput

@@ -45,7 +45,7 @@ export const mediaApi = {
     
     // Debug FormData contents
     console.log('📋 FormData contents:');
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
     }
     
