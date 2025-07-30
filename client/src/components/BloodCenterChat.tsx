@@ -107,16 +107,6 @@ export const BloodCenterChat: React.FC = () => {
     const webSocketMessages =
       conversationId && messagesCache[conversationId]
         ? messagesCache[conversationId].messages.map((msg) => {
-            // Debug log para mensagens de áudio
-            if (msg.messageType === "audio" || msg.mediaUrl) {
-              console.log("🎵 WebSocket audio message:", {
-                messageType: msg.messageType,
-                mediaUrl: msg.mediaUrl,
-                mimeType: msg.mimeType,
-                isFromUser: msg.isFromUser,
-              });
-            }
-
             return {
               id: msg.id,
               senderId: msg.senderId || "unknown",
@@ -151,19 +141,6 @@ export const BloodCenterChat: React.FC = () => {
       return timeA - timeB;
     });
 
-    // Debug log para mensagens finais
-    sortedMessages.forEach((msg) => {
-      if (msg.messageType?.toLowerCase() === "audio" || msg.mediaUrl) {
-        console.log("🎵 Final message for rendering:", {
-          id: msg.id,
-          messageType: msg.messageType,
-          mediaUrl: msg.mediaUrl,
-          mimeType: msg.mimeType,
-          isAI: msg.isAI,
-        });
-      }
-    });
-
     return sortedMessages;
   }, [state.selectedDonor, state.messages, messagesCache]);
 
@@ -173,7 +150,7 @@ export const BloodCenterChat: React.FC = () => {
     } else if (authService.isAuthenticated()) {
       webSocket.connect();
     }
-  }, [webSocket.isConnected]);
+  }, [webSocket, webSocket.isConnected]);
 
   // Carregar campanhas ativas da API
   const loadCampaigns = React.useCallback(async () => {
@@ -677,17 +654,18 @@ export const BloodCenterChat: React.FC = () => {
               mimeType: msg.mimeType,
               audioDuration: msg.audioDuration,
               // Only create attachments for non-audio media
-              attachments: msg.mediaUrl && msg.messageType !== "AUDIO"
-                ? [
-                    {
-                      id: `media_${msg.id}`,
-                      name: msg.mediaUrl.split("/").pop() || "arquivo",
-                      size: 0,
-                      type: "application/octet-stream",
-                      url: msg.mediaUrl,
-                    },
-                  ]
-                : undefined,
+              attachments:
+                msg.mediaUrl && msg.messageType !== "AUDIO"
+                  ? [
+                      {
+                        id: `media_${msg.id}`,
+                        name: msg.mediaUrl.split("/").pop() || "arquivo",
+                        size: 0,
+                        type: "application/octet-stream",
+                        url: msg.mediaUrl,
+                      },
+                    ]
+                  : undefined,
             }));
           }
         }
