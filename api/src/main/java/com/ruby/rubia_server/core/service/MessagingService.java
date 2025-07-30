@@ -1,7 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.core.adapter.MessagingAdapter;
-import com.ruby.rubia_server.core.adapter.impl.TwilioAdapter;
 import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
@@ -95,10 +94,6 @@ public class MessagingService {
             fromNumber = getUserWhatsappNumber(userId, companyId);
         }
         
-        if (currentAdapter instanceof TwilioAdapter twilioAdapter) {
-            return twilioAdapter.sendMessage(to, message, fromNumber);
-        }
-        
         return currentAdapter.sendMessage(to, message);
     }
     
@@ -115,10 +110,6 @@ public class MessagingService {
         String fromNumber = null;
         if (userId != null && companyId != null) {
             fromNumber = getUserWhatsappNumber(userId, companyId);
-        }
-        
-        if (currentAdapter instanceof TwilioAdapter twilioAdapter) {
-            return twilioAdapter.sendMediaMessage(to, mediaUrl, caption, fromNumber);
         }
         
         return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
