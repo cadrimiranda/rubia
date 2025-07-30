@@ -57,15 +57,25 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         
-        // Permissive configuration for ALL endpoints (debugging)
-        CorsConfiguration permissiveConfig = new CorsConfiguration();
-        permissiveConfig.setAllowedOriginPatterns(Arrays.asList("*"));
-        permissiveConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        permissiveConfig.setAllowedHeaders(Arrays.asList("*"));
-        permissiveConfig.setAllowCredentials(true);
+        // Restricted configuration for API endpoints
+        CorsConfiguration apiConfig = new CorsConfiguration();
+        apiConfig.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        apiConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        apiConfig.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        apiConfig.setAllowCredentials(true);
+        apiConfig.setMaxAge(3600L);
         
-        // Apply to all endpoints
-        source.registerCorsConfiguration("/**", permissiveConfig);
+        // Webhook configuration (external Z-API calls)
+        CorsConfiguration webhookConfig = new CorsConfiguration();
+        webhookConfig.setAllowedOriginPatterns(Arrays.asList("*"));
+        webhookConfig.setAllowedMethods(Arrays.asList("POST", "OPTIONS"));
+        webhookConfig.setAllowedHeaders(Arrays.asList("Content-Type", "User-Agent"));
+        webhookConfig.setAllowCredentials(false);
+        
+        // Apply configurations to specific endpoints
+        source.registerCorsConfiguration("/api/**", apiConfig);
+        source.registerCorsConfiguration("/messaging/webhook/**", webhookConfig);
+        source.registerCorsConfiguration("/ws/**", apiConfig);
         
         return source;
     }
