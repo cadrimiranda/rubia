@@ -68,9 +68,10 @@ public class SecurityConfig {
         // Webhook configuration (external Z-API calls)
         CorsConfiguration webhookConfig = new CorsConfiguration();
         webhookConfig.setAllowedOriginPatterns(Arrays.asList("*"));
-        webhookConfig.setAllowedMethods(Arrays.asList("POST", "OPTIONS"));
-        webhookConfig.setAllowedHeaders(Arrays.asList("Content-Type", "User-Agent"));
+        webhookConfig.setAllowedMethods(Arrays.asList("POST", "OPTIONS", "GET"));
+        webhookConfig.setAllowedHeaders(Arrays.asList("*"));
         webhookConfig.setAllowCredentials(false);
+        webhookConfig.setMaxAge(3600L);
         
         // Apply configurations to specific endpoints
         source.registerCorsConfiguration("/api/**", apiConfig);
