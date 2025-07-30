@@ -34,8 +34,8 @@ public class AIAgent {
     @Column(columnDefinition = "TEXT")
     private String description; // Descrição do agente (ex: "Especialista em suporte técnico para produtos X.")
 
-    @Column(name = "avatar_url")
-    private String avatarUrl; // URL da foto do agente
+    @Column(name = "avatar_base64", columnDefinition = "TEXT")
+    private String avatarBase64; // Base64 da imagem do agente (formato: data:image/jpeg;base64,/9j/4AAQ...)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ai_model_id", nullable = false)

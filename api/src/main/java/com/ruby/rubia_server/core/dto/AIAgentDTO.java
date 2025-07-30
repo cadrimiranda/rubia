@@ -20,7 +20,7 @@ public class AIAgentDTO {
     private String companyName;
     private String name;
     private String description;
-    private String avatarUrl;
+    private String avatarBase64;
     private UUID aiModelId;
     private String aiModelName;
     private String aiModelDisplayName;

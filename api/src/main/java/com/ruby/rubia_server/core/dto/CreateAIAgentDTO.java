@@ -25,8 +25,9 @@ public class CreateAIAgentDTO {
     @Size(max = 2000, message = "Description must not exceed 2000 characters")
     private String description;
 
-    @Size(max = 500, message = "Avatar URL must not exceed 500 characters")
-    private String avatarUrl;
+    @Pattern(regexp = "^data:image\\/(jpeg|jpg|png|gif);base64,[A-Za-z0-9+/]+=*$|^$", 
+             message = "Avatar must be a valid base64 image (data:image/jpeg;base64,...) or empty")
+    private String avatarBase64;
 
     @NotNull(message = "AI Model ID is required")
     private UUID aiModelId;
