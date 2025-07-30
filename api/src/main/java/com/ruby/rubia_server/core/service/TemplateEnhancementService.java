@@ -2,12 +2,17 @@ package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.core.dto.EnhanceTemplateDTO;
 import com.ruby.rubia_server.core.dto.EnhancedTemplateResponseDTO;
+import com.ruby.rubia_server.core.dto.SaveTemplateWithAIMetadataDTO;
+import com.ruby.rubia_server.core.dto.MessageTemplateRevisionDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
 import com.ruby.rubia_server.core.entity.AIModel;
 import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.entity.MessageTemplate;
+import com.ruby.rubia_server.core.entity.MessageTemplateRevision;
 import com.ruby.rubia_server.core.repository.AIAgentRepository;
 import com.ruby.rubia_server.core.repository.AIModelRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +31,8 @@ public class TemplateEnhancementService {
     private final AIAgentRepository aiAgentRepository;
     private final AIModelRepository aiModelRepository;
     private final CompanyRepository companyRepository;
+    private final MessageTemplateRepository messageTemplateRepository;
+    private final MessageTemplateRevisionService messageTemplateRevisionService;
 
     public EnhancedTemplateResponseDTO enhanceTemplate(EnhanceTemplateDTO request) {
         log.info("Enhancing template for company: {} with type: {}", request.getCompanyId(), request.getEnhancementType());
@@ -76,22 +83,34 @@ public class TemplateEnhancementService {
 
     private String generatePrompt(EnhanceTemplateDTO request, AIModel aiModel) {
         Map<String, String> enhancements = Map.of(
-            "friendly", "Torne esta mensagem mais amigável e calorosa, mantendo um tom acolhedor",
-            "professional", "Transforme esta mensagem em um formato mais profissional e formal",
-            "empathetic", "Adicione empatia e compreensão a esta mensagem, demonstrando cuidado",
-            "urgent", "Torne esta mensagem mais urgente, transmitindo importância sem ser agressivo",
-            "motivational", "Transforme esta mensagem em algo inspirador e motivacional"
+            "friendly", "Crie uma abordagem amigável e calorosa que faça o doador se sentir bem-vindo e valorizado",
+            "professional", "Desenvolva uma comunicação profissional que transmita confiança e credibilidade institucional",
+            "empathetic", "Use linguagem empática que conecte emocionalmente e mostre como a doação impacta vidas reais",
+            "urgent", "Comunique necessidade urgente de forma responsável, motivando ação imediata sem causar pânico",
+            "motivational", "Transforme em um convite inspirador que faça o doador se sentir herói e parte de algo maior"
         );
 
         String enhancementInstruction = enhancements.getOrDefault(request.getEnhancementType(), "Melhore esta mensagem");
         
         return String.format(
-            "Contexto: Você é um assistente especializado em comunicação para centros de hematologia e hemoterapia.\n" +
-            "Categoria do template: %s\n" +
-            "Título: %s\n" +
-            "Instrução: %s\n" +
-            "Mensagem original: \"%s\"\n" +
-            "Forneça apenas a versão melhorada da mensagem, mantendo o contexto médico apropriado.",
+            "CONTEXTO: Você é um especialista em captação de doadores de sangue para centros de hematologia e hemoterapia.\n" +
+            "OBJETIVO: Criar mensagens persuasivas que motivem pessoas a fazer doações de sangue.\n" +
+            "CATEGORIA: %s\n" +
+            "TÍTULO: %s\n" +
+            "INSTRUÇÃO: %s\n" +
+            "\n" +
+            "DIRETRIZES OBRIGATÓRIAS:\n" +
+            "1. Use {{nome}} para personalização (será substituído pelo nome do doador)\n" +
+            "2. Foque na importância social e humanitária da doação\n" +
+            "3. Seja persuasivo mas ético - nunca prometa benefícios médicos diretos\n" +
+            "4. Destaque como a doação salva vidas e fortalece a comunidade\n" +
+            "5. Inclua um call-to-action claro e motivador\n" +
+            "6. Use linguagem acessível e empática\n" +
+            "7. Mantenha tom respeitoso e não invasivo\n" +
+            "\n" +
+            "MENSAGEM ORIGINAL: \"%s\"\n" +
+            "\n" +
+            "Forneça apenas a versão melhorada da mensagem com foco em captação efetiva de doadores.",
             request.getCategory(),
             request.getTitle() != null ? request.getTitle() : "N/A",
             enhancementInstruction,
@@ -118,19 +137,40 @@ public class TemplateEnhancementService {
     }
 
     private String addFriendlyTouch(String content) {
-        if (!content.contains("😊") && !content.contains("!")) {
-            content = content.replace(".", "! 😊");
+        // Adicionar personalização se não existir
+        if (!content.contains("{{nome}}")) {
+            content = "Olá {{nome}}! 😊 " + content;
         }
-        if (!content.toLowerCase().startsWith("olá")) {
-            content = "Olá! " + content;
+        
+        // Tornar mais amigável e focado em captação
+        if (!content.contains("😊") && !content.contains("💝")) {
+            content = content.replace(".", "! 💝");
         }
+        
+        // Adicionar call-to-action amigável
+        if (!content.toLowerCase().contains("venha") && !content.toLowerCase().contains("participe")) {
+            content += " Venha fazer parte dessa corrente do bem!";
+        }
+        
         return content;
     }
 
     private String makeProfessional(String content) {
-        content = content.replace("oi", "Prezado(a),");
+        // Adicionar personalização formal
+        if (!content.contains("{{nome}}")) {
+            content = "Prezado(a) {{nome}}, " + content.toLowerCase();
+        }
+        
+        // Formalizar linguagem
+        content = content.replace("oi", "Prezado(a)");
         content = content.replace("!", ".");
-        content = content.replaceAll("😊|😄|😃", "");
+        content = content.replaceAll("😊|😄|😃|💝|✨", "");
+        
+        // Adicionar call-to-action profissional
+        if (!content.toLowerCase().contains("solicitar") && !content.toLowerCase().contains("convid")) {
+            content += " Solicitamos sua valiosa colaboração para salvar vidas em nossa comunidade.";
+        }
+        
         if (!content.contains("Atenciosamente")) {
             content += "\n\nAtenciosamente,\nEquipe do Centro de Hematologia";
         }
@@ -138,29 +178,66 @@ public class TemplateEnhancementService {
     }
 
     private String addEmpathy(String content) {
-        if (!content.toLowerCase().contains("entend")) {
-            content = "Entendemos que sua agenda pode estar corrida, mas " + content.toLowerCase();
+        // Adicionar personalização empática
+        if (!content.contains("{{nome}}")) {
+            content = "{{nome}}, entendemos que sua agenda pode estar corrida, mas " + content.toLowerCase();
         }
+        
+        // Tornar mais empático e conectivo
         content = content.replace("você deve", "seria possível");
         content = content.replace("precisa", "gostaria de");
+        content = content.replace("fazer", "nos ajudar com");
+        
+        // Adicionar conexão emocional
+        if (!content.toLowerCase().contains("vida") && !content.toLowerCase().contains("ajud")) {
+            content += " Sua generosidade pode transformar e salvar vidas.";
+        }
+        
         return content + " 💝";
     }
 
     private String addUrgency(String content) {
+        // Adicionar personalização urgente
+        if (!content.contains("{{nome}}")) {
+            content = "{{nome}}, IMPORTANTE: " + content.toLowerCase();
+        }
+        
+        // Adicionar urgência responsável
         if (!content.toUpperCase().contains("URGENTE") && !content.toUpperCase().contains("IMPORTANTE")) {
             content = "IMPORTANTE: " + content;
         }
+        
         content = content.replace(".", "!");
-        content += "\n\nSua doação pode salvar vidas hoje!";
+        
+        // Call-to-action urgente mas ético
+        if (!content.toLowerCase().contains("hoje") && !content.toLowerCase().contains("agora")) {
+            content += " Precisamos de sua doação hoje - vidas dependem disso!";
+        }
+        
         return content;
     }
 
     private String makeMotivational(String content) {
+        // Adicionar personalização motivacional
+        if (!content.contains("{{nome}}")) {
+            content = "{{nome}}, que tal ser um herói hoje? " + content.toLowerCase();
+        }
+        
+        // Transformar em linguagem heroica
         content = content.replace("doação", "ato heroico de salvar vidas");
         content = content.replace("doar", "ser um herói");
+        content = content.replace("sangue", "esperança e vida");
+        
+        // Adicionar elementos motivacionais
         if (!content.contains("⭐") && !content.contains("🦸")) {
-            content += " ⭐ Você pode fazer a diferença!";
+            content += " ⭐ Você tem o poder de fazer a diferença!";
         }
+        
+        // Call-to-action inspirador
+        if (!content.toLowerCase().contains("herói") || !content.toLowerCase().contains("transform")) {
+            content += " Venha transformar vidas conosco! 🦸‍♀️";
+        }
+        
         return content;
     }
 
@@ -175,10 +252,10 @@ public class TemplateEnhancementService {
     }
 
     private AIModel getDefaultAIModel() {
-        // Buscar o modelo mais econômico ativo (GPT-4 Mini)
+        // Buscar GPT-4o mini: IDEAL para templates de doação (custo 17x menor que GPT-4o premium)
         List<AIModel> activeModels = aiModelRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc();
         
-        // Tentar encontrar o GPT-4 Mini primeiro (mais econômico)
+        // Priorizar GPT-4o mini: 90% da qualidade por 6% do custo
         AIModel defaultModel = activeModels.stream()
                 .filter(model -> "gpt-4o-mini".equals(model.getName()))
                 .findFirst()
@@ -188,7 +265,7 @@ public class TemplateEnhancementService {
             throw new RuntimeException("Nenhum modelo de IA ativo encontrado no sistema. Configure ao menos um modelo ativo.");
         }
         
-        log.info("Using default AI model: {} ({})", defaultModel.getDisplayName(), defaultModel.getName());
+        log.info("Using default AI model: {} ({}) - Optimized for blood donation templates", defaultModel.getDisplayName(), defaultModel.getName());
         return defaultModel;
     }
 
@@ -239,7 +316,7 @@ public class TemplateEnhancementService {
                 .company(company)
                 .aiModel(defaultModel)
                 .name("Assistente " + company.getName())
-                .description("Agente de IA padrão para melhoria de templates e comunicação com doadores.")
+                .description("Agente de IA otimizado para campanhas de doação de sangue. Usa GPT-4o mini para máximo custo-benefício.")
                 .temperament("AMIGAVEL")
                 .maxResponseLength(500)
                 .temperature(java.math.BigDecimal.valueOf(0.7))
@@ -251,5 +328,75 @@ public class TemplateEnhancementService {
                 company.getName(), defaultModel.getDisplayName());
         
         return defaultAgent;
+    }
+
+    /**
+     * Salva um template atualizado com metadados de IA e cria uma revisão com histórico completo
+     */
+    @Transactional
+    public MessageTemplateRevisionDTO saveTemplateWithAIMetadata(SaveTemplateWithAIMetadataDTO request) {
+        log.info("Saving template {} with AI metadata from enhancement type: {}", 
+                request.getTemplateId(), request.getAiEnhancementType());
+
+        // Buscar o template
+        MessageTemplate template = messageTemplateRepository.findById(request.getTemplateId())
+                .orElseThrow(() -> new RuntimeException("Template not found with ID: " + request.getTemplateId()));
+
+        // Atualizar o conteúdo do template
+        template.setContent(request.getContent());
+        template.setEditCount(template.getEditCount() + 1);
+        template.setIsAiGenerated(true); // Marcar como gerado por IA
+        
+        // Se aiAgentId for fornecido, definir o agente que gerou
+        if (request.getAiAgentId() != null) {
+            AIAgent aiAgent = aiAgentRepository.findById(request.getAiAgentId())
+                    .orElseThrow(() -> new RuntimeException("AIAgent not found with ID: " + request.getAiAgentId()));
+            template.setAiAgent(aiAgent);
+        }
+
+        // Salvar o template atualizado
+        MessageTemplate savedTemplate = messageTemplateRepository.save(template);
+        log.debug("Template updated with AI content: {}", savedTemplate.getId());
+
+        // Criar revisão com metadados de IA
+        MessageTemplateRevision revision = messageTemplateRevisionService.createAIEnhancementRevision(
+                request.getTemplateId(),
+                request.getContent(),
+                request.getUserId(),
+                request.getAiAgentId(),
+                request.getAiEnhancementType(),
+                request.getAiTokensUsed(),
+                request.getAiCreditsConsumed(),
+                request.getAiModelUsed(),
+                request.getAiExplanation()
+        );
+
+        // Converter para DTO
+        MessageTemplateRevisionDTO dto = MessageTemplateRevisionDTO.builder()
+                .id(revision.getId())
+                .templateId(revision.getTemplate().getId())
+                .templateName(revision.getTemplate().getName())
+                .revisionNumber(revision.getRevisionNumber())
+                .content(revision.getContent())
+                .editedByUserId(revision.getEditedBy() != null ? revision.getEditedBy().getId() : null)
+                .editedByUserName(revision.getEditedBy() != null ? revision.getEditedBy().getName() : null)
+                .revisionType(revision.getRevisionType())
+                .revisionTimestamp(revision.getRevisionTimestamp())
+                .createdAt(revision.getCreatedAt())
+                .updatedAt(revision.getUpdatedAt())
+                // AI metadata
+                .aiAgentId(revision.getAiAgent() != null ? revision.getAiAgent().getId() : null)
+                .aiAgentName(revision.getAiAgent() != null ? revision.getAiAgent().getName() : null)
+                .aiEnhancementType(revision.getAiEnhancementType())
+                .aiTokensUsed(revision.getAiTokensUsed())
+                .aiCreditsConsumed(revision.getAiCreditsConsumed())
+                .aiModelUsed(revision.getAiModelUsed())
+                .aiExplanation(revision.getAiExplanation())
+                .build();
+
+        log.info("Template {} successfully saved with AI metadata. Revision {} created.", 
+                savedTemplate.getId(), revision.getId());
+
+        return dto;
     }
 }

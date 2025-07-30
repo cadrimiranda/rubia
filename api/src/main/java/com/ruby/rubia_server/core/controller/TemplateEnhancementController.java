@@ -2,6 +2,8 @@ package com.ruby.rubia_server.core.controller;
 
 import com.ruby.rubia_server.core.dto.EnhanceTemplateDTO;
 import com.ruby.rubia_server.core.dto.EnhancedTemplateResponseDTO;
+import com.ruby.rubia_server.core.dto.SaveTemplateWithAIMetadataDTO;
+import com.ruby.rubia_server.core.dto.MessageTemplateRevisionDTO;
 import com.ruby.rubia_server.core.service.TemplateEnhancementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,21 @@ public class TemplateEnhancementController {
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             log.error("Error enhancing template: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @PostMapping("/save-with-ai-metadata")
+    public ResponseEntity<MessageTemplateRevisionDTO> saveTemplateWithAIMetadata(
+            @Valid @RequestBody SaveTemplateWithAIMetadataDTO request) {
+        
+        log.info("POST /api/template-enhancement/save-with-ai-metadata - Saving template with AI metadata for template: {}", request.getTemplateId());
+        
+        try {
+            MessageTemplateRevisionDTO response = templateEnhancementService.saveTemplateWithAIMetadata(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Error saving template with AI metadata: {}", e.getMessage(), e);
             throw e;
         }
     }
