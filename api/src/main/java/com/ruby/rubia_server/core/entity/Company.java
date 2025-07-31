@@ -62,6 +62,10 @@ public class Company {
     @Builder.Default
     private Integer maxWhatsappNumbers = 1;
     
+    @Column(name = "max_ai_agents")
+    @Builder.Default
+    private Integer maxAiAgents = 1;
+    
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("company-departments")
     private List<Department> departments;

@@ -191,11 +191,23 @@ public class AIAgentController {
         return ResponseEntity.ok(exists);
     }
 
-    @GetMapping("/model-type/{modelType}")
-    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelType(@PathVariable String modelType) {
-        log.debug("Fetching AI agents by model type: {}", modelType);
+    @GetMapping("/model/{modelName}")
+    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelName(@PathVariable String modelName) {
+        log.debug("Fetching AI agents by model name: {}", modelName);
 
-        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelType(modelType);
+        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelName(modelName);
+        List<AIAgentDTO> responseDTOs = aiAgents.stream()
+                .map(this::convertToDTO)
+                .toList();
+
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @GetMapping("/model-id/{modelId}")
+    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelId(@PathVariable UUID modelId) {
+        log.debug("Fetching AI agents by model id: {}", modelId);
+
+        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelId(modelId);
         List<AIAgentDTO> responseDTOs = aiAgents.stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -215,6 +227,28 @@ public class AIAgentController {
         return ResponseEntity.ok(responseDTOs);
     }
 
+    @GetMapping("/company/{companyId}/can-create")
+    public ResponseEntity<Boolean> canCreateAgent(@PathVariable UUID companyId) {
+        log.debug("Checking if company can create more AI agents: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        boolean canCreate = aiAgentService.canCreateAgent(companyId);
+        return ResponseEntity.ok(canCreate);
+    }
+
+    @GetMapping("/company/{companyId}/remaining-slots")
+    public ResponseEntity<Integer> getRemainingAgentSlots(@PathVariable UUID companyId) {
+        log.debug("Fetching remaining agent slots for company: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        int remainingSlots = aiAgentService.getRemainingAgentSlots(companyId);
+        return ResponseEntity.ok(remainingSlots);
+    }
+
     private AIAgentDTO convertToDTO(AIAgent aiAgent) {
         return AIAgentDTO.builder()
                 .id(aiAgent.getId())
@@ -222,8 +256,10 @@ public class AIAgentController {
                 .companyName(aiAgent.getCompany().getName())
                 .name(aiAgent.getName())
                 .description(aiAgent.getDescription())
-                .avatarUrl(aiAgent.getAvatarUrl())
-                .aiModelType(aiAgent.getAiModelType())
+                .avatarBase64(aiAgent.getAvatarBase64())
+                .aiModelId(aiAgent.getAiModel().getId())
+                .aiModelName(aiAgent.getAiModel().getName())
+                .aiModelDisplayName(aiAgent.getAiModel().getDisplayName())
                 .temperament(aiAgent.getTemperament())
                 .maxResponseLength(aiAgent.getMaxResponseLength())
                 .temperature(aiAgent.getTemperature())

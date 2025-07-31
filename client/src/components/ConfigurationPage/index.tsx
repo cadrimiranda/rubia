@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -29,9 +29,14 @@ import {
 import type { UploadProps, RadioChangeEvent } from "antd";
 import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
+import { AvatarUpload } from "../AvatarUpload";
 import type { ConversationTemplate } from "../../types/types";
 import { campaignService, type CampaignData } from "../../services/campaignService";
-import { useChatStore } from "../../store/useChatStore";
+
+interface ExtendedCampaignData extends Omit<CampaignData, 'templateIds'> {
+  file?: File;
+  templateIds?: string[];
+}
 import {
   messageTemplateService,
   type CreateMessageTemplateRequest,
@@ -40,6 +45,8 @@ import {
   type RevisionType,
 } from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
+import { aiModelService, type AIModel } from "../../services/aiModelService";
+import { aiAgentApi, type AIAgent } from "../../api/services/aiAgentApi";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -47,9 +54,13 @@ const { RangePicker } = DatePicker;
 
 interface AgentConfig {
   name: string;
-  avatar: string;
-  speechProfile: string;
-  llmType: string;
+  description: string;
+  avatarBase64: string;
+  aiModelId: string;
+  temperament: string;
+  maxResponseLength: number;
+  temperature: number;
+  isActive: boolean;
 }
 
 interface ConfigurationPageProps {
@@ -59,7 +70,6 @@ interface ConfigurationPageProps {
 export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   onBack,
 }) => {
-  const { refreshConversations } = useChatStore();
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<
@@ -67,11 +77,21 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   >("agent");
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",
-    avatar: "",
-    speechProfile: "amigavel",
-    llmType: "medio",
+    description: "",
+    avatarBase64: "",
+    aiModelId: "",
+    temperament: "AMIGAVEL",
+    maxResponseLength: 500,
+    temperature: 0.7,
+    isActive: true,
   });
-  const [campaignData, setCampaignData] = useState<CampaignData>({
+  const [aiModels, setAiModels] = useState<AIModel[]>([]);
+  const [existingAgents, setExistingAgents] = useState<AIAgent[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [canCreateAgent, setCanCreateAgent] = useState(true);
+  const [remainingSlots, setRemainingSlots] = useState(1);
+  const [campaignData, setCampaignData] = useState<ExtendedCampaignData>({
     name: "",
     description: "",
     startDate: "",
@@ -94,7 +114,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Carregar templates da API
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     setIsLoadingTemplates(true);
     try {
       // Carregar todos os templates ou apenas da empresa do usuário
@@ -119,7 +139,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     } finally {
       setIsLoadingTemplates(false);
     }
-  };
+  }, [user?.companyId]);
 
   // Carregar templates excluídos da API
   const loadDeletedTemplates = async () => {
@@ -145,12 +165,65 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
+  // Carregar modelos de AI da API
+  const loadAIModels = useCallback(async () => {
+    try {
+      const models = await aiModelService.getActiveModels();
+      setAiModels(models);
+      
+      // Se não há modelo selecionado e há modelos disponíveis, selecionar o primeiro
+      if (!agentConfig.aiModelId && models.length > 0) {
+        setAgentConfig(prev => ({ ...prev, aiModelId: models[0].id }));
+      }
+    } catch (error) {
+      console.error("Erro ao carregar modelos de AI:", error);
+      message.error("Erro ao carregar modelos de AI");
+    }
+  }, [agentConfig.aiModelId]);
+
+  // Carregar agentes existentes da empresa
+  const loadExistingAgents = useCallback(async () => {
+    if (!user?.companyId) return;
+    
+    try {
+      const agents = await aiAgentApi.getAIAgentsByCompany(user.companyId);
+      setExistingAgents(agents);
+    } catch (error) {
+      console.error("Erro ao carregar agentes:", error);
+      message.error("Erro ao carregar agentes existentes");
+    }
+  }, [user?.companyId]);
+
+  // Verificar limites da empresa
+  const checkAgentLimits = useCallback(async () => {
+    if (!user?.companyId) return;
+    
+    try {
+      const [canCreate, remaining] = await Promise.all([
+        aiAgentApi.canCreateAgent(user.companyId),
+        aiAgentApi.getRemainingAgentSlots(user.companyId)
+      ]);
+      
+      setCanCreateAgent(canCreate);
+      setRemainingSlots(remaining);
+    } catch (error) {
+      console.error("Erro ao verificar limites:", error);
+    }
+  }, [user?.companyId]);
+
   // Carregar templates ao montar o componente ou quando o usuário mudar
   useEffect(() => {
     if (user?.companyId) {
       loadTemplates();
+      loadExistingAgents();
+      checkAgentLimits();
     }
-  }, [user?.companyId]);
+  }, [user?.companyId, loadTemplates, loadExistingAgents, checkAgentLimits]);
+
+  // Carregar modelos de AI ao montar o componente
+  useEffect(() => {
+    loadAIModels();
+  }, []);
 
   // Função para obter ícone e cor do tipo de revisão
   const getRevisionTypeInfo = (type: RevisionType) => {
@@ -230,26 +303,26 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
-  const handleAgentConfigChange = (field: keyof AgentConfig, value: string) => {
+  const handleAgentConfigChange = (field: keyof AgentConfig, value: string | number | boolean) => {
     setAgentConfig((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const handleCampaignChange = (field: keyof CampaignData, value: string) => {
+  const handleCampaignChange = (field: keyof ExtendedCampaignData, value: string) => {
     setCampaignData((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const handleDateRangeChange = (dates: [string, string] | null) => {
+  const handleDateRangeChange = (dates: any) => {
     if (dates && dates.length === 2) {
       setCampaignData((prev) => ({
         ...prev,
-        startDate: (dates[0] as { format: (format: string) => string }).format("YYYY-MM-DD"),
-        endDate: (dates[1] as { format: (format: string) => string }).format("YYYY-MM-DD"),
+        startDate: dates[0].format("YYYY-MM-DD"),
+        endDate: dates[1].format("YYYY-MM-DD"),
       }));
     }
   };
@@ -270,6 +343,161 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       setEditingTemplate(template);
       setShowTemplateModal(true);
     }
+  };
+
+  const handleSaveAgent = async () => {
+    if (!agentConfig.name || !agentConfig.aiModelId || !agentConfig.temperament) {
+      message.error("Preencha todos os campos obrigatórios!");
+      return;
+    }
+
+    if (!user?.companyId) {
+      message.error("Erro: Usuário não possui empresa associada");
+      return;
+    }
+
+    // Verificar limite antes de criar
+    if (!canCreateAgent) {
+      message.error("Limite de agentes IA atingido para seu plano atual");
+      return;
+    }
+
+    try {
+      const createAgentData = {
+        companyId: user.companyId,
+        name: agentConfig.name,
+        description: agentConfig.description || null,
+        avatarBase64: agentConfig.avatarBase64 || null,
+        aiModelId: agentConfig.aiModelId,
+        temperament: agentConfig.temperament,
+        maxResponseLength: agentConfig.maxResponseLength,
+        temperature: agentConfig.temperature,
+        isActive: agentConfig.isActive,
+      };
+
+      const createdAgent = await aiAgentApi.createAIAgent(createAgentData);
+      
+      message.success(`Agente "${createdAgent.name}" criado com sucesso!`);
+      
+      // Reset form
+      setAgentConfig({
+        name: "",
+        description: "",
+        avatarBase64: "",
+        aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+        temperament: "AMIGAVEL",
+        maxResponseLength: 500,
+        temperature: 0.7,
+        isActive: true,
+      });
+
+      // Recarregar lista de agentes e limites
+      await loadExistingAgents();
+      await checkAgentLimits();
+
+    } catch (error: unknown) {
+      console.error("Erro ao criar agente:", error);
+      const errorMessage = (error as Error)?.message || "Erro ao criar agente";
+      message.error(errorMessage);
+    }
+  };
+
+  // Editar agente existente
+  const handleEditAgent = (agent: AIAgent) => {
+    setSelectedAgent(agent);
+    setAgentConfig({
+      name: agent.name,
+      description: agent.description || "",
+      avatarBase64: agent.avatarBase64 || "",
+      aiModelId: agent.aiModelId,
+      temperament: agent.temperament,
+      maxResponseLength: agent.maxResponseLength,
+      temperature: agent.temperature,
+      isActive: agent.isActive,
+    });
+    setShowAgentModal(true);
+  };
+
+  // Salvar alterações do agente
+  const handleUpdateAgent = async () => {
+    if (!selectedAgent) return;
+
+    try {
+      const updateData = {
+        name: agentConfig.name,
+        description: agentConfig.description || null,
+        avatarBase64: agentConfig.avatarBase64 || null,
+        aiModelId: agentConfig.aiModelId,
+        temperament: agentConfig.temperament,
+        maxResponseLength: agentConfig.maxResponseLength,
+        temperature: agentConfig.temperature,
+        isActive: agentConfig.isActive,
+      };
+
+      await aiAgentApi.updateAIAgent(selectedAgent.id, updateData);
+      
+      message.success(`Agente "${agentConfig.name}" atualizado com sucesso!`);
+      
+      // Fechar modal e recarregar lista
+      setShowAgentModal(false);
+      setSelectedAgent(null);
+      await loadExistingAgents();
+
+      // Reset form
+      setAgentConfig({
+        name: "",
+        description: "",
+        avatarBase64: "",
+        aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+        temperament: "AMIGAVEL",
+        maxResponseLength: 500,
+        temperature: 0.7,
+        isActive: true,
+      });
+
+    } catch (error: unknown) {
+      console.error("Erro ao atualizar agente:", error);
+      const errorMessage = (error as Error)?.message || "Erro ao atualizar agente";
+      message.error(errorMessage);
+    }
+  };
+
+  // Deletar agente
+  const handleDeleteAgent = (agent: AIAgent) => {
+    Modal.confirm({
+      title: 'Excluir Agente IA',
+      content: `Tem certeza que deseja excluir o agente "${agent.name}"? Esta ação não pode ser desfeita.`,
+      okText: 'Excluir',
+      okType: 'danger',
+      cancelText: 'Cancelar',
+      onOk: async () => {
+        try {
+          await aiAgentApi.deleteAIAgent(agent.id);
+          message.success(`Agente "${agent.name}" excluído com sucesso!`);
+          await loadExistingAgents();
+          await checkAgentLimits();
+        } catch (error) {
+          console.error("Erro ao excluir agente:", error);
+          message.error("Erro ao excluir agente");
+        }
+      }
+    });
+  };
+
+  // Criar novo agente
+  const handleCreateNewAgent = () => {
+    setSelectedAgent(null);
+    setAgentConfig({
+      name: "",
+      description: "",
+      avatarBase64: "",
+      aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+      temperament: "AMIGAVEL",
+      maxResponseLength: 500,
+      temperature: 0.7,
+      isActive: true,
+    });
+    setShowAgentModal(true);
   };
 
   const handleEnhanceTemplate = (templateId: string) => {
@@ -481,15 +709,16 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       } else {
         message.error(result ? "Erro ao criar campanha!" : "Erro na comunicação com o servidor!");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao criar campanha:", error);
       
       // Tentar extrair mensagem de erro específica
       let errorMessage = "Erro ao criar campanha!";
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = `Erro: ${error.message}`;
+      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = `Erro: ${err.message}`;
       }
       
       message.error(errorMessage);
@@ -498,27 +727,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
-  const avatarUploadProps: UploadProps = {
-    name: "avatar",
-    accept: ".jpg,.jpeg,.png,.gif",
-    beforeUpload: (file) => {
-      const isImage = file.type.startsWith("image/");
-      if (!isImage) {
-        message.error("Você só pode enviar arquivos de imagem!");
-        return false;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          handleAgentConfigChange("avatar", e.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
-
-      return false;
-    },
-  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -625,40 +833,46 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
 
                 {/* Seção do avatar e nome */}
                 <div className="flex items-start gap-8 mb-8 p-6 bg-gray-50 rounded-xl">
-                  <div className="relative">
-                    <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                      {agentConfig.avatar ? (
-                        <img
-                          src={agentConfig.avatar}
-                          alt="Agent Avatar"
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                      ) : (
-                        <User className="w-12 h-12 text-white" />
-                      )}
+                  <AvatarUpload
+                    value={agentConfig.avatarBase64}
+                    onChange={(base64) => 
+                      handleAgentConfigChange("avatarBase64", base64 || "")
+                    }
+                    size={96}
+                    placeholder="Upload avatar"
+                  />
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Nome do Agente *
+                      </label>
+                      <Input
+                        value={agentConfig.name}
+                        onChange={(e) =>
+                          handleAgentConfigChange("name", e.target.value)
+                        }
+                        placeholder="Ex: Sofia, Ana, João..."
+                        size="large"
+                        className="font-medium"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        O nome será usado nas conversas com os usuários
+                      </p>
                     </div>
-                    <AntUpload {...avatarUploadProps} showUploadList={false}>
-                      <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-red-100 hover:border-red-300 transition-colors">
-                        <Upload className="w-4 h-4 text-red-600" />
-                      </button>
-                    </AntUpload>
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Nome do Agente
-                    </label>
-                    <Input
-                      value={agentConfig.name}
-                      onChange={(e) =>
-                        handleAgentConfigChange("name", e.target.value)
-                      }
-                      placeholder="Ex: Sofia, Ana, João..."
-                      size="large"
-                      className="font-medium"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      O nome será usado nas conversas com os doadores
-                    </p>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Descrição
+                      </label>
+                      <TextArea
+                        value={agentConfig.description}
+                        onChange={(e) =>
+                          handleAgentConfigChange("description", e.target.value)
+                        }
+                        placeholder="Descreva a função e especialidade do agente..."
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -667,14 +881,14 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-4">
-                        Perfil de Comunicação
+                        Temperamento *
                       </label>
                       <div className="space-y-2">
                         <Radio.Group
-                          value={agentConfig.speechProfile}
+                          value={agentConfig.temperament}
                           onChange={(e: RadioChangeEvent) =>
                             handleAgentConfigChange(
-                              "speechProfile",
+                              "temperament",
                               e.target.value
                             )
                           }
@@ -682,7 +896,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                         >
                           <div className="space-y-2">
                             <Radio.Button
-                              value="formal"
+                              value="FORMAL"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -690,7 +904,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="amigavel"
+                              value="AMIGAVEL"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -698,7 +912,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="descontraido"
+                              value="DESCONTRAIDO"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -706,7 +920,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="serio"
+                              value="SERIO"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
@@ -714,11 +928,11 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                               </span>
                             </Radio.Button>
                             <Radio.Button
-                              value="animado"
+                              value="EMPATICO"
                               className="w-full h-12 flex items-center text-left"
                             >
                               <span className="font-medium">
-                                Animado e Entusiasmado
+                                Empático e Compreensivo
                               </span>
                             </Radio.Button>
                           </div>
@@ -730,55 +944,150 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-4">
-                        Inteligência do Agente
+                        Modelo de IA *
                       </label>
-                      <div className="space-y-2">
-                        <Radio.Group
-                          value={agentConfig.llmType}
-                          onChange={(e: RadioChangeEvent) =>
-                            handleAgentConfigChange("llmType", e.target.value)
+                      <div className="space-y-4">
+                        <Select
+                          value={agentConfig.aiModelId}
+                          onChange={(value) =>
+                            handleAgentConfigChange("aiModelId", value)
                           }
                           className="w-full"
+                          placeholder="Selecione um modelo de IA"
+                          size="large"
                         >
-                          <div className="space-y-2">
-                            <Radio.Button
-                              value="barato"
-                              className="w-full h-16 flex items-center text-left"
-                            >
-                              <div>
-                                <div className="font-medium">Econômico</div>
-                                <div className="text-xs text-gray-500">
-                                  Respostas rápidas e diretas
+                          {aiModels.map((model) => (
+                            <Option key={model.id} value={model.id}>
+                              <div className="flex flex-col py-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="font-medium text-lg">{model.displayName}</div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      model.performanceLevel === 'PREMIUM' ? 'bg-purple-100 text-purple-700' :
+                                      model.performanceLevel === 'AVANCADO' ? 'bg-blue-100 text-blue-700' :
+                                      model.performanceLevel === 'INTERMEDIARIO' ? 'bg-green-100 text-green-700' :
+                                      'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      {model.performanceLevel}
+                                    </span>
+                                    <span className="text-sm font-semibold text-orange-600">
+                                      {model.costPer1kTokens} créditos/1k tokens
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-sm text-gray-600 mb-2">
+                                  {model.capabilities}
+                                </div>
+                                <div className="text-xs text-gray-500 italic">
+                                  💡 {model.impactDescription}
                                 </div>
                               </div>
-                            </Radio.Button>
-                            <Radio.Button
-                              value="medio"
-                              className="w-full h-16 flex items-center text-left"
-                            >
-                              <div>
-                                <div className="font-medium">
-                                  Padrão (Recomendado)
+                            </Option>
+                          ))}
+                        </Select>
+                        
+                        {/* Exibir informações do modelo selecionado */}
+                        {agentConfig.aiModelId && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            {(() => {
+                              const selectedModel = aiModels.find(m => m.id === agentConfig.aiModelId);
+                              if (!selectedModel) return null;
+                              
+                              return (
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h4 className="font-semibold text-blue-900">
+                                      {selectedModel.displayName} - {selectedModel.provider}
+                                    </h4>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      selectedModel.performanceLevel === 'PREMIUM' ? 'bg-purple-100 text-purple-700' :
+                                      selectedModel.performanceLevel === 'AVANCADO' ? 'bg-blue-100 text-blue-700' :
+                                      selectedModel.performanceLevel === 'INTERMEDIARIO' ? 'bg-green-100 text-green-700' :
+                                      'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      {selectedModel.performanceLevel}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm text-blue-800 mb-2">
+                                    <strong>Capacidades:</strong> {selectedModel.capabilities}
+                                  </div>
+                                  <div className="text-sm text-blue-700 mb-2">
+                                    <strong>Impacto:</strong> {selectedModel.impactDescription}
+                                  </div>
+                                  <div className="text-sm text-orange-700 font-semibold">
+                                    💰 Custo: {selectedModel.costPer1kTokens} créditos por 1.000 tokens
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  Equilibrio entre custo e qualidade
-                                </div>
-                              </div>
-                            </Radio.Button>
-                            <Radio.Button
-                              value="caro"
-                              className="w-full h-16 flex items-center text-left"
-                            >
-                              <div>
-                                <div className="font-medium">Premium</div>
-                                <div className="text-xs text-gray-500">
-                                  Máxima qualidade e contextualização
-                                </div>
-                              </div>
-                            </Radio.Button>
+                              );
+                            })()}
                           </div>
-                        </Radio.Group>
+                        )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Configurações avançadas */}
+                <div className="mt-8 p-6 bg-gray-50 rounded-xl">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                    Configurações Avançadas
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Limite de Caracteres
+                      </label>
+                      <Input
+                        type="number"
+                        value={agentConfig.maxResponseLength}
+                        onChange={(e) =>
+                          handleAgentConfigChange("maxResponseLength", parseInt(e.target.value) || 500)
+                        }
+                        min={1}
+                        max={10000}
+                        size="large"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Máximo de caracteres por resposta (1-10000)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Criatividade (Temperature)
+                      </label>
+                      <Input
+                        type="number"
+                        value={agentConfig.temperature}
+                        onChange={(e) =>
+                          handleAgentConfigChange("temperature", parseFloat(e.target.value) || 0.7)
+                        }
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        size="large"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nível de criatividade (0.0 - 1.0)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Status
+                      </label>
+                      <Radio.Group
+                        value={agentConfig.isActive}
+                        onChange={(e: RadioChangeEvent) =>
+                          handleAgentConfigChange("isActive", e.target.value)
+                        }
+                        className="w-full"
+                      >
+                        <Radio.Button value={true} className="w-20">
+                          Ativo
+                        </Radio.Button>
+                        <Radio.Button value={false} className="w-20">
+                          Inativo
+                        </Radio.Button>
+                      </Radio.Group>
                     </div>
                   </div>
                 </div>
@@ -786,7 +1095,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                 {/* Botões de ação */}
                 <div className="flex items-center justify-between pt-8 border-t border-gray-200 mt-8">
                   <div className="text-sm text-gray-500">
-                    Última atualização: Hoje, 14:30
+                    Configure todos os campos obrigatórios
                   </div>
                   <div className="flex gap-3">
                     <Button size="large" className="px-6">
@@ -795,9 +1104,11 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                     <Button
                       type="primary"
                       size="large"
+                      onClick={handleSaveAgent}
+                      disabled={!agentConfig.name || !agentConfig.aiModelId || !agentConfig.temperament}
                       className="px-8 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                     >
-                      Salvar Configurações
+                      Salvar Agente
                     </Button>
                   </div>
                 </div>
@@ -818,20 +1129,169 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                         {agentConfig.name}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {agentConfig.speechProfile === "formal" &&
-                          "Bom dia! Sou a assistente virtual do Centro de Sangue. Como posso ajudá-lo hoje?"}
-                        {agentConfig.speechProfile === "amigavel" &&
-                          "Oi! 😊 Eu sou a assistente do Centro de Sangue! Como posso te ajudar hoje?"}
-                        {agentConfig.speechProfile === "descontraido" &&
-                          "E aí! Tudo bem? Sou a assistente aqui do Centro. Em que posso te ajudar?"}
-                        {agentConfig.speechProfile === "serio" &&
-                          "Olá. Sou a assistente do Centro de Sangue. Estou aqui para ajudá-lo."}
-                        {agentConfig.speechProfile === "animado" &&
-                          "Oi, oi! 🎉 Que alegria ter você aqui! Sou a assistente do Centro de Sangue!"}
+                        {agentConfig.temperament === "FORMAL" &&
+                          "Bom dia! Sou o assistente virtual da empresa. Como posso ajudá-lo hoje?"}
+                        {agentConfig.temperament === "AMIGAVEL" &&
+                          "Oi! 😊 Eu sou o assistente da empresa! Como posso te ajudar hoje?"}
+                        {agentConfig.temperament === "DESCONTRAIDO" &&
+                          "E aí! Tudo bem? Sou o assistente aqui da empresa. Em que posso te ajudar?"}
+                        {agentConfig.temperament === "SERIO" &&
+                          "Olá. Sou o assistente da empresa. Estou aqui para ajudá-lo."}
+                        {agentConfig.temperament === "EMPATICO" &&
+                          "Olá! Entendo que você precisa de ajuda. Estou aqui para te apoiar no que precisar! 💙"}
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Seção de Agentes Existentes */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      Agentes IA da Empresa
+                    </h3>
+                    <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                      {existingAgents.length} de {existingAgents.length + remainingSlots} agentes
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-gray-600">
+                      {remainingSlots > 0 ? (
+                        <span className="text-green-600 font-medium">
+                          {remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} disponível{remainingSlots !== 1 ? 'eis' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-orange-600 font-medium">
+                          Limite atingido
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      type="primary"
+                      icon={<Plus />}
+                      onClick={handleCreateNewAgent}
+                      disabled={!canCreateAgent}
+                      className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
+                    >
+                      Novo Agente
+                    </Button>
+                  </div>
+                </div>
+
+                {existingAgents.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-500 mb-2">
+                      Nenhum agente criado ainda
+                    </h4>
+                    <p className="text-gray-400 mb-4">
+                      Crie seu primeiro agente IA para começar a automatizar conversas
+                    </p>
+                    <Button
+                      type="primary"
+                      icon={<Plus />}
+                      onClick={handleCreateNewAgent}
+                      disabled={!canCreateAgent}
+                      className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
+                    >
+                      Criar Primeiro Agente
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {existingAgents.map((agent) => (
+                      <div
+                        key={agent.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                              {agent.avatarBase64 ? (
+                                <img
+                                  src={agent.avatarBase64}
+                                  alt={agent.name}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <User className="w-5 h-5 text-red-600" />
+                              )}
+                            </div>
+                            <div>
+                              <h5 className="font-semibold text-gray-800">
+                                {agent.name}
+                              </h5>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    agent.isActive
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-gray-100 text-gray-600"
+                                  }`}
+                                >
+                                  {agent.isActive ? "Ativo" : "Inativo"}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {agent.temperament}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                              items: [
+                                {
+                                  key: "edit",
+                                  label: "Editar",
+                                  icon: <Edit3 className="w-4 h-4" />,
+                                  onClick: () => handleEditAgent(agent),
+                                },
+                                {
+                                  key: "delete",
+                                  label: "Excluir",
+                                  icon: <Trash2 className="w-4 h-4" />,
+                                  danger: true,
+                                  onClick: () => handleDeleteAgent(agent),
+                                },
+                              ],
+                            }}
+                          >
+                            <Button
+                              size="small"
+                              type="text"
+                              icon={<MoreVertical className="w-4 h-4" />}
+                              className="hover:bg-gray-100"
+                            />
+                          </Dropdown>
+                        </div>
+
+                        {agent.description && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {agent.description}
+                          </p>
+                        )}
+
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Modelo:</span>
+                            <span className="font-medium">{agent.aiModelDisplayName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Temperatura:</span>
+                            <span className="font-medium">{agent.temperature}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Max chars:</span>
+                            <span className="font-medium">{agent.maxResponseLength}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1483,6 +1943,217 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         }}
         onSave={handleSaveTemplate}
       />
+
+      {/* Modal de Edição de Agente */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <User className="w-5 h-5 text-red-600" />
+            <span>{selectedAgent ? "Editar Agente IA" : "Criar Novo Agente IA"}</span>
+          </div>
+        }
+        open={showAgentModal}
+        onCancel={() => {
+          setShowAgentModal(false);
+          setSelectedAgent(null);
+          setAgentConfig({
+            name: "",
+            description: "",
+            avatarBase64: "",
+            aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+            temperament: "AMIGAVEL",
+            maxResponseLength: 500,
+            temperature: 0.7,
+            isActive: true,
+          });
+        }}
+        footer={null}
+        width={700}
+      >
+        <div className="space-y-6 py-4">
+          {/* Avatar e Nome */}
+          <div className="flex items-start gap-6 p-4 bg-gray-50 rounded-lg">
+            <AvatarUpload
+              value={agentConfig.avatarBase64}
+              onChange={(base64) => 
+                handleAgentConfigChange("avatarBase64", base64 || "")
+              }
+              size={80}
+              placeholder="Upload avatar"
+            />
+            <div className="flex-1 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nome do Agente *
+                </label>
+                <Input
+                  value={agentConfig.name}
+                  onChange={(e) =>
+                    handleAgentConfigChange("name", e.target.value)
+                  }
+                  placeholder="Ex: Sofia, Ana, João..."
+                  size="large"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Descrição
+                </label>
+                <TextArea
+                  value={agentConfig.description}
+                  onChange={(e) =>
+                    handleAgentConfigChange("description", e.target.value)
+                  }
+                  placeholder="Descreva a função e especialidade do agente..."
+                  rows={2}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Configurações */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Temperamento *
+              </label>
+              <Radio.Group
+                value={agentConfig.temperament}
+                onChange={(e: RadioChangeEvent) =>
+                  handleAgentConfigChange("temperament", e.target.value)
+                }
+                className="w-full"
+              >
+                <div className="space-y-2">
+                  {[
+                    { value: "FORMAL", label: "Formal e Respeitoso" },
+                    { value: "AMIGAVEL", label: "Amigável e Acolhedor" },
+                    { value: "DESCONTRAIDO", label: "Descontraído e Informal" },
+                    { value: "SERIO", label: "Sério e Profissional" },
+                    { value: "EMPATICO", label: "Empático e Compreensivo" },
+                  ].map((option) => (
+                    <Radio.Button
+                      key={option.value}
+                      value={option.value}
+                      className="w-full h-10 flex items-center text-left"
+                    >
+                      <span className="font-medium">{option.label}</span>
+                    </Radio.Button>
+                  ))}
+                </div>
+              </Radio.Group>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Modelo de IA *
+              </label>
+              <Select
+                value={agentConfig.aiModelId}
+                onChange={(value) =>
+                  handleAgentConfigChange("aiModelId", value)
+                }
+                className="w-full"
+                placeholder="Selecione um modelo de IA"
+                size="large"
+              >
+                {aiModels.map((model) => (
+                  <Option key={model.id} value={model.id}>
+                    <div className="flex flex-col py-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-medium">{model.displayName}</div>
+                        <span className="text-xs text-orange-600 font-semibold">
+                          {model.costPer1kTokens} créditos/1k tokens
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {model.capabilities}
+                      </div>
+                    </div>
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          {/* Configurações Avançadas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Limite de Caracteres
+              </label>
+              <Input
+                type="number"
+                value={agentConfig.maxResponseLength}
+                onChange={(e) =>
+                  handleAgentConfigChange("maxResponseLength", parseInt(e.target.value) || 500)
+                }
+                min={1}
+                max={10000}
+                size="large"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Temperatura
+              </label>
+              <Input
+                type="number"
+                value={agentConfig.temperature}
+                onChange={(e) =>
+                  handleAgentConfigChange("temperature", parseFloat(e.target.value) || 0.7)
+                }
+                min={0}
+                max={1}
+                step={0.1}
+                size="large"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Status
+              </label>
+              <Radio.Group
+                value={agentConfig.isActive}
+                onChange={(e: RadioChangeEvent) =>
+                  handleAgentConfigChange("isActive", e.target.value)
+                }
+                className="w-full"
+              >
+                <Radio.Button value={true} className="w-16">
+                  Ativo
+                </Radio.Button>
+                <Radio.Button value={false} className="w-16">
+                  Inativo
+                </Radio.Button>
+              </Radio.Group>
+            </div>
+          </div>
+
+          {/* Botões de ação */}
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+            <Button
+              size="large"
+              onClick={() => {
+                setShowAgentModal(false);
+                setSelectedAgent(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              onClick={selectedAgent ? handleUpdateAgent : handleSaveAgent}
+              disabled={!agentConfig.name || !agentConfig.aiModelId || !agentConfig.temperament}
+              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
+            >
+              {selectedAgent ? "Atualizar Agente" : "Criar Agente"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

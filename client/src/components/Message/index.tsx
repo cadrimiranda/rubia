@@ -6,6 +6,7 @@ import { AudioMessage } from "../AudioMessage";
 
 interface MessageProps {
   message: MessageType;
+  agentAvatar?: string; // Base64 do avatar do agente IA
 }
 
 export const Message: React.FC<MessageProps> = ({ message }) => {

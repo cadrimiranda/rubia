@@ -9,6 +9,7 @@ interface MessageListProps {
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
+  agentAvatar?: string; // Avatar do agente IA em base64
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -17,6 +18,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   onDragOver,
   onDragLeave,
   onDrop,
+  agentAvatar,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +46,11 @@ export const MessageList: React.FC<MessageListProps> = ({
 
       <div className="space-y-3">
         {messages.map((message) => (
-          <Message key={message.id} message={message} />
+          <Message 
+            key={message.id} 
+            message={message} 
+            agentAvatar={agentAvatar}
+          />
         ))}
         <div ref={messagesEndRef} />
       </div>

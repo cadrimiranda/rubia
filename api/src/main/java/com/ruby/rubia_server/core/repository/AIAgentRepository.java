@@ -28,8 +28,11 @@ public interface AIAgentRepository extends JpaRepository<AIAgent, UUID> {
     @Query("SELECT COUNT(a) FROM AIAgent a WHERE a.company.id = :companyId AND a.isActive = true")
     long countActiveByCompanyId(@Param("companyId") UUID companyId);
 
-    @Query("SELECT a FROM AIAgent a WHERE a.aiModelType = :modelType")
-    List<AIAgent> findByAiModelType(@Param("modelType") String modelType);
+    @Query("SELECT a FROM AIAgent a WHERE a.aiModel.id = :modelId")
+    List<AIAgent> findByAiModelId(@Param("modelId") UUID modelId);
+
+    @Query("SELECT a FROM AIAgent a WHERE a.aiModel.name = :modelName")
+    List<AIAgent> findByAiModelName(@Param("modelName") String modelName);
 
     @Query("SELECT a FROM AIAgent a WHERE a.temperament = :temperament")
     List<AIAgent> findByTemperament(@Param("temperament") String temperament);
