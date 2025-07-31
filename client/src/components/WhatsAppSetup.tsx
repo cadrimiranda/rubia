@@ -514,6 +514,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
             <Form.Item
               name="phoneNumber"
               label="Número do WhatsApp"
+              extra="Digite apenas DDD + número. Ex: 48999999999 será convertido para +55 (48) 99999-9999"
               rules={[
                 { required: true, message: 'Número é obrigatório' },
                 {
@@ -528,8 +529,20 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
               ]}
             >
               <Input 
-                placeholder="(11) 99999-9999 ou 5511999999999"
+                placeholder="(48) 99999-9999"
                 prefix={<PhoneOutlined />}
+                maxLength={15}
+                onChange={(e) => {
+                  const formatted = whatsappSetupApi.formatPhoneForInput(e.target.value);
+                  form.setFieldsValue({ phoneNumber: formatted });
+                }}
+                onBlur={(e) => {
+                  // Remove formatting for validation but keep display formatted
+                  const formatted = whatsappSetupApi.formatPhoneForInput(e.target.value);
+                  if (formatted !== e.target.value) {
+                    form.setFieldsValue({ phoneNumber: formatted });
+                  }
+                }}
               />
             </Form.Item>
 
