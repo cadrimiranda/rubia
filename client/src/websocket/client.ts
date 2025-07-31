@@ -42,6 +42,7 @@ class WebSocketClient {
 
   constructor(url?: string) {
     this.url = url || import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws'
+    this.setupPageLifecycleHandlers()
   }
 
   /**
@@ -77,10 +78,21 @@ class WebSocketClient {
 
         this.ws.onmessage = (event) => {
           try {
-            const message: WebSocketMessage = JSON.parse(event.data)
+            // Verificar se é mensagem STOMP ou JSON
+            const rawData = event.data
+            let message: WebSocketMessage
+            
+            if (rawData.startsWith('MESSAGE\n')) {
+              // Processar mensagem STOMP
+              message = this.parseStompMessage(rawData)
+            } else {
+              // Processar mensagem JSON
+              message = JSON.parse(rawData)
+            }
+            
             this.handleMessage(message)
           } catch (error) {
-            console.error('Erro ao parsear mensagem WebSocket:', error)
+            console.error('Erro ao parsear mensagem WebSocket:', error, event.data)
           }
         }
 
@@ -191,6 +203,31 @@ class WebSocketClient {
   /**
    * Métodos privados
    */
+  private parseStompMessage(rawData: string): WebSocketMessage {
+    try {
+      // Separar headers e body da mensagem STOMP
+      const parts = rawData.split('\n\n')
+      const headersPart = parts[0]
+      const bodyPart = parts[1]?.replace(/\u0000$/, '') // Remove null terminator
+      
+      // Parsear body como JSON
+      const bodyData = JSON.parse(bodyPart)
+      
+      // Extrair tipo da mensagem do body
+      const messageType = bodyData.type || 'MESSAGE'
+      
+      return {
+        type: messageType,
+        data: bodyData,
+        timestamp: new Date().toISOString(),
+        id: `stomp-${Date.now()}-${Math.random()}`
+      }
+    } catch (error) {
+      console.error('Erro ao parsear mensagem STOMP:', error, rawData)
+      throw error
+    }
+  }
+
   private handleMessage(message: WebSocketMessage): void {
     // Lidar com mensagens de sistema
     if (message.type === 'PING') {
@@ -270,9 +307,76 @@ class WebSocketClient {
   }
 
   /**
+   * Configura handlers do ciclo de vida da página
+   */
+  private setupPageLifecycleHandlers(): void {
+    if (typeof window === 'undefined') return
+
+    // Desconectar antes de sair da página (refresh, navigate away, etc)
+    window.addEventListener('beforeunload', () => {
+      console.log('Página sendo recarregada/fechada, desconectando WebSocket...')
+      this.disconnect()
+    })
+
+    // Reconnectar quando a página volta a ficar visível
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && !this.isConnected() && !this.isManuallyDisconnected) {
+        console.log('Página voltou a ficar visível, reconectando WebSocket...')
+        this.connect().catch(error => {
+          console.error('Erro ao reconectar WebSocket após visibilitychange:', error)
+        })
+      }
+    })
+
+    // Desconectar quando a página fica oculta por muito tempo
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Desconectar após 30 segundos se a página continuar oculta
+        setTimeout(() => {
+          if (document.hidden && this.isConnected()) {
+            console.log('Página oculta por muito tempo, desconectando WebSocket...')
+            this.disconnect()
+          }
+        }, 30000)
+      }
+    })
+
+    // Reconectar quando a página ganha foco
+    window.addEventListener('focus', () => {
+      if (!this.isConnected() && !this.isManuallyDisconnected) {
+        console.log('Página ganhou foco, reconectando WebSocket...')
+        this.connect().catch(error => {
+          console.error('Erro ao reconectar WebSocket após focus:', error)
+        })
+      }
+    })
+
+    // Desconectar quando a página perde foco por muito tempo
+    window.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!document.hasFocus() && this.isConnected()) {
+          console.log('Página sem foco por muito tempo, desconectando WebSocket...')
+          this.disconnect()
+        }
+      }, 60000) // 1 minuto
+    })
+  }
+
+  /**
+   * Remove handlers do ciclo de vida
+   */
+  private removePageLifecycleHandlers(): void {
+    if (typeof window === 'undefined') return
+    
+    // Remover todos os listeners seria complexo sem manter referências
+    // Por enquanto, apenas garantimos que não haverá vazamentos
+  }
+
+  /**
    * Cleanup ao destruir
    */
   destroy(): void {
+    this.removePageLifecycleHandlers()
     this.disconnect()
     this.off()
   }

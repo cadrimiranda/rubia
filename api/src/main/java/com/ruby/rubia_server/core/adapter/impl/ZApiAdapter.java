@@ -29,6 +29,9 @@ public class ZApiAdapter implements MessagingAdapter {
     @Value("${zapi.instance.url}")
     private String instanceUrl;
 
+    @Value("${zapi.instance.id}")
+    private String instanceId;
+
     @Value("${zapi.token}")
     private String token;
 
@@ -46,12 +49,16 @@ public class ZApiAdapter implements MessagingAdapter {
         this.phoneService = phoneService;
     }
 
+    private String buildUrl() {
+        return instanceUrl + "/" + instanceId + "/token/" + token + "/send-text";
+    }
+
     @Override
     public MessageResult sendMessage(String to, String message) {
         try {
             log.info("Sending Z-API message to: {} with message: {}", to, message.substring(0, Math.min(50, message.length())));
 
-            String url = instanceUrl + "/token/" + token + "/send-text";
+            String url = buildUrl();
             log.info("Z-API URL: {}", url);
             
             String formattedPhone = phoneService.formatForZApi(to);
@@ -95,7 +102,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API media message to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -290,7 +297,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API document to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -328,7 +335,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API audio to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-audio";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -360,7 +367,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API base64 file to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-base64";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -420,7 +427,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Uploading file to Z-API: {}", file.getOriginalFilename());
 
-            String url = instanceUrl + "/token/" + token + "/upload-file";
+            String url = buildUrl();
             
             HttpHeaders headers = new HttpHeaders();
             headers.set("client-token", clientToken);
@@ -458,7 +465,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API {} to: {}", mediaType, to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));

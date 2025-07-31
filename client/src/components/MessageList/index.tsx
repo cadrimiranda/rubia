@@ -20,6 +20,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   onDrop,
   agentAvatar,
 }) => {
+  console.log({ messages });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,9 +47,9 @@ export const MessageList: React.FC<MessageListProps> = ({
 
       <div className="space-y-3">
         {messages.map((message) => (
-          <Message 
-            key={message.id} 
-            message={message} 
+          <Message
+            key={message.id}
+            message={message}
             agentAvatar={agentAvatar}
           />
         ))}
