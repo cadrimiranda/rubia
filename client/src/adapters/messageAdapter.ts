@@ -15,6 +15,7 @@ class MessageAdapter {
       status: this.mapStatus(dto.status),
       isFromUser: this.isFromUser(dto.senderType),
       mediaUrl: dto.mediaUrl,
+      mimeType: dto.mimeType,
       externalMessageId: dto.externalMessageId,
       isAiGenerated: dto.isAiGenerated || false,
       aiConfidence: dto.aiConfidence ? Number(dto.aiConfidence) : undefined,
@@ -227,6 +228,33 @@ class MessageAdapter {
       ...msg,
       status: msg.isFromUser ? msg.status : 'read'
     }))
+  }
+
+  /**
+   * Converte Message (nova interface) para Message (interface legada de types/types.ts)
+   */
+  toLegacyMessage(message: Message): any {
+    return {
+      id: message.id,
+      senderId: message.senderId, 
+      content: message.content,
+      timestamp: message.timestamp.toISOString(),
+      isAI: !message.isFromUser, // Inverte a lógica
+      messageType: message.messageType,
+      mediaUrl: message.mediaUrl,
+      mimeType: message.mimeType,
+      audioDuration: message.audioDuration,
+      attachments: [],
+      media: [],
+      campaignId: undefined
+    }
+  }
+
+  /**
+   * Converte array de Messages para o formato legado
+   */
+  toLegacyMessageArray(messages: Message[]): any[] {
+    return messages.map(msg => this.toLegacyMessage(msg))
   }
 }
 

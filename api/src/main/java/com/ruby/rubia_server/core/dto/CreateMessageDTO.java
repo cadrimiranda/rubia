@@ -26,9 +26,8 @@ public class CreateMessageDTO {
     @NotNull(message = "ID da empresa é obrigatório")
     private UUID companyId;
     
-    @NotBlank(message = "Conteúdo da mensagem é obrigatório")
     @Size(max = 4000, message = "Conteúdo não pode exceder 4000 caracteres")
-    private String content;
+    private String content; // Not required for media messages
     
     @NotNull(message = "Tipo do remetente é obrigatório")
     private SenderType senderType;
@@ -39,6 +38,10 @@ public class CreateMessageDTO {
     private MessageType messageType = MessageType.TEXT;
     
     private String mediaUrl;
+    
+    private String mimeType;
+    
+    private String fileName;
     
     private String externalMessageId;
     

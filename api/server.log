@@ -1,0 +1,470 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.ruby:rubia-server >------------------------
+[INFO] Building Rubia Chat Server 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.0:run (default-cli) > test-compile @ rubia-server >>>
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ rubia-server ---
+[INFO] argLine set to -javaagent:/Users/carlosadrianomiranda/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/carlosadrianomiranda/rubia/api/target/jacoco.exec,excludes=**/config/**:**/dto/**:**/entity/**:**/Application.class
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ rubia-server ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 49 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ rubia-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ rubia-server ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ rubia-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.5.0:run (default-cli) < test-compile @ rubia-server <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.0:run (default-cli) @ rubia-server ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.0)
+
+2025-07-22T19:39:47.274-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : Starting RubiaChatServerApplication using Java 22.0.1 with PID 71251 (/Users/carlosadrianomiranda/rubia/api/target/classes started by carlosadrianomiranda in /Users/carlosadrianomiranda/rubia/api)
+2025-07-22T19:39:47.275-03:00 DEBUG 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : Running with Spring Boot v3.5.0, Spring v6.2.7
+2025-07-22T19:39:47.276-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : No active profile set, falling back to 1 default profile: "default"
+2025-07-22T19:39:47.308-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2025-07-22T19:39:47.308-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2025-07-22T19:39:48.303-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2025-07-22T19:39:48.305-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-07-22T19:39:48.457-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 145 ms. Found 18 JPA repository interfaces.
+2025-07-22T19:39:48.862-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-07-22T19:39:48.873-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-07-22T19:39:48.873-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-07-22T19:39:48.896-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-07-22T19:39:48.897-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1587 ms
+2025-07-22T19:39:49.107-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-07-22T19:39:49.229-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1fb788f1
+2025-07-22T19:39:49.230-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-07-22T19:39:49.250-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:5432/rubia_chat (PostgreSQL 16.8)
+2025-07-22T19:39:49.315-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.f.core.internal.command.DbValidate     : Successfully validated 45 migrations (execution time 00:00.040s)
+2025-07-22T19:39:49.357-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 45
+2025-07-22T19:39:49.359-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2025-07-22T19:39:49.414-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-07-22T19:39:49.447-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.15.Final
+2025-07-22T19:39:49.465-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-07-22T19:39:49.604-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-07-22T19:39:49.635-03:00  WARN 71251 --- [Rubia Chat Server] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-07-22T19:39:49.648-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 16.8
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2025-07-22T19:39:50.786-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-07-22T19:39:50.841-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-07-22T19:39:51.003-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-07-22T19:39:51.569-03:00 DEBUG 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.config.JwtAuthenticationFilter     : Filter 'jwtAuthenticationFilter' configured for use
+2025-07-22T19:39:51.571-03:00 DEBUG 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.config.WhatsAppSetupFilter         : Filter 'whatsAppSetupFilter' configured for use
+2025-07-22T19:39:51.606-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2025-07-22T19:39:53.902-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.core.service.MessagingService      : Initialized with adapter: z-api
+2025-07-22T19:39:54.051-03:00  WARN 71251 --- [Rubia Chat Server] [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-07-22T19:39:54.332-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 17 endpoints beneath base path '/actuator'
+2025-07-22T19:39:54.593-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2025-07-22T19:39:54.631-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-07-22T19:39:54.632-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@42898ea9]]
+2025-07-22T19:39:54.632-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-07-22T19:39:54.643-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2025-07-22T19:39:54.654-03:00  INFO 71251 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : Started RubiaChatServerApplication in 7.758 seconds (process running for 8.153)
+2025-07-22T19:40:02.322-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-07-22T19:40:02.322-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-07-22T19:40:02.323-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-07-22T19:40:02.364-03:00 ERROR 71251 --- [Rubia Chat Server] [nio-8080-exec-1] o.a.c.c.C.[.[.[/].[dispatcherServlet]    : Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception
+
+io.jsonwebtoken.MalformedJwtException: Invalid compact JWT string: Compact JWSs must contain exactly 2 period characters, and compact JWEs must contain exactly 4.  Found: 0
+	at io.jsonwebtoken.impl.JwtTokenizer.tokenize(JwtTokenizer.java:102) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parse(DefaultJwtParser.java:370) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parse(DefaultJwtParser.java:362) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parse(DefaultJwtParser.java:94) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.io.AbstractParser.parse(AbstractParser.java:36) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.io.AbstractParser.parse(AbstractParser.java:29) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parseSignedClaims(DefaultJwtParser.java:821) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parseClaimsJws(DefaultJwtParser.java:797) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at com.ruby.rubia_server.config.JwtService.extractAllClaims(JwtService.java:93) ~[classes/:na]
+	at com.ruby.rubia_server.config.JwtService.extractClaim(JwtService.java:41) ~[classes/:na]
+	at com.ruby.rubia_server.config.JwtService.extractUsername(JwtService.java:27) ~[classes/:na]
+	at com.ruby.rubia_server.config.JwtAuthenticationFilter.doFilterInternal(JwtAuthenticationFilter.java:51) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:319) ~[spring-security-config-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:243) ~[spring-webmvc-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:240) ~[spring-security-config-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:114) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:116) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:398) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:903) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1740) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1189) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:658) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at java.base/java.lang.Thread.run(Thread.java:1570) ~[na:na]
+
+2025-07-22T19:40:36.546-03:00 ERROR 71251 --- [Rubia Chat Server] [nio-8080-exec-3] o.a.c.c.C.[.[.[/].[dispatcherServlet]    : Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception
+
+io.jsonwebtoken.MalformedJwtException: Invalid compact JWT string: Compact JWSs must contain exactly 2 period characters, and compact JWEs must contain exactly 4.  Found: 0
+	at io.jsonwebtoken.impl.JwtTokenizer.tokenize(JwtTokenizer.java:102) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parse(DefaultJwtParser.java:370) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parse(DefaultJwtParser.java:362) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parse(DefaultJwtParser.java:94) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.io.AbstractParser.parse(AbstractParser.java:36) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.io.AbstractParser.parse(AbstractParser.java:29) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parseSignedClaims(DefaultJwtParser.java:821) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at io.jsonwebtoken.impl.DefaultJwtParser.parseClaimsJws(DefaultJwtParser.java:797) ~[jjwt-impl-0.12.3.jar:0.12.3]
+	at com.ruby.rubia_server.config.JwtService.extractAllClaims(JwtService.java:93) ~[classes/:na]
+	at com.ruby.rubia_server.config.JwtService.extractClaim(JwtService.java:41) ~[classes/:na]
+	at com.ruby.rubia_server.config.JwtService.extractUsername(JwtService.java:27) ~[classes/:na]
+	at com.ruby.rubia_server.config.JwtAuthenticationFilter.doFilterInternal(JwtAuthenticationFilter.java:51) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:319) ~[spring-security-config-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:243) ~[spring-webmvc-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:240) ~[spring-security-config-6.5.0.jar:6.5.0]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:114) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.7.jar:6.2.7]
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:116) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:398) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:903) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1740) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1189) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:658) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.41.jar:10.1.41]
+	at java.base/java.lang.Thread.run(Thread.java:1570) ~[na:na]
+
+2025-07-22T19:40:54.621-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 1, active threads = 1, queued tasks = 0, completed tasks = 0]
+2025-07-22T19:41:01.296-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T19:41:01.296-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T19:41:01.296-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T19:41:01.296-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T19:41:01.297-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T19:41:01.297-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T19:41:01.297-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T19:41:01.297-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T19:41:01.517-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/conversations
+2025-07-22T19:41:01.517-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/campaigns/company/22222222-2222-2222-2222-222222222222/active
+2025-07-22T19:41:01.519-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /ws/info
+2025-07-22T19:41:01.519-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /ws/info
+2025-07-22T19:41:01.519-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /ws/info
+2025-07-22T19:41:01.522-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/conversations
+2025-07-22T19:41:01.522-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/campaigns/company/22222222-2222-2222-2222-222222222222/active
+2025-07-22T19:41:01.527-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T19:41:01.527-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T19:41:01.529-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /ws/546/j5ui1n5m/websocket
+2025-07-22T19:41:01.531-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T19:41:01.531-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T19:41:01.535-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.controller.CampaignController      : Buscando campanhas ativas para empresa: 22222222-2222-2222-2222-222222222222
+2025-07-22T19:41:01.535-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.controller.CampaignController      : Buscando campanhas ativas para empresa: 22222222-2222-2222-2222-222222222222
+2025-07-22T19:41:01.539-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.c.c.ConversationController         : Finding conversations by status: ENTRADA with pageable: Page request [number: 0, size 20, sort: updatedAt: DESC]
+2025-07-22T19:41:01.539-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.c.c.ConversationController         : Finding conversations by status: ENTRADA with pageable: Page request [number: 0, size 20, sort: updatedAt: DESC]
+2025-07-22T19:41:01.539-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Getting company ID from request: /api/conversations
+2025-07-22T19:41:01.539-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Getting company ID from request: /api/conversations
+2025-07-22T19:41:01.540-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Request headers: Authorization=present, X-Company-Slug=rubia
+2025-07-22T19:41:01.540-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Request headers: Authorization=present, X-Company-Slug=rubia
+2025-07-22T19:41:01.540-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Company group ID from token: 11111111-1111-1111-1111-111111111111
+2025-07-22T19:41:01.540-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Company group ID from token: 11111111-1111-1111-1111-111111111111
+2025-07-22T19:41:01.541-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.core.service.CampaignService       : Finding active campaigns for company: 22222222-2222-2222-2222-222222222222
+2025-07-22T19:41:01.541-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.core.service.CampaignService       : Finding active campaigns for company: 22222222-2222-2222-2222-222222222222
+2025-07-22T19:41:01.545-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.core.util.CompanyContextUtil       : 🏢 [COMPANY CONTEXT] Resolved company ID from token: 22222222-2222-2222-2222-222222222222
+2025-07-22T19:41:01.545-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.core.util.CompanyContextUtil       : 🏢 [COMPANY CONTEXT] Resolved company ID from token: 22222222-2222-2222-2222-222222222222
+2025-07-22T19:41:01.545-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.core.service.ConversationService   : Finding conversations by status: ENTRADA for company: 22222222-2222-2222-2222-222222222222 with pagination
+2025-07-22T19:41:01.545-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.core.service.ConversationService   : Finding conversations by status: ENTRADA for company: 22222222-2222-2222-2222-222222222222 with pagination
+2025-07-22T19:41:01.554-03:00  WARN 71251 --- [Rubia Chat Server] [nio-8080-exec-9] org.hibernate.orm.query                  : HHH90003004: firstResult/maxResults specified with collection fetch; applying in memory
+2025-07-22T19:41:01.554-03:00  WARN 71251 --- [Rubia Chat Server] [nio-8080-exec-6] org.hibernate.orm.query                  : HHH90003004: firstResult/maxResults specified with collection fetch; applying in memory
+2025-07-22T19:41:01.570-03:00 DEBUG 71251 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /ws/600/5f0aehho/websocket
+2025-07-22T19:41:01.594-03:00 DEBUG 71251 --- [Rubia Chat Server] [io-8080-exec-10] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /ws/909/tjqvv03h/websocket
+2025-07-22T19:41:01.688-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WebSocketAuthInterceptor    : === WEBSOCKET CONNECTION ATTEMPT ===
+2025-07-22T19:41:01.688-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WebSocketAuthInterceptor    : === WEBSOCKET CONNECTION ATTEMPT ===
+2025-07-22T19:41:01.688-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WebSocketAuthInterceptor    : Authorization header present: true
+2025-07-22T19:41:01.688-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WebSocketAuthInterceptor    : Authorization header present: true
+2025-07-22T19:41:01.689-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WebSocketAuthInterceptor    : Token value: Bearer eyJhbGciOiJIUzI1NiJ9.ey...
+2025-07-22T19:41:01.689-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WebSocketAuthInterceptor    : Token value: Bearer eyJhbGciOiJIUzI1NiJ9.ey...
+2025-07-22T19:41:01.705-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WebSocketAuthInterceptor    : === WEBSOCKET CONNECTION ATTEMPT ===
+2025-07-22T19:41:01.706-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WebSocketAuthInterceptor    : Authorization header present: true
+2025-07-22T19:41:01.706-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WebSocketAuthInterceptor    : Token value: Bearer eyJhbGciOiJIUzI1NiJ9.ey...
+2025-07-22T19:41:01.747-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WebSocketAuthInterceptor    : ✅ WebSocket connection authenticated for user: teste@teste.com (principal name: 44444444-4444-4444-4444-444444444444)
+2025-07-22T19:41:01.748-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WebSocketAuthInterceptor    : ✅ WebSocket connection authenticated for user: teste@teste.com (principal name: 44444444-4444-4444-4444-444444444444)
+2025-07-22T19:41:01.747-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WebSocketAuthInterceptor    : ✅ WebSocket connection authenticated for user: teste@teste.com (principal name: 44444444-4444-4444-4444-444444444444)
+2025-07-22T19:41:01.760-03:00  INFO 71251 --- [Rubia Chat Server] [tboundChannel-2] c.r.r.config.ChatWebSocketHandler        : User connected: Usuário Teste (session: j5ui1n5m, company: 22222222-2222-2222-2222-222222222222)
+2025-07-22T19:41:01.760-03:00  INFO 71251 --- [Rubia Chat Server] [tboundChannel-3] c.r.r.config.ChatWebSocketHandler        : User connected: Usuário Teste (session: 5f0aehho, company: 22222222-2222-2222-2222-222222222222)
+2025-07-22T19:41:01.760-03:00  INFO 71251 --- [Rubia Chat Server] [tboundChannel-1] c.r.r.config.ChatWebSocketHandler        : User connected: Usuário Teste (session: tjqvv03h, company: 22222222-2222-2222-2222-222222222222)
+2025-07-22T19:41:01.907-03:00  INFO 71251 --- [Rubia Chat Server] [boundChannel-12] c.r.r.config.ChatWebSocketHandler        : User Usuário Teste joined chat (company: 22222222-2222-2222-2222-222222222222)
+2025-07-22T19:41:01.907-03:00  INFO 71251 --- [Rubia Chat Server] [nboundChannel-1] c.r.r.config.ChatWebSocketHandler        : User Usuário Teste joined chat (company: 22222222-2222-2222-2222-222222222222)
+2025-07-22T19:41:01.907-03:00  INFO 71251 --- [Rubia Chat Server] [nboundChannel-3] c.r.r.config.ChatWebSocketHandler        : User Usuário Teste joined chat (company: 22222222-2222-2222-2222-222222222222)
+2025-07-22T20:03:51.340-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=23m1s999ms).
+2025-07-22T20:52:37.933-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=48m46s593ms).
+2025-07-22T20:53:49.571-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.ChatWebSocketHandler        : User disconnected: Usuário Teste (session: 5f0aehho)
+2025-07-22T21:39:42.751-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=47m4s819ms).
+2025-07-22T22:39:13.062-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=59m30s311ms).
+2025-07-22T22:59:01.443-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=19m48s381ms).
+2025-07-23T00:00:41.803-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h1m40s360ms).
+2025-07-23T01:19:21.427-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h18m39s624ms).
+2025-07-23T02:09:40.795-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=50m19s368ms).
+2025-07-23T02:48:30.191-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=38m49s396ms).
+2025-07-23T03:38:45.535-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=50m15s344ms).
+2025-07-23T04:44:36.823-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h5m51s288ms).
+2025-07-23T05:36:02.538-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=51m25s715ms).
+2025-07-23T06:08:33.851-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=32m31s312ms).
+2025-07-23T06:20:13.124-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=11m39s274ms).
+2025-07-23T07:33:05.647-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h12m52s522ms).
+2025-07-23T08:35:17.717-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h2m12s70ms).
+2025-07-23T08:49:39.838-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=14m22s122ms).
+2025-07-23T09:14:51.204-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=25m11s366ms).
+2025-07-23T09:57:16.135-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=42m24s931ms).
+2025-07-23T10:57:59.664-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h43s529ms).
+2025-07-23T11:41:04.701-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=43m5s37ms).
+2025-07-23T12:42:11.202-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h1m6s501ms).
+2025-07-23T13:16:50.227-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=34m39s25ms).
+2025-07-23T13:30:46.201-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=13m55s974ms).
+2025-07-23T13:48:51.606-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-8] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 504]
+2025-07-23T14:18:51.537-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-8] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 1009]
+2025-07-23T14:48:51.619-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-8] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 1514]
+2025-07-23T15:18:51.680-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-5] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 2019]
+2025-07-23T15:48:51.726-03:00  INFO 71251 --- [Rubia Chat Server] [essageBroker-10] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 2524]
+2025-07-23T16:18:51.770-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 3029]
+2025-07-23T16:47:49.032-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Retrograde clock change detected (housekeeper delta=29s739ms), soft-evicting connections from pool.
+2025-07-23T16:48:51.548-03:00  INFO 71251 --- [Rubia Chat Server] [essageBroker-10] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[2 current WS(2)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 51], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 3, completed tasks = 3534]
+2025-07-23T16:58:41.872-03:00  INFO 71251 --- [Rubia Chat Server] [io-8080-exec-10] c.r.r.config.ChatWebSocketHandler        : User disconnected: Usuário Teste (session: tjqvv03h)
+2025-07-23T16:58:41.875-03:00  INFO 71251 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.ChatWebSocketHandler        : User disconnected: Usuário Teste (session: j5ui1n5m)
+2025-07-23T17:14:24.768-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=16m5s606ms).
+2025-07-23T18:16:01.902-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h1m37s134ms).
+2025-07-23T19:14:30.722-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=58m28s819ms).
+2025-07-23T20:17:23.442-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h2m52s721ms).
+2025-07-23T21:30:26.721-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h13m3s278ms).
+2025-07-23T22:09:18.324-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=38m51s604ms).
+2025-07-23T23:20:31.293-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h11m12s969ms).
+2025-07-24T00:43:11.907-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h22m40s614ms).
+2025-07-24T02:22:08.837-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h38m56s930ms).
+2025-07-24T03:27:29.311-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h5m20s474ms).
+2025-07-24T05:06:56.409-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h39m27s98ms).
+2025-07-24T05:55:36.527-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=48m40s118ms).
+2025-07-24T06:59:30.585-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h3m54s58ms).
+2025-07-24T08:41:08.813-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h41m38s228ms).
+2025-07-24T09:43:35.739-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h2m26s926ms).
+2025-07-24T09:49:11.836-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=5m36s97ms).
+2025-07-24T10:01:43.980-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-9] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 3943]
+2025-07-24T10:31:43.919-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 4304]
+2025-07-24T11:40:24.100-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h3m11s600ms).
+2025-07-24T11:50:58.444-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m34s344ms).
+2025-07-24T12:14:29.656-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-7] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 4665]
+2025-07-24T12:44:29.592-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 5026]
+2025-07-24T13:14:29.580-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-2] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 5387]
+2025-07-24T13:44:29.771-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-5] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 5748]
+2025-07-24T14:14:29.779-03:00  INFO 71251 --- [Rubia Chat Server] [essageBroker-11] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 6109]
+2025-07-24T14:44:29.634-03:00  INFO 71251 --- [Rubia Chat Server] [essageBroker-10] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 6470]
+2025-07-24T15:14:29.744-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 6831]
+2025-07-24T15:44:29.751-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 7192]
+2025-07-24T16:14:29.826-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 7553]
+2025-07-24T16:44:29.846-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-5] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 7914]
+2025-07-24T16:54:02.220-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Retrograde clock change detected (housekeeper delta=29s863ms), soft-evicting connections from pool.
+2025-07-24T17:14:29.678-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 8275]
+2025-07-24T17:44:29.781-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 8636]
+2025-07-24T18:14:29.839-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-8] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 8997]
+2025-07-24T18:45:45.597-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=25m11s980ms).
+2025-07-24T19:19:11.911-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=33m26s313ms).
+2025-07-24T19:43:30.737-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=24m18s827ms).
+2025-07-24T19:53:25.382-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=9m54s645ms).
+2025-07-24T20:46:47.374-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=53m21s992ms).
+2025-07-24T21:30:13.742-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=43m26s368ms).
+2025-07-24T22:01:18.329-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=31m4s587ms).
+2025-07-24T22:52:39.880-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=51m21s551ms).
+2025-07-24T23:39:09.773-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=46m29s892ms).
+2025-07-25T00:11:02.258-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=31m52s485ms).
+2025-07-25T00:57:16.910-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=46m14s653ms).
+2025-07-25T01:50:04.276-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=52m47s366ms).
+2025-07-25T02:41:45.838-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=51m41s562ms).
+2025-07-25T04:01:42.889-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h19m57s51ms).
+2025-07-25T04:39:16.040-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=37m33s151ms).
+2025-07-25T05:29:49.419-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=50m33s379ms).
+2025-07-25T05:55:41.765-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=25m52s346ms).
+2025-07-25T06:55:56.735-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h14s970ms).
+2025-07-25T07:31:25.252-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=35m28s517ms).
+2025-07-25T07:49:23.351-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=17m58s98ms).
+2025-07-25T08:32:27.081-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=43m3s731ms).
+2025-07-25T09:33:27.035-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h59s954ms).
+2025-07-25T10:34:40.186-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h1m13s151ms).
+2025-07-25T11:52:53.660-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1h18m13s474ms).
+2025-07-25T12:36:29.934-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=43m36s274ms).
+2025-07-25T13:18:09.361-03:00  WARN 71251 --- [Rubia Chat Server] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=41m39s426ms).
+2025-07-25T13:29:05.303-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 9358]
+2025-07-25T13:59:05.348-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 9719]
+2025-07-25T14:29:05.467-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 10080]
+2025-07-25T14:59:05.517-03:00  INFO 71251 --- [Rubia Chat Server] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 3 total, 0 closed abnormally (0 connect failure, 0 send limit, 2 transport error)], stompSubProtocol[processed CONNECT(3)-CONNECTED(3)-DISCONNECT(1)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 57], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 7], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 1, completed tasks = 10441]
+2025-07-25T15:01:28.444-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2025-07-25T15:01:28.448-03:00  INFO 71251 --- [Rubia Chat Server] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2025-07-25T15:01:28.450-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2025-07-25T15:01:28.450-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@42898ea9]]
+2025-07-25T15:01:28.450-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2025-07-25T15:01:28.459-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-07-25T15:01:28.465-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-07-25T15:01:28.467-03:00  INFO 71251 --- [Rubia Chat Server] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2 d 19:21 h
+[INFO] Finished at: 2025-07-25T15:01:28-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.0:run (default-cli) on project rubia-server: Process terminated with exit code: 143 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

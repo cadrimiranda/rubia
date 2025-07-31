@@ -138,31 +138,16 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   // Verificar autenticação com contexto da empresa
   checkAuth: () => {
-    console.log('🔍 Iniciando checkAuth...')
-    
     try {
       const isAuthenticated = authService.isAuthenticated()
       const user = authService.getCurrentUser()
       const hasAccess = authService.hasCompanyAccess()
-      
-      console.log('🔍 checkAuth resultado:', { 
-        isAuthenticated, 
-        hasAccess, 
-        userCompany: user?.companySlug,
-        currentSlug: getCurrentCompanySlug()
-      })
       
       const finalAuthenticated = isAuthenticated && hasAccess
       
       set({
         isAuthenticated: finalAuthenticated,
         user: hasAccess ? user : null,
-        isLoading: false
-      })
-      
-      console.log('🔍 Estado após checkAuth:', { 
-        isAuthenticated: finalAuthenticated,
-        hasUser: !!user,
         isLoading: false
       })
       
@@ -257,7 +242,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     if (!state.user) return
 
     // Temporariamente desabilitado para evitar erros de CORS
-    console.log('Online status update skipped:', isOnline)
     return
 
     try {
@@ -304,8 +288,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       const companyInfo = getCompanyFromSubdomain()
       const currentCompanySlug = getCurrentCompanySlug()
       
-      console.log('🏢 Contexto da empresa:', { companyInfo, currentCompanySlug })
-      
       set({
         companyInfo,
         currentCompanySlug
@@ -344,11 +326,8 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     
     // Evitar inicialização múltipla
     if ((state as AuthState & { _initialized?: boolean })._initialized) {
-      console.log('🚀 Auth store já foi inicializado, pulando...');
       return
     }
-    
-    console.log('🚀 Inicializando auth store...');
     set({ isLoading: true, ...state, _initialized: true } as AuthState & { _initialized: boolean })
     
     try {

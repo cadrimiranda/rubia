@@ -40,4 +40,6 @@ public class CreateConversationDTO {
     
     @Builder.Default
     private ConversationType conversationType = ConversationType.ONE_TO_ONE;
+    
+    private String chatLid;
 }

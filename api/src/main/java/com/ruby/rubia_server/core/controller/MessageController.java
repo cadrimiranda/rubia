@@ -11,6 +11,7 @@ import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.service.MessagingService;
+import com.ruby.rubia_server.core.service.WebSocketNotificationService;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -42,6 +43,7 @@ public class MessageController {
     private final ConversationService conversationService;
     private final CustomerService customerService;
     private final MessagingService messagingService;
+    private final WebSocketNotificationService webSocketNotificationService;
     
     @PostMapping
     public ResponseEntity<MessageDTO> create(@Valid @RequestBody CreateMessageDTO createDTO) {
@@ -247,6 +249,9 @@ public class MessageController {
                     
                     MessageDTO updatedMessage = messageService.update(message.getId(), updateDTO);
                     log.info("Message sent successfully via WhatsApp. External ID: {}", result.getMessageId());
+                    
+                    // Send WebSocket notification for real-time updates
+                    webSocketNotificationService.notifyNewMessage(updatedMessage, conversation);
                     
                     return ResponseEntity.ok(updatedMessage);
                 } else {

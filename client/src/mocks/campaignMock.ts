@@ -110,7 +110,6 @@ export const processCampaignFile = async (
   duplicatesFound: string[]
   templateDistribution: Array<{ template: string; used: number }>
 }> => {
-  console.log('📁 Processando arquivo:', file.name)
   
   // Simular delay de upload
   await new Promise(resolve => setTimeout(resolve, 1500))
@@ -122,9 +121,6 @@ export const processCampaignFile = async (
   const contactsFromFile = 20
   const contactsProcessed = 20
   
-  console.log(`📁 Arquivo ${file.name} (${(file.size / 1024).toFixed(1)}KB)`)
-  console.log(`📊 Processando exatamente ${contactsFromFile} contatos para demonstração`)
-  console.log(`✅ Processados: ${contactsProcessed} contatos válidos`)
   
   
   // Criar nova campanha
@@ -186,7 +182,6 @@ export const processCampaignFile = async (
   const templateDistribution: Array<{ template: string; used: number }> = 
     selectedTemplates.map(t => ({ template: t.title, used: 0 }))
   
-  console.log('💬 Criando conversas e aplicando templates para todos os contatos...')
   
   for (let i = 0; i < conversationsCreated; i++) {
     const contact = newContacts[i]
@@ -241,8 +236,6 @@ export const processCampaignFile = async (
   // Adicionar contatos ao storage
   campaignContacts.push(...newContacts)
   
-  console.log(`✅ Campanha "${campaignData.name}" criada com sucesso!`)
-  console.log(`📊 ${contactsProcessed} contatos processados, ${conversationsCreated} conversas iniciadas`)
   
   return {
     campaignId,
@@ -297,7 +290,6 @@ const generateAutomaticResponse = async (
       contact.conversation.updatedAt = new Date().toISOString()
     }
     
-    console.log(`💬 Resposta automática de ${contact.customer.name}: "${response}"`)
   }, responseDelay)
 }
 
@@ -370,7 +362,6 @@ export const createMockCampaign = async (
     templateDistribution: Array<{ template: string; used: number }>
   }
 }> => {
-  console.log('🚀 Criando campanha:', campaignData.name)
   
   // Usar o arquivo real fornecido pelo usuário
   const file = campaignData.file!
@@ -418,13 +409,11 @@ export const getCampaignStats = (campaignId: string) => {
  * Sincroniza conversas de campanhas com o chat store
  */
 export const syncCampaignConversationsWithStore = (refreshConversations?: () => Promise<void>): void => {
-  console.log('🔄 Sincronizando conversas com o sistema...')
   
   // Só sincroniza se houver uma função de refresh disponível
   if (refreshConversations) {
     // Aguardar um pouco mais para garantir que as conversas foram criadas
     setTimeout(() => {
-      console.log('📞 Forçando refresh das conversas...')
       refreshConversations()
     }, 2000)
   }
@@ -434,7 +423,6 @@ export const syncCampaignConversationsWithStore = (refreshConversations?: () => 
  * Simula mudança de status de contatos para demonstrar fluxo
  */
 export const simulateContactStatusChanges = (): void => {
-  console.log('📱 Iniciando monitoramento de respostas automáticas...')
   
   // A cada 30 segundos, simular algumas mudanças de status
   setInterval(() => {
@@ -456,7 +444,6 @@ export const simulateContactStatusChanges = (): void => {
         contact.conversation.updatedAt = new Date().toISOString()
       }
       
-      console.log(`📱 Nova resposta de ${contact.customer.name}`)
     })
   }, 30000) // 30 segundos
 }
@@ -467,5 +454,4 @@ export const simulateContactStatusChanges = (): void => {
 export const clearMockCampaigns = (): void => {
   campaignContacts = []
   mockCampaigns.splice(5) // Manter apenas as 5 campanhas originais
-  console.log('🗑️ Cache de campanhas limpo')
 }

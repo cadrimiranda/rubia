@@ -16,7 +16,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const initialize = useAuthStore(state => state.initialize);
 
   useEffect(() => {
-    console.log('🚀 AuthProvider: Inicializando auth store');
     initialize();
   }, []); // Remover dependency array para garantir que só execute uma vez
 

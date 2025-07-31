@@ -27,4 +27,5 @@ public class ConversationSummaryDTO {
     private Long unreadCount;
     private String lastMessageContent;
     private LocalDateTime lastMessageTime;
+    private String chatLid;
 }

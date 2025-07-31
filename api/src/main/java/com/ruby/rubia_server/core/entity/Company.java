@@ -1,5 +1,7 @@
 package com.ruby.rubia_server.core.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.ruby.rubia_server.core.enums.CompanyPlanType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -61,7 +63,12 @@ public class Company {
     private Integer maxWhatsappNumbers = 1;
     
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference("company-departments")
     private List<Department> departments;
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference("company-whatsapp")
+    private List<WhatsAppInstance> whatsappInstances;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -73,5 +80,6 @@ public class Company {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_group_id", nullable = false)
+    @JsonBackReference("companygroup-companies")
     private CompanyGroup companyGroup;
 }

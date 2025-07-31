@@ -36,5 +36,7 @@ public class ConversationDTO {
     private Integer priority;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private MessageDTO lastMessage;
     private Long unreadCount;
+    private String chatLid;
 }

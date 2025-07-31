@@ -15,10 +15,16 @@ public class IncomingMessage {
     private String messageId;
     private String from;
     private String to;
+    private String connectedPhone;
     private String body;
     private String mediaUrl;
     private String mediaType;
+    private String fileName;
+    private String mimeType;
     private LocalDateTime timestamp;
     private String provider;
+    private String senderName;
     private Object rawPayload;
+    private boolean isFromMe;
+    private String chatLid;
 }

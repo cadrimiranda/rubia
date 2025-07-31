@@ -1,6 +1,7 @@
 // src/main/java/com/ruby/rubia_server/core/entity/CompanyGroup.java
 package com.ruby.rubia_server.core.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,6 +38,7 @@ public class CompanyGroup {
 
     // Relação com as empresas que fazem parte deste grupo
     @OneToMany(mappedBy = "companyGroup", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference("companygroup-companies")
     private List<Company> companies;
 
     @CreationTimestamp

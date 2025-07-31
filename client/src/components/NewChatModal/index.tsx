@@ -108,7 +108,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           birthDate: "",
           weight: 0,
           height: 0,
-          hasActiveConversation: false,
+          hasActiveConversation: true,
         };
         
         onNewContactCreate({
@@ -156,7 +156,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           birthDate: "",
           weight: 0,
           height: 0,
-          hasActiveConversation: false,
+          hasActiveConversation: true,
         };
         
         onNewContactCreate({

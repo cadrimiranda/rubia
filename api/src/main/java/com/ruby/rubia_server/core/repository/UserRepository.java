@@ -54,4 +54,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     
     @Query("SELECT u FROM User u WHERE u.whatsappNumber = :whatsappNumber AND u.isWhatsappActive = true")
     Optional<User> findActiveByWhatsappNumber(@Param("whatsappNumber") String whatsappNumber);
+    
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.company c LEFT JOIN FETCH c.companyGroup LEFT JOIN FETCH u.department WHERE u.email = :email")
+    Optional<User> findByEmailWithCompanyAndDepartment(@Param("email") String email);
 }

@@ -88,6 +88,10 @@ export interface Message {
   content: string;
   timestamp: string;
   isAI: boolean;
+  messageType?: 'text' | 'image' | 'file' | 'audio';
+  mediaUrl?: string;
+  mimeType?: string;
+  audioDuration?: number;
   attachments?: FileAttachment[];
   media?: ConversationMedia[];
   campaignId?: string; // ID da campanha

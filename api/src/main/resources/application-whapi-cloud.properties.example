@@ -1,0 +1,26 @@
+# Whapi Cloud WhatsApp API Configuration Example
+# Copy this file to application-whapi-cloud.properties and configure your settings
+
+# Enable Whapi Cloud provider
+whapi.cloud.enabled=true
+
+# Your Whapi Cloud API token (get from https://panel.whapi.cloud)
+whapi.cloud.api-token=your_api_token_here
+
+# Whapi Cloud base URL (default is correct for most users)
+whapi.cloud.base-url=https://gate.whapi.cloud
+
+# Optional: webhook secret for security validation
+whapi.cloud.webhook-secret=your_webhook_secret_here
+
+# To use this configuration:
+# 1. Copy this file to application-whapi-cloud.properties
+# 2. Fill in your actual API token from Whapi Cloud dashboard
+# 3. Run the application with: --spring.profiles.active=whapi-cloud
+# 4. Configure your webhook URL in Whapi Cloud dashboard:
+#    https://your-domain.com/api/messaging/webhook/whapi
+
+# Example webhook URL for local development:
+# http://localhost:8080/api/messaging/webhook/whapi
+
+# Important: Make sure your WhatsApp instance is connected via QR scan in Whapi Cloud dashboard

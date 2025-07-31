@@ -68,7 +68,6 @@ class WebSocketClient {
         this.ws = new WebSocket(wsUrl)
 
         this.ws.onopen = () => {
-          console.log('WebSocket conectado')
           this.reconnectAttempts = 0
           this.isManuallyDisconnected = false
           this.startHeartbeat()
@@ -86,7 +85,6 @@ class WebSocketClient {
         }
 
         this.ws.onclose = (event) => {
-          console.log('WebSocket desconectado:', event.code, event.reason)
           this.stopHeartbeat()
           this.eventHandlers.onDisconnect?.()
 
@@ -239,7 +237,6 @@ class WebSocketClient {
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1) // Exponential backoff
 
-    console.log(`Tentando reconectar em ${delay}ms (tentativa ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
     
     this.eventHandlers.onReconnecting?.()
 
