@@ -19,6 +19,9 @@ import com.ruby.rubia_server.core.repository.CustomerRepository;
 import com.ruby.rubia_server.core.repository.DepartmentRepository;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.repository.CampaignRepository;
+import com.ruby.rubia_server.core.repository.MessageRepository;
+import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.dto.MessageDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,6 +49,7 @@ public class ConversationService {
     private final DepartmentRepository departmentRepository;
     private final CompanyRepository companyRepository;
     private final CampaignRepository campaignRepository;
+    private final MessageRepository messageRepository;
     
     public Optional<ConversationDTO> findByCustomerIdAndCampaignId(UUID customerId, UUID campaignId) {
         log.debug("Finding conversation by customer id: {} and campaign id: {}", customerId, campaignId);
@@ -118,6 +122,7 @@ public class ConversationService {
                 .priority(createDTO.getPriority())
                 .campaign(campaign)
                 .conversationType(createDTO.getConversationType())
+                .chatLid(createDTO.getChatLid())
                 .build();
         
         Conversation saved = conversationRepository.save(conversation);
@@ -151,6 +156,7 @@ public class ConversationService {
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .unreadCount(0L)
+                .chatLid(saved.getChatLid())
                 .build();
     }
     
@@ -204,6 +210,7 @@ public class ConversationService {
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .unreadCount(0L)
+                .chatLid(conversation.getChatLid())
                 .build();
     }
     
@@ -391,6 +398,42 @@ public class ConversationService {
                     .findFirst()
                     .orElse(null);
         }
+        
+        // Buscar a última mensagem da conversa
+        MessageDTO lastMessage = null;
+        try {
+            Optional<Message> lastMessageEntity = messageRepository.findLastMessageByConversation(conversation.getId());
+            if (lastMessageEntity.isPresent()) {
+                Message msg = lastMessageEntity.get();
+                // Determinar messageType e mediaUrl baseado na mídia associada
+                String messageType = "TEXT"; // Padrão
+                String mediaUrl = null;
+                
+                if (msg.getMedia() != null) {
+                    messageType = msg.getMedia().getMediaType().name();
+                    mediaUrl = msg.getMedia().getFileUrl();
+                }
+                
+                lastMessage = MessageDTO.builder()
+                        .id(msg.getId())
+                        .conversationId(msg.getConversation().getId())
+                        .content(msg.getContent())
+                        .senderType(msg.getSenderType())
+                        .senderId(msg.getSenderId())
+                        .messageType(messageType)
+                        .mediaUrl(mediaUrl)
+                        .externalMessageId(msg.getExternalMessageId())
+                        .isAiGenerated(msg.getIsAiGenerated())
+                        .aiConfidence(msg.getAiConfidence())
+                        .status(msg.getStatus())
+                        .createdAt(msg.getCreatedAt())
+                        .deliveredAt(msg.getDeliveredAt())
+                        .readAt(msg.getReadAt())
+                        .build();
+            }
+        } catch (Exception e) {
+            log.warn("Error fetching last message for conversation {}: {}", conversation.getId(), e.getMessage());
+        }
 
         return ConversationDTO.builder()
                 .id(conversation.getId())
@@ -412,7 +455,9 @@ public class ConversationService {
                 .priority(conversation.getPriority())
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
+                .lastMessage(lastMessage)
                 .unreadCount(0L) // Will be calculated by message service
+                .chatLid(conversation.getChatLid())
                 .build();
     }
     
@@ -435,6 +480,32 @@ public class ConversationService {
                 .unreadCount(0L) // Will be calculated by message service
                 .lastMessageContent(null) // Will be populated by message service
                 .lastMessageTime(null) // Will be populated by message service
+                .chatLid(conversation.getChatLid())
                 .build();
+    }
+
+    /**
+     * Find conversation by Z-API chatLid
+     */
+    public Optional<ConversationDTO> findByChatLid(String chatLid) {
+        if (chatLid == null || chatLid.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        
+        return conversationRepository.findByChatLid(chatLid)
+            .map(this::toDTO);
+    }
+
+    /**
+     * Update conversation with chatLid
+     */
+    public void updateChatLid(UUID conversationId, String chatLid) {
+        log.info("Updating conversation {} with chatLid: {}", conversationId, chatLid);
+        
+        Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+        
+        conversation.setChatLid(chatLid);
+        conversationRepository.save(conversation);
     }
 }

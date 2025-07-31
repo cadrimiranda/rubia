@@ -5,6 +5,7 @@ import com.ruby.rubia_server.config.JwtService;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.repository.UserRepository;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final CompanyContextResolver companyContextResolver;
+    private final WhatsAppInstanceService whatsappInstanceService;
 
     public AuthResponse login(LoginRequest request) {
         try {
@@ -70,6 +72,10 @@ public class AuthService {
                 company.getSlug()
             );
 
+            // Check if WhatsApp setup is required
+            boolean requiresWhatsAppSetup = !whatsappInstanceService.hasConfiguredInstance(company);
+            log.debug("Company {} requires WhatsApp setup: {}", company.getSlug(), requiresWhatsAppSetup);
+
             return AuthResponse.builder()
                 .token(jwtToken)
                 .user(UserInfo.builder()
@@ -90,6 +96,7 @@ public class AuthService {
                 .companyId(company.getId().toString())
                 .companyGroupId(company.getCompanyGroup().getId().toString())
                 .companySlug(company.getSlug())
+                .requiresWhatsAppSetup(requiresWhatsAppSetup)
                 .build();
                 
         } catch (org.springframework.security.core.AuthenticationException e) {

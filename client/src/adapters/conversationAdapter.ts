@@ -190,7 +190,7 @@ class ConversationAdapter {
   /**
    * Cria um request DTO para criar nova conversa
    */
-  toCreateRequest(customerId: string, channel: 'WHATSAPP' | 'WEB_CHAT' = 'WEB_CHAT', departmentId?: string, priority?: number) {
+  toCreateRequest(customerId: string, channel: 'WHATSAPP' = 'WHATSAPP', departmentId?: string, priority?: number) {
     return {
       customerId,
       departmentId,

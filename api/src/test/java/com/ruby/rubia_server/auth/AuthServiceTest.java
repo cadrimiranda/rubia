@@ -7,6 +7,7 @@ import com.ruby.rubia_server.core.entity.CompanyGroup;
 import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.enums.UserRole;
 import com.ruby.rubia_server.core.repository.UserRepository;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class AuthServiceTest {
 
     @Mock
     private CompanyContextResolver companyContextResolver;
+
+    @Mock
+    private WhatsAppInstanceService whatsappInstanceService;
 
     @Mock
     private HttpServletRequest httpServletRequest;
@@ -100,6 +104,7 @@ class AuthServiceTest {
             when(companyContextResolver.resolveCompany(httpServletRequest)).thenReturn(Optional.of(company));
             when(userRepository.findByEmailAndCompanyGroupId(loginRequest.getEmail(), companyGroup.getId()))
                     .thenReturn(Optional.of(user));
+            when(whatsappInstanceService.hasConfiguredInstance(company)).thenReturn(true);
             when(jwtService.generateToken(anyString(), any(UUID.class), anyString()))
                     .thenReturn("jwt-token");
 

@@ -89,7 +89,6 @@ class CampaignService {
       formData
     );
 
-    console.log("📡 Resposta da API /process:", response);
     return response;
   }
 

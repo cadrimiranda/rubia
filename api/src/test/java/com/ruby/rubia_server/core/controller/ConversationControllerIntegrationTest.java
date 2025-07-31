@@ -154,7 +154,7 @@ class ConversationControllerIntegrationTest extends AbstractIntegrationTest {
 
         CreateConversationDTO createDTO2 = new CreateConversationDTO();
         createDTO2.setCustomerId(testCustomer.getId());
-        createDTO2.setChannel(Channel.INSTAGRAM);
+        createDTO2.setChannel(Channel.WHATSAPP);
         createDTO2.setPriority(2);
 
         // Criar as conversas
@@ -243,7 +243,7 @@ class ConversationControllerIntegrationTest extends AbstractIntegrationTest {
 
         CreateConversationDTO createDTO2 = new CreateConversationDTO();
         createDTO2.setCustomerId(testCustomer.getId());
-        createDTO2.setChannel(Channel.INSTAGRAM);
+        createDTO2.setChannel(Channel.WHATSAPP);
 
         // Criar as conversas
         mockMvc.perform(post("/api/conversations")

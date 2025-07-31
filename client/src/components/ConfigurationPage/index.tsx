@@ -634,12 +634,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       };
 
       // Enviar para o backend
-      console.log("🚀 Enviando dados para API:", {
-        file: campaignData.file?.name,
-        campaignData: campaignRequestData,
-        companyId: user.companyId,
-        userId: user.id
-      });
       
       const result = await campaignService.processExcelAndCreateCampaign(
         campaignData.file,
@@ -648,7 +642,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         user.id
       );
 
-      console.log("🔍 Resultado da API:", result);
 
       if (result && result.success) {
         // Mostrar duplicados encontrados
@@ -710,14 +703,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         setDuplicateUsers([]);
 
         // Log da campanha criada
-        console.log("🎯 Campanha criada:", result.campaign);
-        console.log("📋 Estatísticas:", result.statistics);
 
         // Fechar configurações e voltar para o chat
-        console.log("🔄 Chamando onBack() para voltar ao chat...");
         onBack();
       } else {
-        console.log("❌ Resultado inválido:", result);
         message.error(result ? "Erro ao criar campanha!" : "Erro na comunicação com o servidor!");
       }
     } catch (error: unknown) {

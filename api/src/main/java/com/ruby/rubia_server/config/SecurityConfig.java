@@ -39,8 +39,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/messaging/webhook").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/messaging/webhook/**").permitAll()
+                .requestMatchers("/api/messaging/**").permitAll()  // Permit all messaging endpoints
                 .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -52,25 +55,28 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Allowed origins - use setAllowedOrigins for exact matches
-        configuration.setAllowedOrigins(Arrays.asList("http://rubia.localhost:3000", "http://localhost:3000", "http://localhost:5173"));
-        
-        // Allowed methods
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        
-        // Allowed headers
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        
-        // Allow credentials (important for authentication)
-        configuration.setAllowCredentials(true);
-        
-        // Expose headers that frontend might need
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "X-Company-Slug"));
-        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        
+        // Restricted configuration for API endpoints
+        CorsConfiguration apiConfig = new CorsConfiguration();
+        apiConfig.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        apiConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        apiConfig.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        apiConfig.setAllowCredentials(true);
+        apiConfig.setMaxAge(3600L);
+        
+        // Webhook configuration (external Z-API calls)
+        CorsConfiguration webhookConfig = new CorsConfiguration();
+        webhookConfig.setAllowedOriginPatterns(Arrays.asList("*"));
+        webhookConfig.setAllowedMethods(Arrays.asList("POST", "OPTIONS", "GET"));
+        webhookConfig.setAllowedHeaders(Arrays.asList("*"));
+        webhookConfig.setAllowCredentials(false);
+        webhookConfig.setMaxAge(3600L);
+        
+        // Apply configurations to specific endpoints
+        source.registerCorsConfiguration("/api/**", apiConfig);
+        source.registerCorsConfiguration("/messaging/webhook/**", webhookConfig);
+        source.registerCorsConfiguration("/ws/**", apiConfig);
         
         return source;
     }

@@ -56,4 +56,11 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
            "LEFT JOIN c.participants p " +
            "WHERE c.id = :id AND p.customer IS NOT NULL")
     List<Object[]> findConversationWithCustomer(@Param("id") UUID id);
+    
+    // Find conversation by Z-API chatLid
+    Optional<Conversation> findByChatLid(String chatLid);
+    
+    // Find conversation by Z-API chatLid with participants loaded
+    @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.chatLid = :chatLid")
+    Optional<Conversation> findByChatLidWithParticipants(@Param("chatLid") String chatLid);
 }

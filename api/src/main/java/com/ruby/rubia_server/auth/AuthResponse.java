@@ -16,4 +16,5 @@ public class AuthResponse {
     private String companyId;
     private String companyGroupId;
     private String companySlug;
+    private boolean requiresWhatsAppSetup;
 }

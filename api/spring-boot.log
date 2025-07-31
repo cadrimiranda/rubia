@@ -1,0 +1,275 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.ruby:rubia-server >------------------------
+[INFO] Building Rubia Chat Server 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.0:run (default-cli) > test-compile @ rubia-server >>>
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ rubia-server ---
+[INFO] argLine set to -javaagent:/Users/carlosadrianomiranda/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/carlosadrianomiranda/rubia/api/target/jacoco.exec,excludes=**/config/**:**/dto/**:**/entity/**:**/Application.class
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ rubia-server ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 49 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ rubia-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ rubia-server ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ rubia-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.5.0:run (default-cli) < test-compile @ rubia-server <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.0:run (default-cli) @ rubia-server ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.0)
+
+2025-07-22T10:47:16.054-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : Starting RubiaChatServerApplication using Java 22.0.1 with PID 18020 (/Users/carlosadrianomiranda/rubia/api/target/classes started by carlosadrianomiranda in /Users/carlosadrianomiranda/rubia/api)
+2025-07-22T10:47:16.054-03:00 DEBUG 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : Running with Spring Boot v3.5.0, Spring v6.2.7
+2025-07-22T10:47:16.055-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : No active profile set, falling back to 1 default profile: "default"
+2025-07-22T10:47:16.068-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2025-07-22T10:47:16.068-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2025-07-22T10:47:16.461-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2025-07-22T10:47:16.462-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-07-22T10:47:16.535-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 67 ms. Found 18 JPA repository interfaces.
+2025-07-22T10:47:16.746-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-07-22T10:47:16.751-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-07-22T10:47:16.751-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-07-22T10:47:16.764-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-07-22T10:47:16.765-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 696 ms
+2025-07-22T10:47:16.881-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-07-22T10:47:16.948-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@415f225
+2025-07-22T10:47:16.949-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-07-22T10:47:16.959-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:5432/rubia_chat (PostgreSQL 16.8)
+2025-07-22T10:47:16.998-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.f.core.internal.command.DbValidate     : Successfully validated 45 migrations (execution time 00:00.024s)
+2025-07-22T10:47:17.027-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 45
+2025-07-22T10:47:17.028-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2025-07-22T10:47:17.063-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-07-22T10:47:17.079-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.15.Final
+2025-07-22T10:47:17.089-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-07-22T10:47:17.173-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-07-22T10:47:17.194-03:00  WARN 18020 --- [Rubia Chat Server] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-07-22T10:47:17.200-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 16.8
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2025-07-22T10:47:17.670-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-07-22T10:47:17.704-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-07-22T10:47:17.804-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-07-22T10:47:18.071-03:00 DEBUG 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.config.JwtAuthenticationFilter     : Filter 'jwtAuthenticationFilter' configured for use
+2025-07-22T10:47:18.071-03:00 DEBUG 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.config.WhatsAppSetupFilter         : Filter 'whatsAppSetupFilter' configured for use
+2025-07-22T10:47:18.089-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2025-07-22T10:47:18.819-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.core.adapter.impl.TwilioAdapter    : Twilio initialized successfully with provider config
+2025-07-22T10:47:18.955-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.core.service.MessagingService      : Initialized with adapter: twilio
+2025-07-22T10:47:19.023-03:00  WARN 18020 --- [Rubia Chat Server] [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-07-22T10:47:19.165-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 17 endpoints beneath base path '/actuator'
+2025-07-22T10:47:19.306-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2025-07-22T10:47:19.330-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-07-22T10:47:19.330-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@6c5981cd]]
+2025-07-22T10:47:19.330-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-07-22T10:47:19.336-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2025-07-22T10:47:19.342-03:00  INFO 18020 --- [Rubia Chat Server] [  restartedMain] c.r.r.RubiaChatServerApplication         : Started RubiaChatServerApplication in 3.433 seconds (process running for 3.572)
+2025-07-22T10:47:28.676-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-07-22T10:47:28.676-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-07-22T10:47:28.677-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-07-22T10:47:28.691-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /actuator/health
+2025-07-22T10:47:28.691-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /actuator/health
+2025-07-22T10:48:19.327-03:00  INFO 18020 --- [Rubia Chat Server] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 1, active threads = 1, queued tasks = 0, completed tasks = 0]
+2025-07-22T10:48:29.656-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/auth/login
+2025-07-22T10:48:29.656-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/auth/login
+2025-07-22T10:48:29.705-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.CompanyContextResolver      : Company not found for slug: localhost
+2025-07-22T10:48:29.705-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] com.ruby.rubia_server.auth.AuthService   : Company resolved: none
+2025-07-22T10:48:29.706-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.auth.GlobalExceptionHandler        : Authentication failed: Company not found. Please check the subdomain.
+2025-07-22T10:48:29.708-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.ruby.rubia_server.auth.AuthenticationException: Company not found. Please check the subdomain.]
+2025-07-22T10:48:40.464-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/auth/login
+2025-07-22T10:48:40.464-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/auth/login
+2025-07-22T10:48:40.469-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.CompanyContextResolver      : Company not found for slug: localhost
+2025-07-22T10:48:40.469-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] com.ruby.rubia_server.auth.AuthService   : Company resolved: none
+2025-07-22T10:48:40.470-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.auth.GlobalExceptionHandler        : Authentication failed: Company not found. Please check the subdomain.
+2025-07-22T10:48:40.470-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.ruby.rubia_server.auth.AuthenticationException: Company not found. Please check the subdomain.]
+2025-07-22T10:48:56.676-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:48:56.676-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:48:56.676-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:48:56.676-03:00 DEBUG 18020 --- [Rubia Chat Server] [io-8080-exec-10] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [io-8080-exec-10] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:48:56.676-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:48:56.677-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:48:56.731-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/campaigns/company/22222222-2222-2222-2222-222222222222/active
+2025-07-22T10:48:56.731-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/conversations
+2025-07-22T10:48:56.731-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/campaigns/company/22222222-2222-2222-2222-222222222222/active
+2025-07-22T10:48:56.731-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/conversations
+2025-07-22T10:48:56.735-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T10:48:56.735-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T10:48:56.736-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.controller.CampaignController      : Buscando campanhas ativas para empresa: 22222222-2222-2222-2222-222222222222
+2025-07-22T10:48:56.736-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.controller.CampaignController      : Buscando campanhas ativas para empresa: 22222222-2222-2222-2222-222222222222
+2025-07-22T10:48:56.737-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T10:48:56.737-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Company rubia has configured WhatsApp instances, proceeding
+2025-07-22T10:48:56.739-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.core.service.CampaignService       : Finding active campaigns for company: 22222222-2222-2222-2222-222222222222
+2025-07-22T10:48:56.739-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.core.service.CampaignService       : Finding active campaigns for company: 22222222-2222-2222-2222-222222222222
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.c.c.ConversationController         : Finding conversations by status: ENTRADA with pageable: Page request [number: 0, size 20, sort: updatedAt: DESC]
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.ConversationController         : Finding conversations by status: ENTRADA with pageable: Page request [number: 0, size 20, sort: updatedAt: DESC]
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Getting company ID from request: /api/conversations
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Getting company ID from request: /api/conversations
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Request headers: Authorization=present, X-Company-Slug=rubia
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Company group ID from token: 11111111-1111-1111-1111-111111111111
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Request headers: Authorization=present, X-Company-Slug=rubia
+2025-07-22T10:48:56.740-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.core.util.CompanyContextUtil       : 🔍 [COMPANY CONTEXT] Company group ID from token: 11111111-1111-1111-1111-111111111111
+2025-07-22T10:48:56.742-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.core.util.CompanyContextUtil       : 🏢 [COMPANY CONTEXT] Resolved company ID from token: 22222222-2222-2222-2222-222222222222
+2025-07-22T10:48:56.742-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.core.util.CompanyContextUtil       : 🏢 [COMPANY CONTEXT] Resolved company ID from token: 22222222-2222-2222-2222-222222222222
+2025-07-22T10:48:56.742-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.core.service.ConversationService   : Finding conversations by status: ENTRADA for company: 22222222-2222-2222-2222-222222222222 with pagination
+2025-07-22T10:48:56.742-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.core.service.ConversationService   : Finding conversations by status: ENTRADA for company: 22222222-2222-2222-2222-222222222222 with pagination
+2025-07-22T10:48:56.746-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-3] org.hibernate.orm.query                  : HHH90003004: firstResult/maxResults specified with collection fetch; applying in memory
+2025-07-22T10:48:56.746-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-2] org.hibernate.orm.query                  : HHH90003004: firstResult/maxResults specified with collection fetch; applying in memory
+2025-07-22T10:49:07.551-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:07.552-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:07.552-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:07.552-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:07.572-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:07.572-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:07.572-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:07.572-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:07.657-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:07.657-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:07.658-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:07.658-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:07.658-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:07.658-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:07.658-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:07.658-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:10.876-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:10.876-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:10.876-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:10.876-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:10.893-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:10.893-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:10.893-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:10.893-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:10.978-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:10.978-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:10.978-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:10.979-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:10.978-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:10.979-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:10.979-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:10.980-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.881-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:12.881-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:12.881-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:12.881-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.882-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:12.882-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.882-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.882-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.926-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:12.926-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:12.926-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:12.926-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:12.993-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.993-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:12.993-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:49:12.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-1] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:12.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:12.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:49:12.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:49:49.548-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/auth/login
+2025-07-22T10:49:49.548-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/auth/login
+2025-07-22T10:49:49.552-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] com.ruby.rubia_server.auth.AuthService   : Company resolved: rubia
+2025-07-22T10:49:49.552-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] com.ruby.rubia_server.auth.AuthService   : Searching for user with email: null and company group: 11111111-1111-1111-1111-111111111111
+2025-07-22T10:49:49.554-03:00 ERROR 18020 --- [Rubia Chat Server] [nio-8080-exec-9] com.ruby.rubia_server.auth.AuthService   : User not found for email: null and company group: 11111111-1111-1111-1111-111111111111
+2025-07-22T10:49:49.554-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.auth.GlobalExceptionHandler        : Authentication failed: User not found for this company group
+2025-07-22T10:49:49.554-03:00  WARN 18020 --- [Rubia Chat Server] [nio-8080-exec-9] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.ruby.rubia_server.auth.AuthenticationException: User not found for this company group]
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-9] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:50:09.298-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:50:09.348-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:50:09.348-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:50:09.348-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:50:09.348-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-7] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:50:09.400-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.400-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.400-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:50:09.400-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:50:09.401-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:50:09.401-03:00 DEBUG 18020 --- [Rubia Chat Server] [io-8080-exec-10] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/providers
+2025-07-22T10:50:09.401-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:50:09.401-03:00 DEBUG 18020 --- [Rubia Chat Server] [io-8080-exec-10] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/providers
+2025-07-22T10:52:54.981-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/auth/login
+2025-07-22T10:52:54.981-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/auth/login
+2025-07-22T10:52:54.985-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] com.ruby.rubia_server.auth.AuthService   : Company resolved: rubia
+2025-07-22T10:52:54.985-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] com.ruby.rubia_server.auth.AuthService   : Searching for user with email: teste@teste.com and company group: 11111111-1111-1111-1111-111111111111
+2025-07-22T10:52:54.986-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] com.ruby.rubia_server.auth.AuthService   : User found: teste@teste.com with role: ADMIN
+2025-07-22T10:52:54.986-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] com.ruby.rubia_server.auth.AuthService   : Attempting authentication for user: teste@teste.com
+2025-07-22T10:52:55.137-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] com.ruby.rubia_server.auth.AuthService   : Authentication successful for user: teste@teste.com
+2025-07-22T10:52:55.146-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] com.ruby.rubia_server.auth.AuthService   : Company rubia requires WhatsApp setup: true
+2025-07-22T10:53:04.746-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:53:04.746-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-5] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:53:37.178-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/create-instance
+2025-07-22T10:53:37.179-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/create-instance
+2025-07-22T10:53:37.188-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Creating WhatsApp instance with request: phoneNumber=48991208536, displayName=Carlos Adriano Miranda
+2025-07-22T10:53:37.191-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Current company: rubia (max instances: 5)
+2025-07-22T10:53:37.195-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Existing instances count: 0
+2025-07-22T10:53:37.201-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.service.WhatsAppInstanceService  : Creating new WhatsApp instance for company 22222222-2222-2222-2222-222222222222 with phone 48991208536
+2025-07-22T10:53:37.243-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Created WhatsApp instance 193aedc8-3dbb-4265-ba87-00546f17e582 for company rubia
+2025-07-22T10:53:37.243-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Returning instance data: WhatsAppInstance(id=193aedc8-3dbb-4265-ba87-00546f17e582, phoneNumber=48991208536, displayName=Carlos Adriano Miranda, provider=Z_API, instanceId=null, accessToken=null, webhookUrl=null, status=NOT_CONFIGURED, isActive=true, isPrimary=true, lastConnectedAt=null, lastStatusCheck=null, configurationData=null, errorMessage=null, createdAt=2025-07-22T10:53:37.226795, updatedAt=2025-07-22T10:53:37.226828)
+2025-07-22T10:53:37.268-03:00 DEBUG 18020 --- [Rubia Chat Server] [io-8080-exec-11] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:53:37.269-03:00 DEBUG 18020 --- [Rubia Chat Server] [io-8080-exec-11] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:53:50.306-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/193aedc8-3dbb-4265-ba87-00546f17e582/configure
+2025-07-22T10:53:50.306-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/193aedc8-3dbb-4265-ba87-00546f17e582/configure
+2025-07-22T10:53:50.319-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.c.service.WhatsAppInstanceService  : Updated WhatsApp instance 193aedc8-3dbb-4265-ba87-00546f17e582 configuration
+2025-07-22T10:53:50.337-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-6] c.r.r.c.c.WhatsAppSetupController        : Configured WhatsApp instance 193aedc8-3dbb-4265-ba87-00546f17e582 with external ID 3E48B40A3ACEC048BB65C69C9520E8DB
+2025-07-22T10:53:50.350-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:53:50.350-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-8] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:54:37.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:54:37.994-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-4] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:54:45.464-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/status
+2025-07-22T10:54:45.464-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-2] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/status
+2025-07-22T10:55:08.085-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Processing WhatsApp setup filter for URI: /api/whatsapp-setup/create-instance
+2025-07-22T10:55:08.085-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.config.WhatsAppSetupFilter         : Skipping WhatsApp setup filter for excluded path: /api/whatsapp-setup/create-instance
+2025-07-22T10:55:08.086-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Creating WhatsApp instance with request: phoneNumber=48991208537, displayName=Teste 2
+2025-07-22T10:55:08.087-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Current company: rubia (max instances: 5)
+2025-07-22T10:55:08.088-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Existing instances count: 1
+2025-07-22T10:55:08.090-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.service.WhatsAppInstanceService  : Creating new WhatsApp instance for company 22222222-2222-2222-2222-222222222222 with phone 48991208537
+2025-07-22T10:55:08.093-03:00  INFO 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Created WhatsApp instance 49eb7798-4f07-4c10-9ef7-db3aec0624a5 for company rubia
+2025-07-22T10:55:08.093-03:00 DEBUG 18020 --- [Rubia Chat Server] [nio-8080-exec-3] c.r.r.c.c.WhatsAppSetupController        : Returning instance data: WhatsAppInstance(id=49eb7798-4f07-4c10-9ef7-db3aec0624a5, phoneNumber=48991208537, displayName=Teste 2, provider=Z_API, instanceId=null, accessToken=null, webhookUrl=null, status=NOT_CONFIGURED, isActive=true, isPrimary=false, lastConnectedAt=null, lastStatusCheck=null, configurationData=null, errorMessage=null, createdAt=2025-07-22T10:55:08.091817, updatedAt=2025-07-22T10:55:08.091822)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11:13 min
+[INFO] Finished at: 2025-07-22T10:58:28-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.0:run (default-cli) on project rubia-server: Process terminated with exit code: 137 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

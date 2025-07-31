@@ -21,6 +21,7 @@ import com.ruby.rubia_server.core.entity.Customer;
 import com.ruby.rubia_server.core.entity.ConversationMedia;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import com.ruby.rubia_server.core.service.MessagingService;
+import com.ruby.rubia_server.core.service.WebSocketNotificationService;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -54,6 +55,7 @@ public class ConversationController {
     private final CustomerService customerService;
     private final ConversationMediaService conversationMediaService;
     private final MessagingService messagingService;
+    private final WebSocketNotificationService webSocketNotificationService;
     private final CompanyContextUtil companyContextUtil;
     
     @PostMapping
@@ -305,6 +307,9 @@ public class ConversationController {
                     log.error("Error sending message via WhatsApp: {}", e.getMessage(), e);
                 }
             }
+            
+            // Send WebSocket notification for real-time updates
+            webSocketNotificationService.notifyNewMessage(message, conversation);
             
             return ResponseEntity.status(HttpStatus.CREATED).body(message);
             

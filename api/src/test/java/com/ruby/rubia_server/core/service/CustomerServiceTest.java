@@ -31,6 +31,9 @@ class CustomerServiceTest {
     @Mock
     private CompanyRepository companyRepository;
 
+    @Mock
+    private PhoneService phoneService;
+
     @InjectMocks
     private CustomerService customerService;
 
@@ -66,6 +69,9 @@ class CustomerServiceTest {
                 .birthDate(createCustomerDTO.getBirthDate())
                 .company(company)
                 .build();
+
+        // Configure PhoneService mock to return normalized phone
+        when(phoneService.normalize(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -93,14 +99,15 @@ class CustomerServiceTest {
     @Test
     void createCustomer_FailsWhenPhoneExists() {
         // Arrange
+        String normalizedPhone = createCustomerDTO.getPhone();
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
-        when(customerRepository.existsByPhoneAndCompanyId(createCustomerDTO.getPhone(), companyId)).thenReturn(true);
+        when(customerRepository.existsByPhoneAndCompanyId(normalizedPhone, companyId)).thenReturn(true);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             customerService.create(createCustomerDTO, companyId);
         });
-        assertEquals("Cliente com telefone '" + createCustomerDTO.getPhone() + "' já existe nesta empresa", exception.getMessage());
+        assertEquals("Cliente com telefone '" + normalizedPhone + "' já existe nesta empresa", exception.getMessage());
         verify(customerRepository, never()).save(any(Customer.class));
     }
 

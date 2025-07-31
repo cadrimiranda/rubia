@@ -100,7 +100,6 @@ class WebSocketEventHandlers {
         break
         
       default:
-        console.log('Evento WebSocket não tratado:', message.type, message.data)
     }
   }
 
@@ -227,7 +226,6 @@ class WebSocketEventHandlers {
   }
 
   private handleConnect = () => {
-    console.log('WebSocket conectado')
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('chat:notification', {
         detail: {
@@ -241,7 +239,6 @@ class WebSocketEventHandlers {
   }
 
   private handleDisconnect = () => {
-    console.log('WebSocket desconectado')
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('chat:notification', {
         detail: {
@@ -269,7 +266,6 @@ class WebSocketEventHandlers {
   }
 
   private handleReconnecting = () => {
-    console.log('Tentando reconectar...')
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('chat:notification', {
         detail: {
@@ -283,7 +279,6 @@ class WebSocketEventHandlers {
   }
 
   private handleReconnected = () => {
-    console.log('Reconectado com sucesso')
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('chat:notification', {
         detail: {

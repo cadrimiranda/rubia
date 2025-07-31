@@ -1,6 +1,6 @@
 import { getCurrentCompanySlug } from "../utils/company";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export interface ApiResponse<T> {
   data: T;
@@ -60,17 +60,6 @@ class ApiClient {
         };
       }
       
-      // Debug para upload de mídia
-      if (endpoint.includes('/media')) {
-        console.log('🔍 Media upload request:', {
-          endpoint,
-          hasToken: !!token,
-          companySlug,
-          tokenPrefix: token ? token.substring(0, 20) + '...' : 'none',
-          headers: Object.keys(config.headers || {}),
-          isFormData: config.body instanceof FormData
-        });
-      }
     }
 
     // Debug: verificar tamanho dos headers
