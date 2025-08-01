@@ -62,8 +62,17 @@ public class TemplateEnhancementService {
         // Gerar prompt baseado no tipo de melhoria
         String prompt = generatePrompt(request, aiModel);
         
-        // Chamar OpenAI para melhorar o template - usa configurações padrão do application.properties
-        String enhancedContent = openAIService.enhanceTemplate(prompt);
+        // Chamar OpenAI para melhorar o template usando as configurações do agente
+        Double agentTemperature = null;
+        Integer agentMaxTokens = null;
+        
+        if (isUsingCompanyAgent && !activeAgents.isEmpty()) {
+            AIAgent selectedAgent = activeAgents.get(0);
+            agentTemperature = selectedAgent.getTemperature() != null ? selectedAgent.getTemperature().doubleValue() : null;
+            agentMaxTokens = selectedAgent.getMaxResponseLength();
+        }
+        
+        String enhancedContent = openAIService.enhanceTemplate(prompt, aiModel.getName(), agentTemperature, agentMaxTokens);
         
         // Estimar tokens e créditos usados
         int estimatedTokens = estimateTokens(request.getOriginalContent() + enhancedContent);

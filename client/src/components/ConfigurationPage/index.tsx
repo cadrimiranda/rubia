@@ -45,7 +45,6 @@ import {
   type RevisionType,
 } from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
-import { aiModelService, type AIModel } from "../../services/aiModelService";
 import { aiAgentApi, type AIAgent } from "../../api/services/aiAgentApi";
 
 const { Option } = Select;
@@ -85,7 +84,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     temperature: 0.7,
     isActive: true,
   });
-  const [aiModels, setAiModels] = useState<AIModel[]>([]);
   const [existingAgents, setExistingAgents] = useState<AIAgent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
@@ -165,21 +163,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
-  // Carregar modelos de AI da API
-  const loadAIModels = useCallback(async () => {
-    try {
-      const models = await aiModelService.getActiveModels();
-      setAiModels(models);
-      
-      // Se não há modelo selecionado e há modelos disponíveis, selecionar o primeiro
-      if (!agentConfig.aiModelId && models.length > 0) {
-        setAgentConfig(prev => ({ ...prev, aiModelId: models[0].id }));
-      }
-    } catch (error) {
-      console.error("Erro ao carregar modelos de AI:", error);
-      message.error("Erro ao carregar modelos de AI");
-    }
-  }, [agentConfig.aiModelId]);
 
   // Carregar agentes existentes da empresa
   const loadExistingAgents = useCallback(async () => {
@@ -220,10 +203,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   }, [user?.companyId, loadTemplates, loadExistingAgents, checkAgentLimits]);
 
-  // Carregar modelos de AI ao montar o componente
-  useEffect(() => {
-    loadAIModels();
-  }, []);
 
   // Função para obter ícone e cor do tipo de revisão
   const getRevisionTypeInfo = (type: RevisionType) => {
@@ -346,7 +325,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   };
 
   const handleSaveAgent = async () => {
-    if (!agentConfig.name || !agentConfig.aiModelId || !agentConfig.temperament) {
+    if (!agentConfig.name || !agentConfig.temperament) {
       message.error("Preencha todos os campos obrigatórios!");
       return;
     }
@@ -384,7 +363,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         name: "",
         description: "",
         avatarBase64: "",
-        aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+        aiModelId: "default",
         temperament: "AMIGAVEL",
         maxResponseLength: 500,
         temperature: 0.7,
@@ -448,7 +427,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         name: "",
         description: "",
         avatarBase64: "",
-        aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+        aiModelId: "default",
         temperament: "AMIGAVEL",
         maxResponseLength: 500,
         temperature: 0.7,
@@ -943,85 +922,15 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
 
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-4">
-                        Modelo de IA *
-                      </label>
-                      <div className="space-y-4">
-                        <Select
-                          value={agentConfig.aiModelId}
-                          onChange={(value) =>
-                            handleAgentConfigChange("aiModelId", value)
-                          }
-                          className="w-full"
-                          placeholder="Selecione um modelo de IA"
-                          size="large"
-                        >
-                          {aiModels.map((model) => (
-                            <Option key={model.id} value={model.id}>
-                              <div className="flex flex-col py-2">
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="font-medium text-lg">{model.displayName}</div>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      model.performanceLevel === 'PREMIUM' ? 'bg-purple-100 text-purple-700' :
-                                      model.performanceLevel === 'AVANCADO' ? 'bg-blue-100 text-blue-700' :
-                                      model.performanceLevel === 'INTERMEDIARIO' ? 'bg-green-100 text-green-700' :
-                                      'bg-gray-100 text-gray-700'
-                                    }`}>
-                                      {model.performanceLevel}
-                                    </span>
-                                    <span className="text-sm font-semibold text-orange-600">
-                                      {model.costPer1kTokens} créditos/1k tokens
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="text-sm text-gray-600 mb-2">
-                                  {model.capabilities}
-                                </div>
-                                <div className="text-xs text-gray-500 italic">
-                                  💡 {model.impactDescription}
-                                </div>
-                              </div>
-                            </Option>
-                          ))}
-                        </Select>
-                        
-                        {/* Exibir informações do modelo selecionado */}
-                        {agentConfig.aiModelId && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            {(() => {
-                              const selectedModel = aiModels.find(m => m.id === agentConfig.aiModelId);
-                              if (!selectedModel) return null;
-                              
-                              return (
-                                <div>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <h4 className="font-semibold text-blue-900">
-                                      {selectedModel.displayName} - {selectedModel.provider}
-                                    </h4>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      selectedModel.performanceLevel === 'PREMIUM' ? 'bg-purple-100 text-purple-700' :
-                                      selectedModel.performanceLevel === 'AVANCADO' ? 'bg-blue-100 text-blue-700' :
-                                      selectedModel.performanceLevel === 'INTERMEDIARIO' ? 'bg-green-100 text-green-700' :
-                                      'bg-gray-100 text-gray-700'
-                                    }`}>
-                                      {selectedModel.performanceLevel}
-                                    </span>
-                                  </div>
-                                  <div className="text-sm text-blue-800 mb-2">
-                                    <strong>Capacidades:</strong> {selectedModel.capabilities}
-                                  </div>
-                                  <div className="text-sm text-blue-700 mb-2">
-                                    <strong>Impacto:</strong> {selectedModel.impactDescription}
-                                  </div>
-                                  <div className="text-sm text-orange-700 font-semibold">
-                                    💰 Custo: {selectedModel.costPer1kTokens} créditos por 1.000 tokens
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-blue-900">
+                            ✨ Modelo de IA
+                          </h4>
+                        </div>
+                        <div className="text-sm text-blue-800">
+                          O sistema usa automaticamente o melhor modelo disponível para otimizar qualidade e custo
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1105,7 +1014,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                       type="primary"
                       size="large"
                       onClick={handleSaveAgent}
-                      disabled={!agentConfig.name || !agentConfig.aiModelId || !agentConfig.temperament}
+                      disabled={!agentConfig.name || !agentConfig.temperament}
                       className="px-8 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
                     >
                       Salvar Agente
@@ -1275,10 +1184,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                         )}
 
                         <div className="text-xs text-gray-500 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Modelo:</span>
-                            <span className="font-medium">{agent.aiModelDisplayName}</span>
-                          </div>
                           <div className="flex justify-between">
                             <span>Temperatura:</span>
                             <span className="font-medium">{agent.temperature}</span>
@@ -1960,7 +1865,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
             name: "",
             description: "",
             avatarBase64: "",
-            aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
+            aiModelId: "default",
             temperament: "AMIGAVEL",
             maxResponseLength: 500,
             temperature: 0.7,
@@ -2046,34 +1951,16 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Modelo de IA *
-              </label>
-              <Select
-                value={agentConfig.aiModelId}
-                onChange={(value) =>
-                  handleAgentConfigChange("aiModelId", value)
-                }
-                className="w-full"
-                placeholder="Selecione um modelo de IA"
-                size="large"
-              >
-                {aiModels.map((model) => (
-                  <Option key={model.id} value={model.id}>
-                    <div className="flex flex-col py-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="font-medium">{model.displayName}</div>
-                        <span className="text-xs text-orange-600 font-semibold">
-                          {model.costPer1kTokens} créditos/1k tokens
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {model.capabilities}
-                      </div>
-                    </div>
-                  </Option>
-                ))}
-              </Select>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="text-sm font-semibold text-blue-900">
+                    ✨ Modelo de IA
+                  </h4>
+                </div>
+                <div className="text-xs text-blue-800">
+                  Sistema otimizado automaticamente
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2146,7 +2033,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               type="primary"
               size="large"
               onClick={selectedAgent ? handleUpdateAgent : handleSaveAgent}
-              disabled={!agentConfig.name || !agentConfig.aiModelId || !agentConfig.temperament}
+              disabled={!agentConfig.name || !agentConfig.temperament}
               className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
             >
               {selectedAgent ? "Atualizar Agente" : "Criar Agente"}

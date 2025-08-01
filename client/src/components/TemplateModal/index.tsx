@@ -192,7 +192,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                 <span className="text-orange-500 text-sm">💡</span>
                 <div className="text-xs text-gray-600">
                   <p className="m-0 font-medium">Personalização obrigatória:</p>
-                  <p className="m-0">Use <code className="bg-gray-100 px-1 rounded text-orange-600">{{nome}}</code> para personalizar com o nome do doador</p>
+                  <p className="m-0">Use <code className="bg-gray-100 px-1 rounded text-orange-600">{"{{nome}}"}</code> para personalizar com o nome do doador</p>
                 </div>
               </div>
               {formData.content && !formData.content.includes('{{nome}}') && (
@@ -209,7 +209,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                   <div className="text-xs text-green-700">
                     <p className="m-0 font-medium">✅ Preview personalizado:</p>
                     <p className="m-0 italic mt-1">
-                      "{formData.content.replace('{{nome}}', 'João Silva')}"
+                      {`"${formData.content.replace(/\{\{nome\}\}/g, 'João Silva')}"`}
                     </p>
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
             <div className="text-sm">
               <h4 className="font-medium text-blue-800 mb-2">🩸 Dicas para captação de doadores:</h4>
               <ul className="text-blue-700 space-y-1">
-                <li>• <strong>Personalize sempre:</strong> Use {{nome}} para tornar a mensagem mais próxima</li>
+                <li>• <strong>Personalize sempre:</strong> Use {"{{nome}}"} para tornar a mensagem mais próxima</li>
                 <li>• <strong>Apele ao heroísmo:</strong> Mostre como a doação salva vidas</li>
                 <li>• <strong>Seja respeitoso:</strong> Entenda que doar é um ato voluntário</li>
                 <li>• <strong>Transmita urgência ética:</strong> Destaque a necessidade sem pressionar</li>

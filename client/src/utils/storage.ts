@@ -266,7 +266,7 @@ export class StorageService {
   private getAuthToken(): string {
     // Implementar lógica para obter token de autenticação
     // Por exemplo, do localStorage ou context de autenticação
-    return localStorage.getItem('authToken') || '';
+    return localStorage.getItem('auth_token') || '';
   }
 }
 

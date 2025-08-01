@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Spin, Card, message } from "antd";
-import { Sparkles, Copy, Check, RefreshCw, Coins } from "lucide-react";
+import { Sparkles, Copy, Check, RefreshCw } from "lucide-react";
 import { templateEnhancementService } from "../../services/templateEnhancementService";
 import { useAuthStore } from "../../store/useAuthStore";
 
@@ -114,9 +114,6 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
             name: suggestion.name,
             description: suggestion.description,
             enhancedMessage: response.enhancedContent,
-            aiModelUsed: response.aiModelUsed,
-            tokensUsed: response.tokensUsed,
-            creditsConsumed: response.creditsConsumed,
             explanation: response.explanation,
           };
         } catch (error) {
@@ -303,20 +300,6 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Aviso quando usando modelo padrão */}
-            {suggestions.some(s => s.aiModelUsed?.includes('(Padrão)')) && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <span className="text-orange-500 text-lg">⚠️</span>
-                  <div className="text-sm">
-                    <p className="font-medium text-orange-800 m-0">Usando modelo padrão do sistema</p>
-                    <p className="text-orange-700 m-0 mt-1">
-                      Para melhor personalização, configure um agente de IA específico para sua empresa na aba "Agente" desta página.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
             
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium text-gray-700">Sugestões de Melhoria:</h4>
@@ -335,27 +318,8 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h5 className="font-medium text-gray-900 m-0">{suggestion.name}</h5>
-                      {suggestion.creditsConsumed !== undefined && suggestion.creditsConsumed > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                          <Coins className="w-3 h-3" />
-                          {suggestion.creditsConsumed} créditos
-                        </span>
-                      )}
                     </div>
                     <p className="text-xs text-gray-500 m-0 mb-1">{suggestion.description}</p>
-                    {suggestion.aiModelUsed && (
-                      <div className="text-xs m-0">
-                        <p className={`m-0 ${suggestion.aiModelUsed.includes('(Padrão)') ? 'text-orange-600' : 'text-blue-600'}`}>
-                          ✨ Gerado por: {suggestion.aiModelUsed}
-                          {suggestion.tokensUsed && ` (${suggestion.tokensUsed} tokens)`}
-                        </p>
-                        {suggestion.aiModelUsed.includes('(Padrão)') && (
-                          <p className="text-orange-500 m-0 mt-1 font-medium">
-                            ⚠️ Usando modelo padrão - Configure seu agente IA para melhor personalização
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                   <div className="flex gap-2 ml-2">
                     <Button

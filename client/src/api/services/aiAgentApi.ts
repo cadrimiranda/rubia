@@ -55,7 +55,7 @@ export interface PaginatedResponse<T> {
 
 class AIAgentApi {
   private getAuthHeaders() {
-    const token = localStorage.getItem('authToken')
+    const token = localStorage.getItem('auth_token')
     return {
       Authorization: token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'
