@@ -31,7 +31,19 @@
 		<jacoco.version>0.8.12</jacoco.version>
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
+		<spring-ai.version>1.0.0-M3</spring-ai.version>
 	</properties>
+
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
 
 	<dependencyManagement>
 		<dependencies>
@@ -181,6 +193,12 @@
 			<artifactId>jjwt-jackson</artifactId>
 			<version>0.12.3</version>
 			<scope>runtime</scope>
+		</dependency>
+		<!-- Spring AI OpenAI -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+			<version>${spring-ai.version}</version>
 		</dependency>
 	</dependencies>
 

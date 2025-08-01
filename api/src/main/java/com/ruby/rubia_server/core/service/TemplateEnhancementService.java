@@ -33,6 +33,7 @@ public class TemplateEnhancementService {
     private final CompanyRepository companyRepository;
     private final MessageTemplateRepository messageTemplateRepository;
     private final MessageTemplateRevisionService messageTemplateRevisionService;
+    private final OpenAIService openAIService;
 
     public EnhancedTemplateResponseDTO enhanceTemplate(EnhanceTemplateDTO request) {
         log.info("Enhancing template for company: {} with type: {}", request.getCompanyId(), request.getEnhancementType());
@@ -61,8 +62,8 @@ public class TemplateEnhancementService {
         // Gerar prompt baseado no tipo de melhoria
         String prompt = generatePrompt(request, aiModel);
         
-        // Simular chamada para a IA (aqui você integraria com a API real do modelo)
-        String enhancedContent = simulateAIEnhancement(request.getOriginalContent(), request.getEnhancementType(), aiModel);
+        // Chamar OpenAI para melhorar o template - usa configurações padrão do application.properties
+        String enhancedContent = openAIService.enhanceTemplate(prompt);
         
         // Estimar tokens e créditos usados
         int estimatedTokens = estimateTokens(request.getOriginalContent() + enhancedContent);
@@ -118,128 +119,6 @@ public class TemplateEnhancementService {
         );
     }
 
-    private String simulateAIEnhancement(String originalContent, String enhancementType, AIModel aiModel) {
-        // Esta é uma simulação. Em um ambiente real, você faria a chamada para a API do modelo AI
-        switch (enhancementType) {
-            case "friendly":
-                return addFriendlyTouch(originalContent);
-            case "professional":
-                return makeProfessional(originalContent);
-            case "empathetic":
-                return addEmpathy(originalContent);
-            case "urgent":
-                return addUrgency(originalContent);
-            case "motivational":
-                return makeMotivational(originalContent);
-            default:
-                return originalContent + " (melhorado)";
-        }
-    }
-
-    private String addFriendlyTouch(String content) {
-        // Adicionar personalização se não existir
-        if (!content.contains("{{nome}}")) {
-            content = "Olá {{nome}}! 😊 " + content;
-        }
-        
-        // Tornar mais amigável e focado em captação
-        if (!content.contains("😊") && !content.contains("💝")) {
-            content = content.replace(".", "! 💝");
-        }
-        
-        // Adicionar call-to-action amigável
-        if (!content.toLowerCase().contains("venha") && !content.toLowerCase().contains("participe")) {
-            content += " Venha fazer parte dessa corrente do bem!";
-        }
-        
-        return content;
-    }
-
-    private String makeProfessional(String content) {
-        // Adicionar personalização formal
-        if (!content.contains("{{nome}}")) {
-            content = "Prezado(a) {{nome}}, " + content.toLowerCase();
-        }
-        
-        // Formalizar linguagem
-        content = content.replace("oi", "Prezado(a)");
-        content = content.replace("!", ".");
-        content = content.replaceAll("😊|😄|😃|💝|✨", "");
-        
-        // Adicionar call-to-action profissional
-        if (!content.toLowerCase().contains("solicitar") && !content.toLowerCase().contains("convid")) {
-            content += " Solicitamos sua valiosa colaboração para salvar vidas em nossa comunidade.";
-        }
-        
-        if (!content.contains("Atenciosamente")) {
-            content += "\n\nAtenciosamente,\nEquipe do Centro de Hematologia";
-        }
-        return content;
-    }
-
-    private String addEmpathy(String content) {
-        // Adicionar personalização empática
-        if (!content.contains("{{nome}}")) {
-            content = "{{nome}}, entendemos que sua agenda pode estar corrida, mas " + content.toLowerCase();
-        }
-        
-        // Tornar mais empático e conectivo
-        content = content.replace("você deve", "seria possível");
-        content = content.replace("precisa", "gostaria de");
-        content = content.replace("fazer", "nos ajudar com");
-        
-        // Adicionar conexão emocional
-        if (!content.toLowerCase().contains("vida") && !content.toLowerCase().contains("ajud")) {
-            content += " Sua generosidade pode transformar e salvar vidas.";
-        }
-        
-        return content + " 💝";
-    }
-
-    private String addUrgency(String content) {
-        // Adicionar personalização urgente
-        if (!content.contains("{{nome}}")) {
-            content = "{{nome}}, IMPORTANTE: " + content.toLowerCase();
-        }
-        
-        // Adicionar urgência responsável
-        if (!content.toUpperCase().contains("URGENTE") && !content.toUpperCase().contains("IMPORTANTE")) {
-            content = "IMPORTANTE: " + content;
-        }
-        
-        content = content.replace(".", "!");
-        
-        // Call-to-action urgente mas ético
-        if (!content.toLowerCase().contains("hoje") && !content.toLowerCase().contains("agora")) {
-            content += " Precisamos de sua doação hoje - vidas dependem disso!";
-        }
-        
-        return content;
-    }
-
-    private String makeMotivational(String content) {
-        // Adicionar personalização motivacional
-        if (!content.contains("{{nome}}")) {
-            content = "{{nome}}, que tal ser um herói hoje? " + content.toLowerCase();
-        }
-        
-        // Transformar em linguagem heroica
-        content = content.replace("doação", "ato heroico de salvar vidas");
-        content = content.replace("doar", "ser um herói");
-        content = content.replace("sangue", "esperança e vida");
-        
-        // Adicionar elementos motivacionais
-        if (!content.contains("⭐") && !content.contains("🦸")) {
-            content += " ⭐ Você tem o poder de fazer a diferença!";
-        }
-        
-        // Call-to-action inspirador
-        if (!content.toLowerCase().contains("herói") || !content.toLowerCase().contains("transform")) {
-            content += " Venha transformar vidas conosco! 🦸‍♀️";
-        }
-        
-        return content;
-    }
 
     private int estimateTokens(String text) {
         // Estimativa simples: aproximadamente 4 caracteres por token
