@@ -210,6 +210,10 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
       // Recarregar lista de agentes e limites
       await refreshAgentData();
+      
+      // Fechar modal após sucesso
+      setShowAgentModal(false);
+      setSelectedAgent(null);
     } catch (error: unknown) {
       console.error("Erro ao criar agente:", error);
       const errorMessage = (error as Error)?.message || "Erro ao criar agente";
@@ -270,8 +274,6 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
   // Excluir agente
   const handleDeleteAgent = (agent: AIAgent) => {
-    console.log("🗑️ [DEBUG] handleDeleteAgent called for agent:", agent);
-    
     Modal.confirm({
       title: "Excluir Agente",
       content: `Tem certeza que deseja excluir o agente "${agent.name}"? Esta ação não pode ser desfeita.`,
@@ -280,19 +282,14 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       okType: "danger",
       onOk: async () => {
         try {
-          console.log("🗑️ [DEBUG] Starting deletion for agent ID:", agent.id);
           await aiAgentApi.deleteAIAgent(agent.id);
-          console.log("🗑️ [DEBUG] Agent deleted successfully");
-          
           message.success(`Agente "${agent.name}" excluído com sucesso!`);
           
-          console.log("🗑️ [DEBUG] Reloading agents and limits...");
           // Pequeno delay para garantir que o backend processou a exclusão
           await new Promise(resolve => setTimeout(resolve, 500));
           await refreshAgentData();
-          console.log("🗑️ [DEBUG] Reload completed");
         } catch (error: unknown) {
-          console.error("🗑️ [ERROR] Failed to delete agent:", error);
+          console.error("Erro ao excluir agente:", error);
           const errorMessage = (error as Error)?.message || "Erro ao excluir agente";
           message.error(`Erro ao excluir agente: ${errorMessage}`);
         }
@@ -409,20 +406,14 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                           key: "edit",
                           label: "Editar",
                           icon: <Edit3 className="w-4 h-4" />,
-                          onClick: () => {
-                            console.log("🔧 [DEBUG] Edit clicked for agent:", agent.name);
-                            handleEditAgent(agent);
-                          },
+                          onClick: () => handleEditAgent(agent),
                         },
                         {
                           key: "delete",
                           label: "Excluir",
                           icon: <Trash2 className="w-4 h-4" />,
                           danger: true,
-                          onClick: () => {
-                            console.log("🗑️ [DEBUG] Delete clicked for agent:", agent.name);
-                            handleDeleteAgent(agent);
-                          },
+                          onClick: () => handleDeleteAgent(agent),
                         },
                       ],
                     }}
@@ -452,210 +443,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         )}
       </div>
 
-      {/* Seção principal com card melhorado - só mostra se puder criar agentes */}
-      {canCreateAgent ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-              <User className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">
-                Configuração do Agente IA
-              </h2>
-              <p className="text-gray-600">
-                Configure a personalidade e comportamento do assistente virtual
-              </p>
-            </div>
-          </div>
-
-        {/* Seção do avatar e nome */}
-        <div className="flex items-start gap-8 mb-8 p-6 bg-gray-50 rounded-xl">
-          <AvatarUpload
-            value={agentConfig.avatarBase64}
-            onChange={(base64) => {
-              console.log("🔵 AgentManagement: AvatarUpload onChange called", {
-                base64Length: base64?.length || 0,
-                base64Preview: base64?.substring(0, 50) + "..." || "null",
-              });
-              handleAgentConfigChange("avatarBase64", base64 || "");
-            }}
-            size={96}
-            placeholder="Upload avatar"
-          />
-          <div className="flex-1 space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Nome do Agente *
-              </label>
-              <Input
-                value={agentConfig.name}
-                onChange={(e) =>
-                  handleAgentConfigChange("name", e.target.value)
-                }
-                placeholder="Ex: Sofia, Ana, João..."
-                size="large"
-                className="font-medium"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                O nome será usado nas conversas com os usuários
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Descrição
-              </label>
-              <TextArea
-                value={agentConfig.description}
-                onChange={(e) =>
-                  handleAgentConfigChange("description", e.target.value)
-                }
-                placeholder="Descreva a função e especialidade do agente..."
-                rows={3}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Configurações de Personalidade */}
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Temperamento
-            </label>
-            <Select
-              value={agentConfig.temperament}
-              onChange={(value) =>
-                handleAgentConfigChange("temperament", value)
-              }
-              size="large"
-              className="w-full"
-            >
-              <Option value="AMIGAVEL">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  Amigável - Caloroso e acolhedor
-                </div>
-              </Option>
-              <Option value="PROFISSIONAL">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                  Profissional - Direto e objetivo
-                </div>
-              </Option>
-              <Option value="EMPATICO">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                  Empático - Compreensivo e solidário
-                </div>
-              </Option>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Criatividade (Temperature)
-              </label>
-              <div className="px-3">
-                <Slider
-                  min={0.1}
-                  max={1.0}
-                  step={0.1}
-                  value={agentConfig.temperature}
-                  onChange={(value) =>
-                    handleAgentConfigChange("temperature", value)
-                  }
-                  marks={{
-                    0.1: "Conservador",
-                    0.5: "Equilibrado",
-                    1.0: "Criativo",
-                  }}
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Controla a criatividade das respostas
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Limite de Caracteres
-              </label>
-              <Select
-                value={agentConfig.maxResponseLength}
-                onChange={(value) =>
-                  handleAgentConfigChange("maxResponseLength", value)
-                }
-                size="large"
-                className="w-full"
-              >
-                <Option value={150}>Curta (150 caracteres)</Option>
-                <Option value={300}>Média (300 caracteres)</Option>
-                <Option value={500}>Longa (500 caracteres)</Option>
-                <Option value={1000}>Muito Longa (1000 caracteres)</Option>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Preview da mensagem */}
-        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-              {agentConfig.avatarBase64 ? (
-                <img
-                  src={agentConfig.avatarBase64}
-                  alt={agentConfig.name || "Agente"}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <User className="w-5 h-5 text-gray-400" />
-              )}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-medium text-gray-800">
-                  {agentConfig.name || "Seu Agente"}
-                </span>
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                  {agentConfig.temperament}
-                </span>
-              </div>
-              <div className="bg-white p-3 rounded-lg shadow-sm border text-gray-700">
-                {agentConfig.temperament === "AMIGAVEL" &&
-                  "Olá! 😊 Que bom ter você aqui! Como posso ajudar hoje?"}
-                {agentConfig.temperament === "PROFISSIONAL" &&
-                  "Olá. Sou o assistente da empresa. Estou aqui para ajudá-lo."}
-                {agentConfig.temperament === "EMPATICO" &&
-                  "Olá! Entendo que você precisa de ajuda. Estou aqui para te apoiar no que precisar! 💙"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Botões de ação */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
-          <div className="text-sm text-gray-500">
-            <span className="font-medium">Dica:</span> Um bom agente precisa de
-            um nome marcante e personalidade bem definida
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              type="primary"
-              size="large"
-              icon={<Check />}
-              onClick={handleSaveAgent}
-              disabled={!agentConfig.name.trim() || !canCreateAgent}
-              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600 px-8"
-            >
-              Criar Agente
-            </Button>
-          </div>
-        </div>
-        </div>
-      ) : (
+      {/* Mensagem quando limite atingido */}
+      {!canCreateAgent && existingAgents.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -680,39 +469,61 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         </div>
       )}
 
-      {/* Modal de Edição */}
+      {/* Modal de Criação/Edição */}
       <Modal
-        title={selectedAgent ? "Editar Agente" : "Novo Agente"}
+        title={
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+              <User className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">
+                {selectedAgent ? "Editar Agente IA" : "Configuração do Agente IA"}
+              </h3>
+              <p className="text-sm text-gray-600">
+                Configure a personalidade e comportamento do assistente virtual
+              </p>
+            </div>
+          </div>
+        }
         open={showAgentModal}
         onCancel={() => {
           setShowAgentModal(false);
           setSelectedAgent(null);
         }}
-        width={800}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setShowAgentModal(false);
-              setSelectedAgent(null);
-            }}
-          >
-            Cancelar
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            onClick={selectedAgent ? handleUpdateAgent : handleSaveAgent}
-            disabled={!agentConfig.name.trim()}
-            className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-          >
-            {selectedAgent ? "Atualizar Agente" : "Criar Agente"}
-          </Button>,
-        ]}
+        width={900}
+        footer={
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+            <div className="text-sm text-gray-500">
+              <span className="font-medium">Dica:</span> Um bom agente precisa de um nome marcante e personalidade bem definida
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => {
+                  setShowAgentModal(false);
+                  setSelectedAgent(null);
+                }}
+                size="large"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="primary"
+                onClick={selectedAgent ? handleUpdateAgent : handleSaveAgent}
+                disabled={!agentConfig.name.trim() || (!selectedAgent && !canCreateAgent)}
+                size="large"
+                icon={<Check />}
+                className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600 px-8"
+              >
+                {selectedAgent ? "Atualizar Agente" : "Criar Agente"}
+              </Button>
+            </div>
+          </div>
+        }
       >
-        <div className="space-y-6">
-          {/* Avatar e Nome */}
-          <div className="flex items-start gap-6 p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-8">
+          {/* Seção do avatar e nome com design melhorado */}
+          <div className="flex items-start gap-8 p-6 bg-gray-50 rounded-xl">
             <AvatarUpload
               value={agentConfig.avatarBase64}
               onChange={(base64) => {
@@ -725,12 +536,12 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                 );
                 handleAgentConfigChange("avatarBase64", base64 || "");
               }}
-              size={80}
+              size={96}
               placeholder="Upload avatar"
             />
             <div className="flex-1 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Nome do Agente *
                 </label>
                 <Input
@@ -740,10 +551,14 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                   }
                   placeholder="Ex: Sofia, Ana, João..."
                   size="large"
+                  className="font-medium"
                 />
+                <p className="text-xs text-gray-500 mt-2">
+                  O nome será usado nas conversas com os usuários
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Descrição
                 </label>
                 <TextArea
@@ -751,17 +566,17 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                   onChange={(e) =>
                     handleAgentConfigChange("description", e.target.value)
                   }
-                  placeholder="Descreva a função do agente..."
+                  placeholder="Descreva a função e especialidade do agente..."
                   rows={3}
                 />
               </div>
             </div>
           </div>
 
-          {/* Configurações */}
-          <div className="space-y-4">
+          {/* Configurações de Personalidade */}
+          <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Temperamento
               </label>
               <Select
@@ -772,29 +587,55 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                 size="large"
                 className="w-full"
               >
-                <Option value="AMIGAVEL">Amigável</Option>
-                <Option value="PROFISSIONAL">Profissional</Option>
-                <Option value="EMPATICO">Empático</Option>
+                <Option value="AMIGAVEL">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    Amigável - Caloroso e acolhedor
+                  </div>
+                </Option>
+                <Option value="PROFISSIONAL">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    Profissional - Direto e objetivo
+                  </div>
+                </Option>
+                <Option value="EMPATICO">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    Empático - Compreensivo e solidário
+                  </div>
+                </Option>
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Criatividade
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Criatividade (Temperature)
                 </label>
-                <Slider
-                  min={0.1}
-                  max={1.0}
-                  step={0.1}
-                  value={agentConfig.temperature}
-                  onChange={(value) =>
-                    handleAgentConfigChange("temperature", value)
-                  }
-                />
+                <div className="px-3">
+                  <Slider
+                    min={0.1}
+                    max={1.0}
+                    step={0.1}
+                    value={agentConfig.temperature}
+                    onChange={(value) =>
+                      handleAgentConfigChange("temperature", value)
+                    }
+                    marks={{
+                      0.1: "Conservador",
+                      0.5: "Equilibrado",
+                      1.0: "Criativo",
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Controla a criatividade das respostas
+                </p>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Limite de Caracteres
                 </label>
                 <Select
@@ -805,11 +646,46 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                   size="large"
                   className="w-full"
                 >
-                  <Option value={150}>150</Option>
-                  <Option value={300}>300</Option>
-                  <Option value={500}>500</Option>
-                  <Option value={1000}>1000</Option>
+                  <Option value={150}>Curta (150 caracteres)</Option>
+                  <Option value={300}>Média (300 caracteres)</Option>
+                  <Option value={500}>Longa (500 caracteres)</Option>
+                  <Option value={1000}>Muito Longa (1000 caracteres)</Option>
                 </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview da mensagem */}
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                {agentConfig.avatarBase64 ? (
+                  <img
+                    src={agentConfig.avatarBase64}
+                    alt={agentConfig.name || "Agente"}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-gray-400" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-medium text-gray-800">
+                    {agentConfig.name || "Seu Agente"}
+                  </span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                    {agentConfig.temperament}
+                  </span>
+                </div>
+                <div className="bg-white p-3 rounded-lg shadow-sm border text-gray-700">
+                  {agentConfig.temperament === "AMIGAVEL" &&
+                    "Olá! 😊 Que bom ter você aqui! Como posso ajudar hoje?"}
+                  {agentConfig.temperament === "PROFISSIONAL" &&
+                    "Olá. Sou o assistente da empresa. Estou aqui para ajudá-lo."}
+                  {agentConfig.temperament === "EMPATICO" &&
+                    "Olá! Entendo que você precisa de ajuda. Estou aqui para te apoiar no que precisar! 💙"}
+                </div>
               </div>
             </div>
           </div>
