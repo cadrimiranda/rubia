@@ -568,7 +568,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               {/* Status do centro de sangue */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm font-medium border border-green-200">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-xl"></div>
                   Sistema Ativo
                 </div>
               </div>
@@ -771,7 +771,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                       <h3 className="text-lg font-semibold text-gray-800">
                         Templates de Conversa
                       </h3>
-                      <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                      <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-xl">
                         {templates.filter((t) => t.selected).length}{" "}
                         selecionados
                       </div>
@@ -900,7 +900,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                     {templates.length} selecionados
                   </div>
                   {user?.companyId && (
-                    <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                    <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-xl">
                       Empresa: {user.companySlug || user.companyId}
                     </div>
                   )}
@@ -1036,7 +1036,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                         {template.category || "Geral"}
                       </span>
                       {template.isCustom && (
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-xl font-medium">
                           Personalizado
                         </span>
                       )}
@@ -1213,7 +1213,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                       key={revision.id}
                       color={revisionInfo.color}
                       dot={
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white border-2 border-current">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-xl bg-white border-2 border-current">
                           {revisionInfo.icon}
                         </div>
                       }

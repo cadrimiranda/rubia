@@ -69,14 +69,24 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       return;
     }
 
-    console.log("🔄 [DEBUG] loadExistingAgents: Loading agents for company", user.companyId);
+    console.log(
+      "🔄 [DEBUG] loadExistingAgents: Loading agents for company",
+      user.companyId
+    );
     try {
       const agents = await aiAgentApi.getAIAgentsByCompany(user.companyId);
       console.log("🔄 [DEBUG] loadExistingAgents: Loaded agents", agents);
       setExistingAgents(agents);
-      console.log("🔄 [DEBUG] loadExistingAgents: State updated with", agents.length, "agents");
+      console.log(
+        "🔄 [DEBUG] loadExistingAgents: State updated with",
+        agents.length,
+        "agents"
+      );
     } catch (error) {
-      console.error("🔄 [ERROR] loadExistingAgents: Failed to load agents:", error);
+      console.error(
+        "🔄 [ERROR] loadExistingAgents: Failed to load agents:",
+        error
+      );
       message.error("Erro ao carregar agentes existentes");
     }
   }, [user?.companyId]);
@@ -88,17 +98,28 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       return;
     }
 
-    console.log("🔄 [DEBUG] checkAgentLimits: Checking limits for company", user.companyId);
+    console.log(
+      "🔄 [DEBUG] checkAgentLimits: Checking limits for company",
+      user.companyId
+    );
     try {
       const canCreate = await aiAgentApi.canCreateAgent(user.companyId);
       const remaining = await aiAgentApi.getRemainingAgentSlots(user.companyId);
 
-      console.log("🔄 [DEBUG] checkAgentLimits: canCreate =", canCreate, "remaining =", remaining);
+      console.log(
+        "🔄 [DEBUG] checkAgentLimits: canCreate =",
+        canCreate,
+        "remaining =",
+        remaining
+      );
       setCanCreateAgent(canCreate);
       setRemainingSlots(remaining);
       console.log("🔄 [DEBUG] checkAgentLimits: State updated");
     } catch (error) {
-      console.error("🔄 [ERROR] checkAgentLimits: Failed to check limits:", error);
+      console.error(
+        "🔄 [ERROR] checkAgentLimits: Failed to check limits:",
+        error
+      );
     }
   }, [user?.companyId]);
 
@@ -106,16 +127,15 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
   const refreshAgentData = useCallback(async () => {
     console.log("🔄 [DEBUG] refreshAgentData: Starting complete refresh");
     if (!user?.companyId) {
-      console.log("🔄 [DEBUG] refreshAgentData: No companyId, skipping refresh");
+      console.log(
+        "🔄 [DEBUG] refreshAgentData: No companyId, skipping refresh"
+      );
       return;
     }
 
     try {
       // Executar ambas as operações em paralelo
-      await Promise.all([
-        loadExistingAgents(),
-        checkAgentLimits()
-      ]);
+      await Promise.all([loadExistingAgents(), checkAgentLimits()]);
       console.log("🔄 [DEBUG] refreshAgentData: Complete refresh finished");
     } catch (error) {
       console.error("🔄 [ERROR] refreshAgentData: Failed to refresh:", error);
@@ -212,7 +232,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
       // Recarregar lista de agentes e limites
       await refreshAgentData();
-      
+
       // Fechar modal após sucesso
       setShowAgentModal(false);
       setSelectedAgent(null);
@@ -289,13 +309,14 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
     try {
       await aiAgentApi.deleteAIAgent(agentToDelete.id);
       message.success(`Agente "${agentToDelete.name}" excluído com sucesso!`);
-      
+
       // Pequeno delay para garantir que o backend processou a exclusão
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       await refreshAgentData();
     } catch (error: unknown) {
       console.error("Erro ao excluir agente:", error);
-      const errorMessage = (error as Error)?.message || "Erro ao excluir agente";
+      const errorMessage =
+        (error as Error)?.message || "Erro ao excluir agente";
       message.error(`Erro ao excluir agente: ${errorMessage}`);
     } finally {
       setShowDeleteModal(false);
@@ -328,7 +349,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
             <h3 className="text-lg font-semibold text-gray-800">
               Agentes IA da Empresa
             </h3>
-            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-xl text-sm font-medium">
               {existingAgents.length} de{" "}
               {existingAgents.length + remainingSlots} agentes
             </div>
@@ -385,12 +406,12 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center">
                     {agent.avatarBase64 ? (
                       <img
                         src={agent.avatarBase64}
                         alt={agent.name}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-10 h-10 rounded-xl object-cover"
                       />
                     ) : (
                       <User className="w-5 h-5 text-gray-500" />
@@ -401,7 +422,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                     <p className="text-sm text-gray-500">{agent.temperament}</p>
                   </div>
                   <div
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-2 h-2 rounded-xl ${
                       agent.isActive ? "bg-green-500" : "bg-gray-300"
                     }`}
                   />
@@ -413,7 +434,10 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                           label: "Editar",
                           icon: <Edit3 className="w-4 h-4" />,
                           onClick: (e) => {
-                            console.log("🔧 [DEBUG] Edit clicked for:", agent.name);
+                            console.log(
+                              "🔧 [DEBUG] Edit clicked for:",
+                              agent.name
+                            );
                             e?.domEvent?.stopPropagation();
                             handleEditAgent(agent);
                           },
@@ -424,7 +448,10 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                           icon: <Trash2 className="w-4 h-4" />,
                           danger: true,
                           onClick: (e) => {
-                            console.log("🗑️ [DEBUG] Delete menu item clicked for:", agent.name);
+                            console.log(
+                              "🗑️ [DEBUG] Delete menu item clicked for:",
+                              agent.name
+                            );
                             e?.domEvent?.stopPropagation();
                             handleDeleteAgent(agent);
                           },
@@ -461,14 +488,14 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       {!canCreateAgent && existingAgents.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-4">
               <User className="w-8 h-8 text-orange-500" />
             </div>
             <h3 className="text-xl font-semibold text-gray-800 mb-2">
               Limite de Agentes Atingido
             </h3>
             <p className="text-gray-600 mb-4 max-w-md mx-auto">
-              Você atingiu o limite máximo de agentes IA para seu plano atual. 
+              Você atingiu o limite máximo de agentes IA para seu plano atual.
               Para criar mais agentes, considere fazer upgrade do seu plano.
             </p>
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-md mx-auto">
@@ -476,7 +503,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                 <strong>Agentes ativos:</strong> {existingAgents.length}
               </p>
               <p className="text-sm text-orange-700">
-                <strong>Limite do plano:</strong> {existingAgents.length + remainingSlots}
+                <strong>Limite do plano:</strong>{" "}
+                {existingAgents.length + remainingSlots}
               </p>
             </div>
           </div>
@@ -492,7 +520,9 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-800">
-                {selectedAgent ? "Editar Agente IA" : "Configuração do Agente IA"}
+                {selectedAgent
+                  ? "Editar Agente IA"
+                  : "Configuração do Agente IA"}
               </h3>
               <p className="text-sm text-gray-600">
                 Configure a personalidade e comportamento do assistente virtual
@@ -509,7 +539,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         footer={
           <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <div className="text-sm text-gray-500">
-              <span className="font-medium">Dica:</span> Um bom agente precisa de um nome marcante e personalidade bem definida
+              <span className="font-medium">Dica:</span> Um bom agente precisa
+              de um nome marcante e personalidade bem definida
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -524,7 +555,10 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
               <Button
                 type="primary"
                 onClick={selectedAgent ? handleUpdateAgent : handleSaveAgent}
-                disabled={!agentConfig.name.trim() || (!selectedAgent && !canCreateAgent)}
+                disabled={
+                  !agentConfig.name.trim() ||
+                  (!selectedAgent && !canCreateAgent)
+                }
                 size="large"
                 icon={<Check />}
                 className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600 px-8"
@@ -603,19 +637,19 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
               >
                 <Option value="AMIGAVEL">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="w-2 h-2 bg-green-500 rounded-xl"></span>
                     Amigável - Caloroso e acolhedor
                   </div>
                 </Option>
                 <Option value="PROFISSIONAL">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span className="w-2 h-2 bg-blue-500 rounded-xl"></span>
                     Profissional - Direto e objetivo
                   </div>
                 </Option>
                 <Option value="EMPATICO">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    <span className="w-2 h-2 bg-purple-500 rounded-xl"></span>
                     Empático - Compreensivo e solidário
                   </div>
                 </Option>
@@ -672,12 +706,12 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
           {/* Preview da mensagem */}
           <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                 {agentConfig.avatarBase64 ? (
                   <img
                     src={agentConfig.avatarBase64}
                     alt={agentConfig.name || "Agente"}
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-10 h-10 rounded-xl object-cover"
                   />
                 ) : (
                   <User className="w-5 h-5 text-gray-400" />
@@ -688,7 +722,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                   <span className="font-medium text-gray-800">
                     {agentConfig.name || "Seu Agente"}
                   </span>
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-xl">
                     {agentConfig.temperament}
                   </span>
                 </div>
@@ -721,8 +755,9 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         centered
       >
         <p>
-          Tem certeza que deseja excluir o agente <strong>"{agentToDelete?.name}"</strong>? 
-          Esta ação não pode ser desfeita.
+          Tem certeza que deseja excluir o agente{" "}
+          <strong>"{agentToDelete?.name}"</strong>? Esta ação não pode ser
+          desfeita.
         </p>
       </Modal>
     </div>
