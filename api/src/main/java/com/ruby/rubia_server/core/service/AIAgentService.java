@@ -232,7 +232,7 @@ public class AIAgentService {
             return openAIService.enhanceTemplate(
                 enhancementPrompt,
                 agent.getAiModel().getName(),
-                agent.getTemperature(),
+                agent.getTemperature().doubleValue(),
                 agent.getMaxResponseLength()
             );
         } catch (Exception e) {
