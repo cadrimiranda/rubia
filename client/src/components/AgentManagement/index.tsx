@@ -278,21 +278,150 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-8">
-      {/* Seção principal com card melhorado */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-            <User className="w-6 h-6 text-red-600" />
+      {/* Seção de Agentes Existentes */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Agentes IA da Empresa
+            </h3>
+            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+              {existingAgents.length} de{" "}
+              {existingAgents.length + remainingSlots} agentes
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">
-              Configuração do Agente IA
-            </h2>
-            <p className="text-gray-600">
-              Configure a personalidade e comportamento do assistente virtual
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-600">
+              {remainingSlots > 0 ? (
+                <span className="text-green-600 font-medium">
+                  {remainingSlots} slot{remainingSlots !== 1 ? "s" : ""}{" "}
+                  disponível{remainingSlots !== 1 ? "eis" : ""}
+                </span>
+              ) : (
+                <span className="text-orange-600 font-medium">
+                  Limite atingido
+                </span>
+              )}
+            </div>
+            <Button
+              type="primary"
+              icon={<Plus />}
+              onClick={handleCreateNewAgent}
+              disabled={!canCreateAgent}
+              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
+            >
+              Novo Agente
+            </Button>
           </div>
         </div>
+
+        {existingAgents.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h4 className="text-lg font-medium text-gray-500 mb-2">
+              Nenhum agente criado ainda
+            </h4>
+            <p className="text-gray-400 mb-4">
+              Crie seu primeiro agente IA para começar a automatizar conversas
+            </p>
+            <Button
+              type="primary"
+              icon={<Plus />}
+              onClick={handleCreateNewAgent}
+              disabled={!canCreateAgent}
+              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
+            >
+              Criar Primeiro Agente
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {existingAgents.map((agent) => (
+              <div
+                key={agent.id}
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    {agent.avatarBase64 ? (
+                      <img
+                        src={agent.avatarBase64}
+                        alt={agent.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-5 h-5 text-gray-500" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-800">{agent.name}</h4>
+                    <p className="text-sm text-gray-500">{agent.temperament}</p>
+                  </div>
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      agent.isActive ? "bg-green-500" : "bg-gray-300"
+                    }`}
+                  />
+                  <Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: "edit",
+                          label: "Editar",
+                          icon: <Edit3 className="w-4 h-4" />,
+                          onClick: () => handleEditAgent(agent),
+                        },
+                        {
+                          key: "delete",
+                          label: "Excluir",
+                          icon: <Trash2 className="w-4 h-4" />,
+                          danger: true,
+                          onClick: () => handleDeleteAgent(agent),
+                        },
+                      ],
+                    }}
+                  >
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<MoreVertical className="w-4 h-4" />}
+                      className="hover:bg-gray-100"
+                    />
+                  </Dropdown>
+                </div>
+
+                {agent.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                    {agent.description}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>Temp: {agent.temperature}</span>
+                  <span>Max: {agent.maxResponseLength}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Seção principal com card melhorado - só mostra se puder criar agentes */}
+      {canCreateAgent ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+              <User className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">
+                Configuração do Agente IA
+              </h2>
+              <p className="text-gray-600">
+                Configure a personalidade e comportamento do assistente virtual
+              </p>
+            </div>
+          </div>
 
         {/* Seção do avatar e nome */}
         <div className="flex items-start gap-8 mb-8 p-6 bg-gray-50 rounded-xl">
@@ -479,135 +608,31 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
             </Button>
           </div>
         </div>
-      </div>
-
-      {/* Seção de Agentes Existentes */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Agentes IA da Empresa
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-orange-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Limite de Agentes Atingido
             </h3>
-            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-              {existingAgents.length} de{" "}
-              {existingAgents.length + remainingSlots} agentes
+            <p className="text-gray-600 mb-4 max-w-md mx-auto">
+              Você atingiu o limite máximo de agentes IA para seu plano atual. 
+              Para criar mais agentes, considere fazer upgrade do seu plano.
+            </p>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-md mx-auto">
+              <p className="text-sm text-orange-700">
+                <strong>Agentes ativos:</strong> {existingAgents.length}
+              </p>
+              <p className="text-sm text-orange-700">
+                <strong>Limite do plano:</strong> {existingAgents.length + remainingSlots}
+              </p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-gray-600">
-              {remainingSlots > 0 ? (
-                <span className="text-green-600 font-medium">
-                  {remainingSlots} slot{remainingSlots !== 1 ? "s" : ""}{" "}
-                  disponível{remainingSlots !== 1 ? "eis" : ""}
-                </span>
-              ) : (
-                <span className="text-orange-600 font-medium">
-                  Limite atingido
-                </span>
-              )}
-            </div>
-            <Button
-              type="primary"
-              icon={<Plus />}
-              onClick={handleCreateNewAgent}
-              disabled={!canCreateAgent}
-              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-            >
-              Novo Agente
-            </Button>
           </div>
         </div>
-
-        {existingAgents.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-500 mb-2">
-              Nenhum agente criado ainda
-            </h4>
-            <p className="text-gray-400 mb-4">
-              Crie seu primeiro agente IA para começar a automatizar conversas
-            </p>
-            <Button
-              type="primary"
-              icon={<Plus />}
-              onClick={handleCreateNewAgent}
-              disabled={!canCreateAgent}
-              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-            >
-              Criar Primeiro Agente
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {existingAgents.map((agent) => (
-              <div
-                key={agent.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    {agent.avatarBase64 ? (
-                      <img
-                        src={agent.avatarBase64}
-                        alt={agent.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-5 h-5 text-gray-500" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-800">{agent.name}</h4>
-                    <p className="text-sm text-gray-500">{agent.temperament}</p>
-                  </div>
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      agent.isActive ? "bg-green-500" : "bg-gray-300"
-                    }`}
-                  />
-                  <Dropdown
-                    menu={{
-                      items: [
-                        {
-                          key: "edit",
-                          label: "Editar",
-                          icon: <Edit3 className="w-4 h-4" />,
-                          onClick: () => handleEditAgent(agent),
-                        },
-                        {
-                          key: "delete",
-                          label: "Excluir",
-                          icon: <Trash2 className="w-4 h-4" />,
-                          danger: true,
-                          onClick: () => handleDeleteAgent(agent),
-                        },
-                      ],
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      type="text"
-                      icon={<MoreVertical className="w-4 h-4" />}
-                      className="hover:bg-gray-100"
-                    />
-                  </Dropdown>
-                </div>
-
-                {agent.description && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {agent.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>Temp: {agent.temperature}</span>
-                  <span>Max: {agent.maxResponseLength}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Modal de Edição */}
       <Modal
