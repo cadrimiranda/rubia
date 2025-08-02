@@ -28,6 +28,7 @@ public class AIAgentService {
     private final AIAgentRepository aiAgentRepository;
     private final CompanyRepository companyRepository;
     private final AIModelRepository aiModelRepository;
+    private final OpenAIService openAIService;
 
     public AIAgent createAIAgent(CreateAIAgentDTO createDTO) {
         log.info("Creating AI agent with name: {} for company: {}", createDTO.getName(), createDTO.getCompanyId());
@@ -210,5 +211,67 @@ public class AIAgentService {
     public List<AIAgent> getAIAgentsByTemperament(String temperament) {
         log.debug("Fetching AI agents by temperament: {}", temperament);
         return aiAgentRepository.findByTemperament(temperament);
+    }
+
+    public String enhanceMessage(UUID companyId, String originalMessage) {
+        log.debug("Enhancing message for company: {} with text: {}", companyId, originalMessage);
+
+        // Get the first active AI agent for the company
+        List<AIAgent> activeAgents = getActiveAIAgentsByCompanyId(companyId);
+        if (activeAgents.isEmpty()) {
+            throw new RuntimeException("Nenhum agente IA ativo encontrado para esta empresa. Configure um agente primeiro.");
+        }
+
+        AIAgent agent = activeAgents.get(0); // Use the first active agent
+
+        // Create enhancement prompt based on the agent's temperament and characteristics
+        String enhancementPrompt = buildEnhancementPrompt(agent, originalMessage);
+
+        // Use OpenAI service to enhance the message
+        try {
+            return openAIService.enhanceTemplate(
+                enhancementPrompt,
+                agent.getAiModel().getName(),
+                agent.getTemperature(),
+                agent.getMaxResponseLength()
+            );
+        } catch (Exception e) {
+            log.error("Error enhancing message: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao melhorar mensagem: " + e.getMessage());
+        }
+    }
+
+    private String buildEnhancementPrompt(AIAgent agent, String originalMessage) {
+        String basePersonality = "Você é " + agent.getName();
+        if (agent.getDescription() != null && !agent.getDescription().trim().isEmpty()) {
+            basePersonality += ", " + agent.getDescription();
+        }
+
+        String temperamentGuidance = getTemperamentGuidance(agent.getTemperament());
+
+        return basePersonality + "\n\n" +
+               temperamentGuidance + "\n\n" +
+               "Por favor, melhore a seguinte mensagem mantendo sua essência, mas tornando-a mais clara, envolvente e adequada ao contexto de saúde e doação de sangue:\n\n" +
+               "Mensagem original: \"" + originalMessage + "\"\n\n" +
+               "Responda apenas com a mensagem melhorada, sem explicações adicionais.";
+    }
+
+    private String getTemperamentGuidance(String temperament) {
+        switch (temperament.toLowerCase()) {
+            case "formal":
+                return "Mantenha um tom profissional, respeitoso e formal. Use linguagem técnica quando apropriado e seja direto e objetivo.";
+            case "amigavel":
+                return "Use um tom caloroso, acolhedor e amigável. Seja empático e próximo, criando conexão emocional com o destinatário.";
+            case "motivacional":
+                return "Seja inspirador e motivador. Use linguagem que encoraje ação e desperte o senso de propósito e importância da doação.";
+            case "educativo":
+                return "Foque em informar e educar. Inclua dados relevantes, explique processos e tire dúvidas de forma clara e didática.";
+            case "urgente":
+                return "Transmita urgência de forma respeitosa. Comunique a necessidade imediata sem causar ansiedade desnecessária.";
+            case "emotivo":
+                return "Conecte-se emocionalmente através de histórias, depoimentos ou situações que toquem o coração das pessoas.";
+            default:
+                return "Mantenha um tom equilibrado, claro e respeitoso, adequado ao contexto de saúde e bem-estar social.";
+        }
     }
 }

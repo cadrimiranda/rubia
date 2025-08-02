@@ -942,8 +942,56 @@ export const BloodCenterChat: React.FC = () => {
     });
   };
 
-  const handleEnhanceMessage = () => {
-    setShowMessageEnhancer(true);
+  const handleEnhanceMessage = async () => {
+    if (!state.messageInput.trim()) {
+      return;
+    }
+
+    const { user } = useAuthStore.getState();
+    if (!user?.companyId) {
+      console.error('❌ Company ID not found for message enhancement');
+      return;
+    }
+
+    const originalMessage = state.messageInput;
+
+    try {
+      console.log('🔮 [AI] Starting message enhancement...');
+      
+      // Show loading state in the input
+      updateState({ messageInput: originalMessage + ' ✨' });
+
+      const { aiAgentApi } = await import('../api/services/aiAgentApi');
+      const enhancedMessage = await aiAgentApi.enhanceMessage(user.companyId, originalMessage);
+      
+      console.log('✅ [AI] Message enhanced successfully');
+      
+      // Update the message input with the enhanced version
+      updateState({ messageInput: enhancedMessage });
+      
+    } catch (error) {
+      console.error('❌ Error enhancing message:', error);
+      
+      // Restore original message
+      updateState({ messageInput: originalMessage });
+      
+      // Show error modal
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: "Erro na Melhoria de Mensagem",
+          message: "Não foi possível melhorar a mensagem com IA. Verifique se você tem um agente IA configurado e ativo.",
+          type: "warning",
+          confirmText: "OK",
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null,
+            });
+          },
+        },
+      });
+    }
   };
 
   const handleApplyEnhancedMessage = (enhancedMessage: string) => {

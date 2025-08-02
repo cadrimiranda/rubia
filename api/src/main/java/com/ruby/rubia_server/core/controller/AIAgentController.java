@@ -278,6 +278,32 @@ public class AIAgentController {
         return ResponseEntity.ok(remainingSlots);
     }
 
+    @PostMapping("/company/{companyId}/enhance-message")
+    public ResponseEntity<Map<String, String>> enhanceMessage(
+            @PathVariable UUID companyId,
+            @RequestBody Map<String, String> request) {
+        
+        log.debug("Enhancing message for company: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        String originalMessage = request.get("message");
+        if (originalMessage == null || originalMessage.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Message is required"));
+        }
+
+        try {
+            String enhancedMessage = aiAgentService.enhanceMessage(companyId, originalMessage);
+            return ResponseEntity.ok(Map.of("enhancedMessage", enhancedMessage));
+        } catch (Exception e) {
+            log.error("Error enhancing message for company {}: {}", companyId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to enhance message: " + e.getMessage()));
+        }
+    }
+
     private AIAgentDTO convertToDTO(AIAgent aiAgent) {
         return AIAgentDTO.builder()
                 .id(aiAgent.getId())

@@ -1,6 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { Avatar, Button, message } from 'antd';
-import { UploadOutlined, UserOutlined, DeleteOutlined } from '@ant-design/icons';
+import React, { useState, useRef } from "react";
+import { Avatar, Button, message } from "antd";
+import {
+  UploadOutlined,
+  UserOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 
 interface AvatarUploadProps {
   value?: string; // Base64 string atual
@@ -15,7 +19,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   onChange,
   size = 80,
   disabled = false,
-  placeholder = 'Clique para fazer upload',
+  placeholder = "Clique para fazer upload",
 }) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +28,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   const validateFileSize = (file: File): boolean => {
     const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
-      message.error('Imagem muito grande! Máximo 2MB permitido.');
+      message.error("Imagem muito grande! Máximo 2MB permitido.");
       return false;
     }
     return true;
@@ -32,9 +36,9 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
   // Validar tipo do arquivo
   const validateFileType = (file: File): boolean => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
-      message.error('Formato não suportado! Use JPG, PNG ou GIF.');
+      message.error("Formato não suportado! Use JPG, PNG ou GIF.");
       return false;
     }
     return true;
@@ -45,26 +49,28 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        if (reader.result && typeof reader.result === 'string') {
+        if (reader.result && typeof reader.result === "string") {
           resolve(reader.result);
         } else {
-          reject(new Error('Erro ao processar arquivo'));
+          reject(new Error("Erro ao processar arquivo"));
         }
       };
-      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
       reader.readAsDataURL(file);
     });
   };
 
   // Handler do upload customizado com input nativo
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('🔵 AvatarUpload: Starting upload', {
+    console.log("🔵 AvatarUpload: Starting upload", {
       fileName: file.name,
       fileSize: file.size,
-      fileType: file.type
+      fileType: file.type,
     });
 
     setUploading(true);
@@ -72,34 +78,36 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     try {
       // Validações
       if (!validateFileType(file)) {
-        console.log('❌ File type validation failed');
-        return;
-      }
-      
-      if (!validateFileSize(file)) {
-        console.log('❌ File size validation failed');
+        console.log("❌ File type validation failed");
         return;
       }
 
-      console.log('✅ File validations passed');
+      if (!validateFileSize(file)) {
+        console.log("❌ File size validation failed");
+        return;
+      }
+
+      console.log("✅ File validations passed");
 
       // Converter para base64
       const base64 = await fileToBase64(file);
-      console.log('✅ Base64 conversion successful', base64.substring(0, 50) + '...');
-      
+      console.log(
+        "✅ Base64 conversion successful",
+        base64.substring(0, 50) + "..."
+      );
+
       // Atualizar estado
-      console.log('🔄 Calling onChange with base64');
+      console.log("🔄 Calling onChange with base64");
       onChange?.(base64);
-      message.success('Avatar atualizado com sucesso!');
-      
+      message.success("Avatar atualizado com sucesso!");
     } catch (error) {
-      console.error('❌ Erro no upload:', error);
-      message.error('Erro ao processar imagem');
+      console.error("❌ Erro no upload:", error);
+      message.error("Erro ao processar imagem");
     } finally {
       setUploading(false);
       // Reset input value to allow selecting the same file again
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -112,9 +120,8 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   // Remover avatar
   const handleRemove = () => {
     onChange?.(null);
-    message.success('Avatar removido');
+    message.success("Avatar removido");
   };
-
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -126,7 +133,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
           icon={!value ? <UserOutlined /> : undefined}
           className="border-2 border-gray-200 shadow-sm"
         />
-        
+
         {/* Botão de remoção quando há avatar */}
         {value && !disabled && (
           <Button
@@ -135,8 +142,8 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             size="small"
             icon={<DeleteOutlined />}
             onClick={handleRemove}
-            className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white border-0 flex items-center justify-center hover:bg-red-600"
-            style={{ fontSize: '10px' }}
+            className="absolute -top-1 -right-1 w-6 h-6 rounded-xl bg-red-500 text-white border-0 flex items-center justify-center hover:bg-red-600"
+            style={{ fontSize: "10px" }}
           />
         )}
       </div>
@@ -147,7 +154,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         type="file"
         accept="image/jpeg,image/jpg,image/png,image/gif"
         onChange={handleFileChange}
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
         disabled={disabled || uploading}
       />
 
@@ -160,7 +167,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         type="dashed"
         onClick={handleUploadClick}
       >
-        {uploading ? 'Processando...' : placeholder}
+        {uploading ? "Processando..." : placeholder}
       </Button>
 
       {/* Informações de ajuda */}

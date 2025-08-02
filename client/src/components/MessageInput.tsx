@@ -38,7 +38,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-
   const handleSend = async () => {
     onSendMessage();
   };
@@ -90,10 +89,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       {pendingMedia.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
           {pendingMedia.map((media) => (
-            <div
-              key={media.id}
-              className="relative bg-gray-100 rounded-lg p-2"
-            >
+            <div key={media.id} className="relative bg-gray-100 rounded-lg p-2">
               {media.mimeType.startsWith("image/") && (
                 <img
                   src={URL.createObjectURL(media.file)}
@@ -103,7 +99,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               )}
               <button
                 onClick={() => onRemovePendingMedia(media.id)}
-                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-xl w-5 h-5 flex items-center justify-center text-xs"
               >
                 ×
               </button>
@@ -131,7 +127,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           >
             <Paperclip className="w-5 h-5" />
           </button>
-          
+
           <button
             onClick={onEnhanceMessage}
             className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
@@ -148,14 +144,17 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onChange={(e) => onMessageChange(e.target.value)}
             onKeyPress={onKeyPress}
             placeholder={
-              draftMessage 
+              draftMessage
                 ? "Edite a mensagem da campanha se necessário..."
                 : "Digite sua mensagem..."
             }
             className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 min-h-[44px]"
             rows={1}
             style={{
-              height: Math.min(Math.max(44, messageInput.split('\n').length * 20 + 24), 128)
+              height: Math.min(
+                Math.max(44, messageInput.split("\n").length * 20 + 24),
+                128
+              ),
             }}
           />
         </div>
@@ -163,15 +162,23 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         {/* Botão de envio */}
         <button
           onClick={handleSend}
-          disabled={!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0}
+          disabled={
+            !messageInput.trim() &&
+            attachments.length === 0 &&
+            pendingMedia.length === 0
+          }
           className={`p-2 rounded-lg transition-colors ${
-            (!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0)
+            !messageInput.trim() &&
+            attachments.length === 0 &&
+            pendingMedia.length === 0
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
               : draftMessage
               ? "bg-yellow-500 hover:bg-yellow-600 text-white"
               : "bg-blue-500 hover:bg-blue-600 text-white"
           }`}
-          title={draftMessage ? "Enviar mensagem da campanha" : "Enviar mensagem"}
+          title={
+            draftMessage ? "Enviar mensagem da campanha" : "Enviar mensagem"
+          }
         >
           <Send className="w-5 h-5" />
         </button>
