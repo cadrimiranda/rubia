@@ -190,8 +190,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       const createAgentData = {
         companyId: user.companyId,
         name: agentConfig.name,
-        description: agentConfig.description || null,
-        avatarBase64: agentConfig.avatarBase64 || null,
+        description: agentConfig.description || undefined,
+        avatarBase64: agentConfig.avatarBase64 || undefined,
         aiModelId: agentConfig.aiModelId,
         temperament: agentConfig.temperament,
         maxResponseLength: agentConfig.maxResponseLength,
