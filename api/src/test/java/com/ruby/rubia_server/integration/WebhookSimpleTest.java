@@ -1,12 +1,11 @@
 package com.ruby.rubia_server.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.HashMap;
@@ -14,14 +13,10 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@ActiveProfiles("test") 
 @TestPropertySource(properties = {
-    "messaging.provider=zapi",
-    "spring.flyway.enabled=false",
-    "spring.jpa.hibernate.ddl-auto=none"
+    "messaging.provider=zapi"
 })
-class WebhookSimpleTest {
+class WebhookSimpleTest extends AbstractIntegrationTest {
 
     @Autowired
     private ZApiAdapter zApiAdapter;

@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
 import com.ruby.rubia_server.core.dto.UpdateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.*;
@@ -8,10 +9,7 @@ import com.ruby.rubia_server.core.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -30,11 +28,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Atualização de avatar
  * - Remoção de avatar
  */
-@SpringBootTest
-@ActiveProfiles("test")
-@Testcontainers
 @Transactional
-class AIAgentAvatarIntegrationTest {
+class AIAgentAvatarIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private AIAgentService aiAgentService;
