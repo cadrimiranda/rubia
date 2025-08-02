@@ -56,6 +56,17 @@ export interface PaginatedResponse<T> {
 class AIAgentApi {
   private getAuthHeaders() {
     const token = localStorage.getItem('auth_token')
+    const user = localStorage.getItem('auth_user')
+    const companyId = localStorage.getItem('auth_company_id')
+    
+    console.log('🔍 [DEBUG] Auth headers debug:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      hasUser: !!user,
+      hasCompanyId: !!companyId,
+      tokenPreview: token?.substring(0, 20) + '...'
+    })
+    
     return {
       Authorization: token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'
@@ -207,6 +218,17 @@ class AIAgentApi {
       `${API_BASE_URL}/api/ai-agents/company/${companyId}/remaining-slots`,
       { headers: this.getAuthHeaders() }
     )
+    return response.data
+  }
+
+  // Debug context
+  async debugContext(): Promise<any> {
+    console.log('🔍 [DEBUG] Calling debug context endpoint...');
+    const response = await axios.get(
+      `${API_BASE_URL}/api/ai-agents/debug/context`,
+      { headers: this.getAuthHeaders() }
+    )
+    console.log('🔍 [DEBUG] Context response:', response.data);
     return response.data
   }
 }

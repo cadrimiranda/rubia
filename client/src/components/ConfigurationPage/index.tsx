@@ -46,6 +46,7 @@ import {
 } from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
 import { aiAgentApi, type AIAgent } from "../../api/services/aiAgentApi";
+import { aiModelService } from "../../services/aiModelService";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -78,7 +79,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     name: "Sofia",
     description: "",
     avatarBase64: "",
-    aiModelId: "",
+    aiModelId: "default", // Use default model for MVP
     temperament: "AMIGAVEL",
     maxResponseLength: 500,
     temperature: 0.7,
@@ -163,7 +164,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
-
   // Carregar agentes existentes da empresa
   const loadExistingAgents = useCallback(async () => {
     if (!user?.companyId) return;
@@ -193,6 +193,25 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       console.error("Erro ao verificar limites:", error);
     }
   }, [user?.companyId]);
+
+  // Carregar modelo padrão
+  useEffect(() => {
+    const loadDefaultModel = async () => {
+      if (!agentConfig.aiModelId || agentConfig.aiModelId === "default") {
+        try {
+          const models = await aiModelService.getActiveModels();
+          if (models.length > 0) {
+            // Usar o primeiro modelo ativo
+            setAgentConfig(prev => ({ ...prev, aiModelId: models[0].id }));
+          }
+        } catch (error) {
+          console.error("Erro ao carregar modelo padrão:", error);
+        }
+      }
+    };
+    
+    loadDefaultModel();
+  }, [agentConfig.aiModelId]);
 
   // Carregar templates ao montar o componente ou quando o usuário mudar
   useEffect(() => {
@@ -283,6 +302,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   };
 
   const handleAgentConfigChange = (field: keyof AgentConfig, value: string | number | boolean) => {
+    console.log('🔵 handleAgentConfigChange called', {
+      field,
+      valueType: typeof value,
+      valueLength: typeof value === 'string' ? value.length : 'n/a',
+      valuePreview: typeof value === 'string' && value.length > 50 ? value.substring(0, 50) + '...' : value
+    });
+    
     setAgentConfig((prev) => ({
       ...prev,
       [field]: value,
@@ -353,6 +379,21 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         temperature: agentConfig.temperature,
         isActive: agentConfig.isActive,
       };
+
+      console.log('🚀 [DEBUG] Creating agent with data:', createAgentData);
+      console.log('🚀 [DEBUG] User data:', { 
+        userId: user.id, 
+        companyId: user.companyId, 
+        companySlug: user.companySlug,
+        role: user.role 
+      });
+
+      // Debug context before creating agent
+      try {
+        await aiAgentApi.debugContext();
+      } catch (debugError) {
+        console.error('🔍 [DEBUG] Failed to get context:', debugError);
+      }
 
       const createdAgent = await aiAgentApi.createAIAgent(createAgentData);
       
@@ -814,9 +855,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                 <div className="flex items-start gap-8 mb-8 p-6 bg-gray-50 rounded-xl">
                   <AvatarUpload
                     value={agentConfig.avatarBase64}
-                    onChange={(base64) => 
-                      handleAgentConfigChange("avatarBase64", base64 || "")
-                    }
+                    onChange={(base64) => {
+                      console.log('🔵 ConfigurationPage: AvatarUpload onChange called', {
+                        base64Length: base64?.length || 0,
+                        base64Preview: base64?.substring(0, 50) + '...' || 'null'
+                      });
+                      handleAgentConfigChange("avatarBase64", base64 || "");
+                    }}
                     size={96}
                     placeholder="Upload avatar"
                   />
@@ -1880,9 +1925,13 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
           <div className="flex items-start gap-6 p-4 bg-gray-50 rounded-lg">
             <AvatarUpload
               value={agentConfig.avatarBase64}
-              onChange={(base64) => 
-                handleAgentConfigChange("avatarBase64", base64 || "")
-              }
+              onChange={(base64) => {
+                console.log('🔵 ConfigurationPage Modal: AvatarUpload onChange called', {
+                  base64Length: base64?.length || 0,
+                  base64Preview: base64?.substring(0, 50) + '...' || 'null'
+                });
+                handleAgentConfigChange("avatarBase64", base64 || "");
+              }}
               size={80}
               placeholder="Upload avatar"
             />

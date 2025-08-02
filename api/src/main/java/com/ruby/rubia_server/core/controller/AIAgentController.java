@@ -16,8 +16,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +30,33 @@ public class AIAgentController {
 
     private final AIAgentService aiAgentService;
     private final CompanyContextUtil companyContextUtil;
+
+    @GetMapping("/debug/context")
+    public ResponseEntity<Object> debugContext(HttpServletRequest request) {
+        log.info("🔍 [DEBUG] AI Agent Context Debug");
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            UUID currentCompanyGroupId = companyContextUtil.getCurrentCompanyGroupId();
+            UUID authUserCompanyId = companyContextUtil.getAuthenticatedUserCompanyId();
+            
+            Object debug = Map.of(
+                "currentCompanyId", currentCompanyId,
+                "currentCompanyGroupId", currentCompanyGroupId,
+                "authUserCompanyId", authUserCompanyId,
+                "requestURI", request.getRequestURI(),
+                "hasAuthHeader", request.getHeader("Authorization") != null,
+                "hasCompanySlugHeader", request.getHeader("X-Company-Slug") != null
+            );
+            
+            log.info("🔍 [DEBUG] Context data: {}", debug);
+            return ResponseEntity.ok(debug);
+            
+        } catch (Exception e) {
+            log.error("❌ [DEBUG] Error getting context: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @PostMapping
     public ResponseEntity<AIAgentDTO> createAIAgent(@Valid @RequestBody CreateAIAgentDTO createDTO) {

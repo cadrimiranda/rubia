@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Upload, Avatar, Button, message } from 'antd';
+import React, { useState, useRef } from 'react';
+import { Avatar, Button, message } from 'antd';
 import { UploadOutlined, UserOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 
 interface AvatarUploadProps {
   value?: string; // Base64 string atual
@@ -19,6 +18,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   placeholder = 'Clique para fazer upload',
 }) => {
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Validar tamanho do arquivo (máximo 2MB)
   const validateFileSize = (file: File): boolean => {
@@ -56,35 +56,57 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     });
   };
 
-  // Handler do upload customizado
-  const handleUpload: UploadProps['customRequest'] = async (options) => {
-    const { file, onSuccess, onError } = options;
-    const uploadFile = file as File;
+  // Handler do upload customizado com input nativo
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log('🔵 AvatarUpload: Starting upload', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
 
     setUploading(true);
 
     try {
       // Validações
-      if (!validateFileType(uploadFile) || !validateFileSize(uploadFile)) {
-        onError?.(new Error('Validação falhou'));
+      if (!validateFileType(file)) {
+        console.log('❌ File type validation failed');
+        return;
+      }
+      
+      if (!validateFileSize(file)) {
+        console.log('❌ File size validation failed');
         return;
       }
 
+      console.log('✅ File validations passed');
+
       // Converter para base64
-      const base64 = await fileToBase64(uploadFile);
+      const base64 = await fileToBase64(file);
+      console.log('✅ Base64 conversion successful', base64.substring(0, 50) + '...');
       
       // Atualizar estado
+      console.log('🔄 Calling onChange with base64');
       onChange?.(base64);
-      onSuccess?.(base64);
       message.success('Avatar atualizado com sucesso!');
       
     } catch (error) {
-      console.error('Erro no upload:', error);
+      console.error('❌ Erro no upload:', error);
       message.error('Erro ao processar imagem');
-      onError?.(error as Error);
     } finally {
       setUploading(false);
+      // Reset input value to allow selecting the same file again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
+  };
+
+  // Trigger file input click
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   // Remover avatar
@@ -93,16 +115,6 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     message.success('Avatar removido');
   };
 
-  // Props do Upload do Ant Design
-  const uploadProps: UploadProps = {
-    name: 'avatar',
-    listType: 'picture',
-    showUploadList: false,
-    accept: 'image/jpeg,image/jpg,image/png,image/gif',
-    customRequest: handleUpload,
-    disabled: disabled || uploading,
-    beforeUpload: () => false, // Previne upload automático
-  };
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -129,18 +141,27 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         )}
       </div>
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/gif"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+        disabled={disabled || uploading}
+      />
+
       {/* Upload Button */}
-      <Upload {...uploadProps}>
-        <Button
-          icon={<UploadOutlined />}
-          loading={uploading}
-          disabled={disabled}
-          size="small"
-          type="dashed"
-        >
-          {uploading ? 'Processando...' : placeholder}
-        </Button>
-      </Upload>
+      <Button
+        icon={<UploadOutlined />}
+        loading={uploading}
+        disabled={disabled}
+        size="small"
+        type="dashed"
+        onClick={handleUploadClick}
+      >
+        {uploading ? 'Processando...' : placeholder}
+      </Button>
 
       {/* Informações de ajuda */}
       <div className="text-xs text-gray-500 text-center max-w-32">
