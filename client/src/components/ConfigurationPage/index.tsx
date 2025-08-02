@@ -19,21 +19,22 @@ import {
   Upload as AntUpload,
   DatePicker,
   message,
-  Radio,
   Dropdown,
   Modal,
   Timeline,
   Badge,
   Spin,
 } from "antd";
-import type { UploadProps, RadioChangeEvent } from "antd";
+import type { UploadProps } from "antd";
 import dayjs from "dayjs";
 import { TemplateModal } from "../TemplateModal";
-import { AvatarUpload } from "../AvatarUpload";
 import type { ConversationTemplate } from "../../types/types";
-import { campaignService, type CampaignData } from "../../services/campaignService";
+import {
+  campaignService,
+  type CampaignData,
+} from "../../services/campaignService";
 
-interface ExtendedCampaignData extends Omit<CampaignData, 'templateIds'> {
+interface ExtendedCampaignData extends Omit<CampaignData, "templateIds"> {
   file?: File;
   templateIds?: string[];
 }
@@ -45,8 +46,8 @@ import {
   type RevisionType,
 } from "../../services/messageTemplateService";
 import { useAuthStore } from "../../store/useAuthStore";
-import { aiAgentApi, type AIAgent } from "../../api/services/aiAgentApi";
 import { aiModelService } from "../../services/aiModelService";
+import AgentManagement from "../AgentManagement";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -85,11 +86,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     temperature: 0.7,
     isActive: true,
   });
-  const [existingAgents, setExistingAgents] = useState<AIAgent[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
-  const [showAgentModal, setShowAgentModal] = useState(false);
-  const [canCreateAgent, setCanCreateAgent] = useState(true);
-  const [remainingSlots, setRemainingSlots] = useState(1);
   const [campaignData, setCampaignData] = useState<ExtendedCampaignData>({
     name: "",
     description: "",
@@ -98,14 +94,17 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     sourceSystem: "",
   });
   const [templates, setTemplates] = useState<ConversationTemplate[]>([]);
-  const [deletedTemplates, setDeletedTemplates] = useState<ConversationTemplate[]>([]);
+  const [deletedTemplates, setDeletedTemplates] = useState<
+    ConversationTemplate[]
+  >([]);
   const [isUploading, setIsUploading] = useState(false);
   const [duplicateUsers, setDuplicateUsers] = useState<string[]>([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] =
     useState<ConversationTemplate | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [isLoadingDeletedTemplates, setIsLoadingDeletedTemplates] = useState(false);
+  const [isLoadingDeletedTemplates, setIsLoadingDeletedTemplates] =
+    useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [revisionHistory, setRevisionHistory] = useState<
     MessageTemplateRevision[]
@@ -144,7 +143,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const loadDeletedTemplates = async () => {
     setIsLoadingDeletedTemplates(true);
     try {
-      const apiTemplates = await messageTemplateService.getDeleted(user?.companyId);
+      const apiTemplates = await messageTemplateService.getDeleted(
+        user?.companyId
+      );
       const convertedTemplates: ConversationTemplate[] = apiTemplates.map(
         (template) => ({
           id: template.id,
@@ -164,36 +165,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
-  // Carregar agentes existentes da empresa
-  const loadExistingAgents = useCallback(async () => {
-    if (!user?.companyId) return;
-    
-    try {
-      const agents = await aiAgentApi.getAIAgentsByCompany(user.companyId);
-      setExistingAgents(agents);
-    } catch (error) {
-      console.error("Erro ao carregar agentes:", error);
-      message.error("Erro ao carregar agentes existentes");
-    }
-  }, [user?.companyId]);
-
-  // Verificar limites da empresa
-  const checkAgentLimits = useCallback(async () => {
-    if (!user?.companyId) return;
-    
-    try {
-      const [canCreate, remaining] = await Promise.all([
-        aiAgentApi.canCreateAgent(user.companyId),
-        aiAgentApi.getRemainingAgentSlots(user.companyId)
-      ]);
-      
-      setCanCreateAgent(canCreate);
-      setRemainingSlots(remaining);
-    } catch (error) {
-      console.error("Erro ao verificar limites:", error);
-    }
-  }, [user?.companyId]);
-
   // Carregar modelo padrão
   useEffect(() => {
     const loadDefaultModel = async () => {
@@ -202,14 +173,14 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
           const models = await aiModelService.getActiveModels();
           if (models.length > 0) {
             // Usar o primeiro modelo ativo
-            setAgentConfig(prev => ({ ...prev, aiModelId: models[0].id }));
+            setAgentConfig((prev) => ({ ...prev, aiModelId: models[0].id }));
           }
         } catch (error) {
           console.error("Erro ao carregar modelo padrão:", error);
         }
       }
     };
-    
+
     loadDefaultModel();
   }, [agentConfig.aiModelId]);
 
@@ -217,11 +188,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   useEffect(() => {
     if (user?.companyId) {
       loadTemplates();
-      loadExistingAgents();
-      checkAgentLimits();
     }
-  }, [user?.companyId, loadTemplates, loadExistingAgents, checkAgentLimits]);
-
+  }, [user?.companyId, loadTemplates]);
 
   // Função para obter ícone e cor do tipo de revisão
   const getRevisionTypeInfo = (type: RevisionType) => {
@@ -290,7 +258,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       loadTemplates(); // Recarregar templates ativos
     } catch (error: unknown) {
       console.error("Erro ao restaurar template:", error);
-      const errorMessage = (error as Error)?.message || "Erro ao restaurar template";
+      const errorMessage =
+        (error as Error)?.message || "Erro ao restaurar template";
       if ((error as { status?: number })?.status === 403) {
         message.error("Você não tem permissão para restaurar este template");
       } else if ((error as { status?: number })?.status === 404) {
@@ -301,21 +270,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     }
   };
 
-  const handleAgentConfigChange = (field: keyof AgentConfig, value: string | number | boolean) => {
-    console.log('🔵 handleAgentConfigChange called', {
-      field,
-      valueType: typeof value,
-      valueLength: typeof value === 'string' ? value.length : 'n/a',
-      valuePreview: typeof value === 'string' && value.length > 50 ? value.substring(0, 50) + '...' : value
-    });
-    
-    setAgentConfig((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleCampaignChange = (field: keyof ExtendedCampaignData, value: string) => {
+  const handleCampaignChange = (
+    field: keyof ExtendedCampaignData,
+    value: string
+  ) => {
     setCampaignData((prev) => ({
       ...prev,
       [field]: value,
@@ -348,176 +306,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       setEditingTemplate(template);
       setShowTemplateModal(true);
     }
-  };
-
-  const handleSaveAgent = async () => {
-    if (!agentConfig.name || !agentConfig.temperament) {
-      message.error("Preencha todos os campos obrigatórios!");
-      return;
-    }
-
-    if (!user?.companyId) {
-      message.error("Erro: Usuário não possui empresa associada");
-      return;
-    }
-
-    // Verificar limite antes de criar
-    if (!canCreateAgent) {
-      message.error("Limite de agentes IA atingido para seu plano atual");
-      return;
-    }
-
-    try {
-      const createAgentData = {
-        companyId: user.companyId,
-        name: agentConfig.name,
-        description: agentConfig.description || null,
-        avatarBase64: agentConfig.avatarBase64 || null,
-        aiModelId: agentConfig.aiModelId,
-        temperament: agentConfig.temperament,
-        maxResponseLength: agentConfig.maxResponseLength,
-        temperature: agentConfig.temperature,
-        isActive: agentConfig.isActive,
-      };
-
-      console.log('🚀 [DEBUG] Creating agent with data:', createAgentData);
-      console.log('🚀 [DEBUG] User data:', { 
-        userId: user.id, 
-        companyId: user.companyId, 
-        companySlug: user.companySlug,
-        role: user.role 
-      });
-
-      // Debug context before creating agent
-      try {
-        await aiAgentApi.debugContext();
-      } catch (debugError) {
-        console.error('🔍 [DEBUG] Failed to get context:', debugError);
-      }
-
-      const createdAgent = await aiAgentApi.createAIAgent(createAgentData);
-      
-      message.success(`Agente "${createdAgent.name}" criado com sucesso!`);
-      
-      // Reset form
-      setAgentConfig({
-        name: "",
-        description: "",
-        avatarBase64: "",
-        aiModelId: "default",
-        temperament: "AMIGAVEL",
-        maxResponseLength: 500,
-        temperature: 0.7,
-        isActive: true,
-      });
-
-      // Recarregar lista de agentes e limites
-      await loadExistingAgents();
-      await checkAgentLimits();
-
-    } catch (error: unknown) {
-      console.error("Erro ao criar agente:", error);
-      const errorMessage = (error as Error)?.message || "Erro ao criar agente";
-      message.error(errorMessage);
-    }
-  };
-
-  // Editar agente existente
-  const handleEditAgent = (agent: AIAgent) => {
-    setSelectedAgent(agent);
-    setAgentConfig({
-      name: agent.name,
-      description: agent.description || "",
-      avatarBase64: agent.avatarBase64 || "",
-      aiModelId: agent.aiModelId,
-      temperament: agent.temperament,
-      maxResponseLength: agent.maxResponseLength,
-      temperature: agent.temperature,
-      isActive: agent.isActive,
-    });
-    setShowAgentModal(true);
-  };
-
-  // Salvar alterações do agente
-  const handleUpdateAgent = async () => {
-    if (!selectedAgent) return;
-
-    try {
-      const updateData = {
-        name: agentConfig.name,
-        description: agentConfig.description || null,
-        avatarBase64: agentConfig.avatarBase64 || null,
-        aiModelId: agentConfig.aiModelId,
-        temperament: agentConfig.temperament,
-        maxResponseLength: agentConfig.maxResponseLength,
-        temperature: agentConfig.temperature,
-        isActive: agentConfig.isActive,
-      };
-
-      await aiAgentApi.updateAIAgent(selectedAgent.id, updateData);
-      
-      message.success(`Agente "${agentConfig.name}" atualizado com sucesso!`);
-      
-      // Fechar modal e recarregar lista
-      setShowAgentModal(false);
-      setSelectedAgent(null);
-      await loadExistingAgents();
-
-      // Reset form
-      setAgentConfig({
-        name: "",
-        description: "",
-        avatarBase64: "",
-        aiModelId: "default",
-        temperament: "AMIGAVEL",
-        maxResponseLength: 500,
-        temperature: 0.7,
-        isActive: true,
-      });
-
-    } catch (error: unknown) {
-      console.error("Erro ao atualizar agente:", error);
-      const errorMessage = (error as Error)?.message || "Erro ao atualizar agente";
-      message.error(errorMessage);
-    }
-  };
-
-  // Deletar agente
-  const handleDeleteAgent = (agent: AIAgent) => {
-    Modal.confirm({
-      title: 'Excluir Agente IA',
-      content: `Tem certeza que deseja excluir o agente "${agent.name}"? Esta ação não pode ser desfeita.`,
-      okText: 'Excluir',
-      okType: 'danger',
-      cancelText: 'Cancelar',
-      onOk: async () => {
-        try {
-          await aiAgentApi.deleteAIAgent(agent.id);
-          message.success(`Agente "${agent.name}" excluído com sucesso!`);
-          await loadExistingAgents();
-          await checkAgentLimits();
-        } catch (error) {
-          console.error("Erro ao excluir agente:", error);
-          message.error("Erro ao excluir agente");
-        }
-      }
-    });
-  };
-
-  // Criar novo agente
-  const handleCreateNewAgent = () => {
-    setSelectedAgent(null);
-    setAgentConfig({
-      name: "",
-      description: "",
-      avatarBase64: "",
-      aiModelId: aiModels.length > 0 ? aiModels[0].id : "",
-      temperament: "AMIGAVEL",
-      maxResponseLength: 500,
-      temperature: 0.7,
-      isActive: true,
-    });
-    setShowAgentModal(true);
   };
 
   const handleEnhanceTemplate = (templateId: string) => {
@@ -654,7 +442,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
       };
 
       // Enviar para o backend
-      
+
       const result = await campaignService.processExcelAndCreateCampaign(
         campaignData.file,
         campaignRequestData,
@@ -662,11 +450,12 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         user.id
       );
 
-
       if (result && result.success) {
         // Mostrar duplicados encontrados
         if (result.statistics.duplicates > 0) {
-          setDuplicateUsers([`${result.statistics.duplicates} contatos duplicados encontrados`]);
+          setDuplicateUsers([
+            `${result.statistics.duplicates} contatos duplicados encontrados`,
+          ]);
         }
 
         // Mensagem de sucesso detalhada
@@ -678,7 +467,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               </div>
               <div className="text-sm space-y-1">
                 <div>
-                  📊 {result.statistics.processed} contatos processados do arquivo
+                  📊 {result.statistics.processed} contatos processados do
+                  arquivo
                 </div>
                 <div>
                   💬 {result.statistics.created} contatos adicionados à campanha
@@ -690,9 +480,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                   </div>
                 )}
                 {result.errors.length > 0 && (
-                  <div>
-                    ❌ {result.errors.length} erros no processamento
-                  </div>
+                  <div>❌ {result.errors.length} erros no processamento</div>
                 )}
                 <div className="mt-2 text-green-600">
                   ✅ Campanha ativa e pronta para uso
@@ -727,26 +515,32 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         // Fechar configurações e voltar para o chat
         onBack();
       } else {
-        message.error(result ? "Erro ao criar campanha!" : "Erro na comunicação com o servidor!");
+        message.error(
+          result
+            ? "Erro ao criar campanha!"
+            : "Erro na comunicação com o servidor!"
+        );
       }
     } catch (error: unknown) {
       console.error("Erro ao criar campanha:", error);
-      
+
       // Tentar extrair mensagem de erro específica
       let errorMessage = "Erro ao criar campanha!";
-      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      const err = error as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
       if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
       } else if (err.message) {
         errorMessage = `Erro: ${err.message}`;
       }
-      
+
       message.error(errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
-
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -832,419 +626,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto bg-gray-50">
-          {activeTab === "agent" && (
-            <div className="max-w-4xl mx-auto p-8">
-              {/* Seção principal com card melhorado */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                    <User className="w-6 h-6 text-red-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      Configuração do Agente IA
-                    </h2>
-                    <p className="text-gray-600">
-                      Configure a personalidade e comportamento do assistente
-                      virtual
-                    </p>
-                  </div>
-                </div>
-
-                {/* Seção do avatar e nome */}
-                <div className="flex items-start gap-8 mb-8 p-6 bg-gray-50 rounded-xl">
-                  <AvatarUpload
-                    value={agentConfig.avatarBase64}
-                    onChange={(base64) => {
-                      console.log('🔵 ConfigurationPage: AvatarUpload onChange called', {
-                        base64Length: base64?.length || 0,
-                        base64Preview: base64?.substring(0, 50) + '...' || 'null'
-                      });
-                      handleAgentConfigChange("avatarBase64", base64 || "");
-                    }}
-                    size={96}
-                    placeholder="Upload avatar"
-                  />
-                  <div className="flex-1 space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Nome do Agente *
-                      </label>
-                      <Input
-                        value={agentConfig.name}
-                        onChange={(e) =>
-                          handleAgentConfigChange("name", e.target.value)
-                        }
-                        placeholder="Ex: Sofia, Ana, João..."
-                        size="large"
-                        className="font-medium"
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-2">
-                        O nome será usado nas conversas com os usuários
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Descrição
-                      </label>
-                      <TextArea
-                        value={agentConfig.description}
-                        onChange={(e) =>
-                          handleAgentConfigChange("description", e.target.value)
-                        }
-                        placeholder="Descreva a função e especialidade do agente..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Configurações principais */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-4">
-                        Temperamento *
-                      </label>
-                      <div className="space-y-2">
-                        <Radio.Group
-                          value={agentConfig.temperament}
-                          onChange={(e: RadioChangeEvent) =>
-                            handleAgentConfigChange(
-                              "temperament",
-                              e.target.value
-                            )
-                          }
-                          className="w-full"
-                        >
-                          <div className="space-y-2">
-                            <Radio.Button
-                              value="FORMAL"
-                              className="w-full h-12 flex items-center text-left"
-                            >
-                              <span className="font-medium">
-                                Formal e Respeitoso
-                              </span>
-                            </Radio.Button>
-                            <Radio.Button
-                              value="AMIGAVEL"
-                              className="w-full h-12 flex items-center text-left"
-                            >
-                              <span className="font-medium">
-                                Amigável e Acolhedor
-                              </span>
-                            </Radio.Button>
-                            <Radio.Button
-                              value="DESCONTRAIDO"
-                              className="w-full h-12 flex items-center text-left"
-                            >
-                              <span className="font-medium">
-                                Descontraído e Informal
-                              </span>
-                            </Radio.Button>
-                            <Radio.Button
-                              value="SERIO"
-                              className="w-full h-12 flex items-center text-left"
-                            >
-                              <span className="font-medium">
-                                Sério e Profissional
-                              </span>
-                            </Radio.Button>
-                            <Radio.Button
-                              value="EMPATICO"
-                              className="w-full h-12 flex items-center text-left"
-                            >
-                              <span className="font-medium">
-                                Empático e Compreensivo
-                              </span>
-                            </Radio.Button>
-                          </div>
-                        </Radio.Group>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-blue-900">
-                            ✨ Modelo de IA
-                          </h4>
-                        </div>
-                        <div className="text-sm text-blue-800">
-                          O sistema usa automaticamente o melhor modelo disponível para otimizar qualidade e custo
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Configurações avançadas */}
-                <div className="mt-8 p-6 bg-gray-50 rounded-xl">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-6">
-                    Configurações Avançadas
-                  </h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Limite de Caracteres
-                      </label>
-                      <Input
-                        type="number"
-                        value={agentConfig.maxResponseLength}
-                        onChange={(e) =>
-                          handleAgentConfigChange("maxResponseLength", parseInt(e.target.value) || 500)
-                        }
-                        min={1}
-                        max={10000}
-                        size="large"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Máximo de caracteres por resposta (1-10000)
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Criatividade (Temperature)
-                      </label>
-                      <Input
-                        type="number"
-                        value={agentConfig.temperature}
-                        onChange={(e) =>
-                          handleAgentConfigChange("temperature", parseFloat(e.target.value) || 0.7)
-                        }
-                        min={0}
-                        max={1}
-                        step={0.1}
-                        size="large"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Nível de criatividade (0.0 - 1.0)
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Status
-                      </label>
-                      <Radio.Group
-                        value={agentConfig.isActive}
-                        onChange={(e: RadioChangeEvent) =>
-                          handleAgentConfigChange("isActive", e.target.value)
-                        }
-                        className="w-full"
-                      >
-                        <Radio.Button value={true} className="w-20">
-                          Ativo
-                        </Radio.Button>
-                        <Radio.Button value={false} className="w-20">
-                          Inativo
-                        </Radio.Button>
-                      </Radio.Group>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Botões de ação */}
-                <div className="flex items-center justify-between pt-8 border-t border-gray-200 mt-8">
-                  <div className="text-sm text-gray-500">
-                    Configure todos os campos obrigatórios
-                  </div>
-                  <div className="flex gap-3">
-                    <Button size="large" className="px-6">
-                      Testar Agente
-                    </Button>
-                    <Button
-                      type="primary"
-                      size="large"
-                      onClick={handleSaveAgent}
-                      disabled={!agentConfig.name || !agentConfig.temperament}
-                      className="px-8 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-                    >
-                      Salvar Agente
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card de preview do agente */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Preview da Conversa
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-700 mb-1">
-                        {agentConfig.name}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {agentConfig.temperament === "FORMAL" &&
-                          "Bom dia! Sou o assistente virtual da empresa. Como posso ajudá-lo hoje?"}
-                        {agentConfig.temperament === "AMIGAVEL" &&
-                          "Oi! 😊 Eu sou o assistente da empresa! Como posso te ajudar hoje?"}
-                        {agentConfig.temperament === "DESCONTRAIDO" &&
-                          "E aí! Tudo bem? Sou o assistente aqui da empresa. Em que posso te ajudar?"}
-                        {agentConfig.temperament === "SERIO" &&
-                          "Olá. Sou o assistente da empresa. Estou aqui para ajudá-lo."}
-                        {agentConfig.temperament === "EMPATICO" &&
-                          "Olá! Entendo que você precisa de ajuda. Estou aqui para te apoiar no que precisar! 💙"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Seção de Agentes Existentes */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Agentes IA da Empresa
-                    </h3>
-                    <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                      {existingAgents.length} de {existingAgents.length + remainingSlots} agentes
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-sm text-gray-600">
-                      {remainingSlots > 0 ? (
-                        <span className="text-green-600 font-medium">
-                          {remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} disponível{remainingSlots !== 1 ? 'eis' : ''}
-                        </span>
-                      ) : (
-                        <span className="text-orange-600 font-medium">
-                          Limite atingido
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      type="primary"
-                      icon={<Plus />}
-                      onClick={handleCreateNewAgent}
-                      disabled={!canCreateAgent}
-                      className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-                    >
-                      Novo Agente
-                    </Button>
-                  </div>
-                </div>
-
-                {existingAgents.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-500 mb-2">
-                      Nenhum agente criado ainda
-                    </h4>
-                    <p className="text-gray-400 mb-4">
-                      Crie seu primeiro agente IA para começar a automatizar conversas
-                    </p>
-                    <Button
-                      type="primary"
-                      icon={<Plus />}
-                      onClick={handleCreateNewAgent}
-                      disabled={!canCreateAgent}
-                      className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-                    >
-                      Criar Primeiro Agente
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {existingAgents.map((agent) => (
-                      <div
-                        key={agent.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                              {agent.avatarBase64 ? (
-                                <img
-                                  src={agent.avatarBase64}
-                                  alt={agent.name}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-5 h-5 text-red-600" />
-                              )}
-                            </div>
-                            <div>
-                              <h5 className="font-semibold text-gray-800">
-                                {agent.name}
-                              </h5>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    agent.isActive
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-gray-100 text-gray-600"
-                                  }`}
-                                >
-                                  {agent.isActive ? "Ativo" : "Inativo"}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {agent.temperament}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <Dropdown
-                            trigger={["click"]}
-                            menu={{
-                              items: [
-                                {
-                                  key: "edit",
-                                  label: "Editar",
-                                  icon: <Edit3 className="w-4 h-4" />,
-                                  onClick: () => handleEditAgent(agent),
-                                },
-                                {
-                                  key: "delete",
-                                  label: "Excluir",
-                                  icon: <Trash2 className="w-4 h-4" />,
-                                  danger: true,
-                                  onClick: () => handleDeleteAgent(agent),
-                                },
-                              ],
-                            }}
-                          >
-                            <Button
-                              size="small"
-                              type="text"
-                              icon={<MoreVertical className="w-4 h-4" />}
-                              className="hover:bg-gray-100"
-                            />
-                          </Dropdown>
-                        </div>
-
-                        {agent.description && (
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {agent.description}
-                          </p>
-                        )}
-
-                        <div className="text-xs text-gray-500 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Temperatura:</span>
-                            <span className="font-medium">{agent.temperature}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Max chars:</span>
-                            <span className="font-medium">{agent.maxResponseLength}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {activeTab === "agent" && <AgentManagement />}
 
           {activeTab === "campaign" && (
             <div className="max-w-7xl mx-auto p-8">
@@ -1741,13 +1123,15 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                                     key: "history",
                                     label: "Ver Histórico",
                                     icon: <History className="w-4 h-4" />,
-                                    onClick: () => handleViewHistory(template.id),
+                                    onClick: () =>
+                                      handleViewHistory(template.id),
                                   },
                                   {
                                     key: "restore",
                                     label: "Restaurar",
                                     icon: <RotateCcw className="w-4 h-4" />,
-                                    onClick: () => handleRestoreTemplate(template.id),
+                                    onClick: () =>
+                                      handleRestoreTemplate(template.id),
                                   },
                                 ],
                               }}
@@ -1770,7 +1154,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                             <span className="text-gray-400">•</span>
                           )}
                           {template.category && (
-                            <span className="capitalize">{template.category}</span>
+                            <span className="capitalize">
+                              {template.category}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -1893,203 +1279,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
         }}
         onSave={handleSaveTemplate}
       />
-
-      {/* Modal de Edição de Agente */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-red-600" />
-            <span>{selectedAgent ? "Editar Agente IA" : "Criar Novo Agente IA"}</span>
-          </div>
-        }
-        open={showAgentModal}
-        onCancel={() => {
-          setShowAgentModal(false);
-          setSelectedAgent(null);
-          setAgentConfig({
-            name: "",
-            description: "",
-            avatarBase64: "",
-            aiModelId: "default",
-            temperament: "AMIGAVEL",
-            maxResponseLength: 500,
-            temperature: 0.7,
-            isActive: true,
-          });
-        }}
-        footer={null}
-        width={700}
-      >
-        <div className="space-y-6 py-4">
-          {/* Avatar e Nome */}
-          <div className="flex items-start gap-6 p-4 bg-gray-50 rounded-lg">
-            <AvatarUpload
-              value={agentConfig.avatarBase64}
-              onChange={(base64) => {
-                console.log('🔵 ConfigurationPage Modal: AvatarUpload onChange called', {
-                  base64Length: base64?.length || 0,
-                  base64Preview: base64?.substring(0, 50) + '...' || 'null'
-                });
-                handleAgentConfigChange("avatarBase64", base64 || "");
-              }}
-              size={80}
-              placeholder="Upload avatar"
-            />
-            <div className="flex-1 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nome do Agente *
-                </label>
-                <Input
-                  value={agentConfig.name}
-                  onChange={(e) =>
-                    handleAgentConfigChange("name", e.target.value)
-                  }
-                  placeholder="Ex: Sofia, Ana, João..."
-                  size="large"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Descrição
-                </label>
-                <TextArea
-                  value={agentConfig.description}
-                  onChange={(e) =>
-                    handleAgentConfigChange("description", e.target.value)
-                  }
-                  placeholder="Descreva a função e especialidade do agente..."
-                  rows={2}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Configurações */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Temperamento *
-              </label>
-              <Radio.Group
-                value={agentConfig.temperament}
-                onChange={(e: RadioChangeEvent) =>
-                  handleAgentConfigChange("temperament", e.target.value)
-                }
-                className="w-full"
-              >
-                <div className="space-y-2">
-                  {[
-                    { value: "FORMAL", label: "Formal e Respeitoso" },
-                    { value: "AMIGAVEL", label: "Amigável e Acolhedor" },
-                    { value: "DESCONTRAIDO", label: "Descontraído e Informal" },
-                    { value: "SERIO", label: "Sério e Profissional" },
-                    { value: "EMPATICO", label: "Empático e Compreensivo" },
-                  ].map((option) => (
-                    <Radio.Button
-                      key={option.value}
-                      value={option.value}
-                      className="w-full h-10 flex items-center text-left"
-                    >
-                      <span className="font-medium">{option.label}</span>
-                    </Radio.Button>
-                  ))}
-                </div>
-              </Radio.Group>
-            </div>
-
-            <div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-sm font-semibold text-blue-900">
-                    ✨ Modelo de IA
-                  </h4>
-                </div>
-                <div className="text-xs text-blue-800">
-                  Sistema otimizado automaticamente
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Configurações Avançadas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Limite de Caracteres
-              </label>
-              <Input
-                type="number"
-                value={agentConfig.maxResponseLength}
-                onChange={(e) =>
-                  handleAgentConfigChange("maxResponseLength", parseInt(e.target.value) || 500)
-                }
-                min={1}
-                max={10000}
-                size="large"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Temperatura
-              </label>
-              <Input
-                type="number"
-                value={agentConfig.temperature}
-                onChange={(e) =>
-                  handleAgentConfigChange("temperature", parseFloat(e.target.value) || 0.7)
-                }
-                min={0}
-                max={1}
-                step={0.1}
-                size="large"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Status
-              </label>
-              <Radio.Group
-                value={agentConfig.isActive}
-                onChange={(e: RadioChangeEvent) =>
-                  handleAgentConfigChange("isActive", e.target.value)
-                }
-                className="w-full"
-              >
-                <Radio.Button value={true} className="w-16">
-                  Ativo
-                </Radio.Button>
-                <Radio.Button value={false} className="w-16">
-                  Inativo
-                </Radio.Button>
-              </Radio.Group>
-            </div>
-          </div>
-
-          {/* Botões de ação */}
-          <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-            <Button
-              size="large"
-              onClick={() => {
-                setShowAgentModal(false);
-                setSelectedAgent(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={selectedAgent ? handleUpdateAgent : handleSaveAgent}
-              disabled={!agentConfig.name || !agentConfig.temperament}
-              className="bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
-            >
-              {selectedAgent ? "Atualizar Agente" : "Criar Agente"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };
