@@ -152,10 +152,16 @@ class AIAgentApi {
 
   // Delete AI Agent
   async deleteAIAgent(id: string): Promise<void> {
-    await axios.delete(
+    console.log('🗑️ [DEBUG] Deleting agent with ID:', id)
+    console.log('🗑️ [DEBUG] Request URL:', `${API_BASE_URL}/api/ai-agents/${id}`)
+    console.log('🗑️ [DEBUG] Request headers:', this.getAuthHeaders())
+    
+    const response = await axios.delete(
       `${API_BASE_URL}/api/ai-agents/${id}`,
       { headers: this.getAuthHeaders() }
     )
+    
+    console.log('🗑️ [DEBUG] Delete response:', response.status, response.statusText)
   }
 
   // Count AI Agents by company
@@ -230,6 +236,24 @@ class AIAgentApi {
     )
     console.log('🔍 [DEBUG] Context response:', response.data);
     return response.data
+  }
+
+  // Debug delete operation
+  async debugDelete(id: string): Promise<any> {
+    console.log('🔍 [DEBUG] Testing delete permission for agent:', id);
+    try {
+      // First check if we can get the agent
+      const agent = await this.getAIAgentById(id);
+      console.log('🔍 [DEBUG] Agent found:', agent);
+      
+      // Then test the delete endpoint
+      await this.deleteAIAgent(id);
+      console.log('🔍 [DEBUG] Delete successful');
+      return { success: true };
+    } catch (error) {
+      console.error('🔍 [DEBUG] Delete failed:', error);
+      return { success: false, error };
+    }
   }
 }
 

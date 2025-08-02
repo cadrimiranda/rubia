@@ -62,39 +62,70 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
   // Carregar agentes existentes da empresa
   const loadExistingAgents = useCallback(async () => {
-    if (!user?.companyId) return;
+    if (!user?.companyId) {
+      console.log("🔄 [DEBUG] loadExistingAgents: No companyId available");
+      return;
+    }
 
+    console.log("🔄 [DEBUG] loadExistingAgents: Loading agents for company", user.companyId);
     try {
       const agents = await aiAgentApi.getAIAgentsByCompany(user.companyId);
+      console.log("🔄 [DEBUG] loadExistingAgents: Loaded agents", agents);
       setExistingAgents(agents);
+      console.log("🔄 [DEBUG] loadExistingAgents: State updated with", agents.length, "agents");
     } catch (error) {
-      console.error("Erro ao carregar agentes:", error);
+      console.error("🔄 [ERROR] loadExistingAgents: Failed to load agents:", error);
       message.error("Erro ao carregar agentes existentes");
     }
   }, [user?.companyId]);
 
   // Verificar limites da empresa
   const checkAgentLimits = useCallback(async () => {
-    if (!user?.companyId) return;
+    if (!user?.companyId) {
+      console.log("🔄 [DEBUG] checkAgentLimits: No companyId available");
+      return;
+    }
 
+    console.log("🔄 [DEBUG] checkAgentLimits: Checking limits for company", user.companyId);
     try {
       const canCreate = await aiAgentApi.canCreateAgent(user.companyId);
       const remaining = await aiAgentApi.getRemainingAgentSlots(user.companyId);
 
+      console.log("🔄 [DEBUG] checkAgentLimits: canCreate =", canCreate, "remaining =", remaining);
       setCanCreateAgent(canCreate);
       setRemainingSlots(remaining);
+      console.log("🔄 [DEBUG] checkAgentLimits: State updated");
     } catch (error) {
-      console.error("Erro ao verificar limites:", error);
+      console.error("🔄 [ERROR] checkAgentLimits: Failed to check limits:", error);
     }
   }, [user?.companyId]);
+
+  // Função unificada para refresh completo
+  const refreshAgentData = useCallback(async () => {
+    console.log("🔄 [DEBUG] refreshAgentData: Starting complete refresh");
+    if (!user?.companyId) {
+      console.log("🔄 [DEBUG] refreshAgentData: No companyId, skipping refresh");
+      return;
+    }
+
+    try {
+      // Executar ambas as operações em paralelo
+      await Promise.all([
+        loadExistingAgents(),
+        checkAgentLimits()
+      ]);
+      console.log("🔄 [DEBUG] refreshAgentData: Complete refresh finished");
+    } catch (error) {
+      console.error("🔄 [ERROR] refreshAgentData: Failed to refresh:", error);
+    }
+  }, [user?.companyId, loadExistingAgents, checkAgentLimits]);
 
   // Carregar dados ao montar o componente
   useEffect(() => {
     if (user?.companyId) {
-      loadExistingAgents();
-      checkAgentLimits();
+      refreshAgentData();
     }
-  }, [user?.companyId, loadExistingAgents, checkAgentLimits]);
+  }, [user?.companyId, refreshAgentData]);
 
   const handleAgentConfigChange = (
     field: keyof AgentConfig,
@@ -178,8 +209,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       });
 
       // Recarregar lista de agentes e limites
-      await loadExistingAgents();
-      await checkAgentLimits();
+      await refreshAgentData();
     } catch (error: unknown) {
       console.error("Erro ao criar agente:", error);
       const errorMessage = (error as Error)?.message || "Erro ao criar agente";
@@ -229,7 +259,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       // Fechar modal e recarregar lista
       setShowAgentModal(false);
       setSelectedAgent(null);
-      await loadExistingAgents();
+      await refreshAgentData();
     } catch (error: unknown) {
       console.error("Erro ao atualizar agente:", error);
       const errorMessage =
@@ -240,6 +270,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
   // Excluir agente
   const handleDeleteAgent = (agent: AIAgent) => {
+    console.log("🗑️ [DEBUG] handleDeleteAgent called for agent:", agent);
+    
     Modal.confirm({
       title: "Excluir Agente",
       content: `Tem certeza que deseja excluir o agente "${agent.name}"? Esta ação não pode ser desfeita.`,
@@ -248,13 +280,21 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       okType: "danger",
       onOk: async () => {
         try {
+          console.log("🗑️ [DEBUG] Starting deletion for agent ID:", agent.id);
           await aiAgentApi.deleteAIAgent(agent.id);
+          console.log("🗑️ [DEBUG] Agent deleted successfully");
+          
           message.success(`Agente "${agent.name}" excluído com sucesso!`);
-          await loadExistingAgents();
-          await checkAgentLimits();
-        } catch (error) {
-          console.error("Erro ao excluir agente:", error);
-          message.error("Erro ao excluir agente");
+          
+          console.log("🗑️ [DEBUG] Reloading agents and limits...");
+          // Pequeno delay para garantir que o backend processou a exclusão
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refreshAgentData();
+          console.log("🗑️ [DEBUG] Reload completed");
+        } catch (error: unknown) {
+          console.error("🗑️ [ERROR] Failed to delete agent:", error);
+          const errorMessage = (error as Error)?.message || "Erro ao excluir agente";
+          message.error(`Erro ao excluir agente: ${errorMessage}`);
         }
       },
     });
@@ -369,14 +409,20 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                           key: "edit",
                           label: "Editar",
                           icon: <Edit3 className="w-4 h-4" />,
-                          onClick: () => handleEditAgent(agent),
+                          onClick: () => {
+                            console.log("🔧 [DEBUG] Edit clicked for agent:", agent.name);
+                            handleEditAgent(agent);
+                          },
                         },
                         {
                           key: "delete",
                           label: "Excluir",
                           icon: <Trash2 className="w-4 h-4" />,
                           danger: true,
-                          onClick: () => handleDeleteAgent(agent),
+                          onClick: () => {
+                            console.log("🗑️ [DEBUG] Delete clicked for agent:", agent.name);
+                            handleDeleteAgent(agent);
+                          },
                         },
                       ],
                     }}
