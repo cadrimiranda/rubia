@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.ruby.rubia_server.core.dto.AIEnhancementResult;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
 import com.ruby.rubia_server.core.dto.UpdateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
@@ -254,8 +255,8 @@ public class AIAgentService {
         String enhancementPrompt = buildEnhancementPrompt(agent, originalMessage);
 
         try {
-            // Use OpenAI service to enhance the message
-            String enhancedMessage = openAIService.enhanceTemplate(
+            // Use OpenAI service to enhance the message with payload tracking
+            AIEnhancementResult result = openAIService.enhanceTemplateWithPayload(
                 enhancementPrompt,
                 agent.getAiModel().getName(),
                 agent.getTemperature().doubleValue(),
@@ -264,28 +265,36 @@ public class AIAgentService {
 
             long responseTime = System.currentTimeMillis() - startTime;
 
-            // Record successful enhancement
+            // Record successful enhancement with payload data
             auditService.recordSuccessfulEnhancement(
                 company,
                 user,
                 agent,
                 originalMessage,
-                enhancedMessage,
+                result.getEnhancedMessage(),
                 conversationId,
-                estimateTokensUsed(originalMessage, enhancedMessage), // Estimate tokens used
+                result.getTokensUsed() != null ? result.getTokensUsed() : estimateTokensUsed(originalMessage, result.getEnhancedMessage()),
                 responseTime,
                 userAgent,
-                ipAddress
+                ipAddress,
+                result.getSystemMessage(),
+                result.getUserMessage(),
+                result.getFullPayloadJson()
             );
 
             log.info("Message enhanced successfully for company: {} in {}ms", companyId, responseTime);
-            return enhancedMessage;
+            return result.getEnhancedMessage();
 
         } catch (Exception e) {
             long responseTime = System.currentTimeMillis() - startTime;
             String errorMessage = "Erro ao melhorar mensagem: " + e.getMessage();
 
-            // Record failed enhancement
+            // Try to create the payload that would have been sent (for debugging)
+            String systemMessage = "Você é um especialista em captação de doadores de sangue para centros de hematologia e hemoterapia. " +
+                "Sua especialidade é criar mensagens persuasivas e eficazes que motivem pessoas a fazer doações de sangue. " +
+                "Sempre mantenha um tom ético, respeitoso e focado no impacto social positivo da doação.";
+
+            // Record failed enhancement with available payload data
             auditService.recordFailedEnhancement(
                 company,
                 user,
@@ -295,7 +304,10 @@ public class AIAgentService {
                 conversationId,
                 responseTime,
                 userAgent,
-                ipAddress
+                ipAddress,
+                systemMessage,
+                enhancementPrompt,
+                null // No full payload JSON in case of failure
             );
 
             log.error("Error enhancing message for company: {} - {}", companyId, e.getMessage(), e);

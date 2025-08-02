@@ -80,6 +80,16 @@ public class MessageEnhancementAudit implements BaseEntity {
     @Column(name = "ip_address")
     private String ipAddress; // IP do usuário
 
+    // Payload enviado para OpenAI (para auditoria e debugging)
+    @Column(columnDefinition = "TEXT", name = "openai_system_message")
+    private String openaiSystemMessage; // System message enviada à OpenAI
+
+    @Column(columnDefinition = "TEXT", name = "openai_user_message")
+    private String openaiUserMessage; // User message (prompt) enviada à OpenAI
+
+    @Column(columnDefinition = "TEXT", name = "openai_full_payload")
+    private String openaiFullPayload; // JSON completo do payload enviado (opcional, para debugging)
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

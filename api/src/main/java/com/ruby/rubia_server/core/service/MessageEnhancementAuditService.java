@@ -34,7 +34,10 @@ public class MessageEnhancementAuditService {
             Integer tokensConsumed,
             Long responseTimeMs,
             String userAgent,
-            String ipAddress) {
+            String ipAddress,
+            String openaiSystemMessage,
+            String openaiUserMessage,
+            String openaiFullPayload) {
 
         log.debug("Recording successful message enhancement for user: {} with agent: {}", 
                  user.getId(), aiAgent.getName());
@@ -55,6 +58,9 @@ public class MessageEnhancementAuditService {
                 .success(true)
                 .userAgent(userAgent)
                 .ipAddress(ipAddress)
+                .openaiSystemMessage(openaiSystemMessage)
+                .openaiUserMessage(openaiUserMessage)
+                .openaiFullPayload(openaiFullPayload)
                 .build();
 
         MessageEnhancementAudit saved = auditRepository.save(audit);
@@ -75,7 +81,10 @@ public class MessageEnhancementAuditService {
             UUID conversationId,
             Long responseTimeMs,
             String userAgent,
-            String ipAddress) {
+            String ipAddress,
+            String openaiSystemMessage,
+            String openaiUserMessage,
+            String openaiFullPayload) {
 
         log.debug("Recording failed message enhancement for user: {} with agent: {}", 
                  user.getId(), aiAgent.getName());
@@ -97,6 +106,9 @@ public class MessageEnhancementAuditService {
                 .errorMessage(errorMessage)
                 .userAgent(userAgent)
                 .ipAddress(ipAddress)
+                .openaiSystemMessage(openaiSystemMessage)
+                .openaiUserMessage(openaiUserMessage)
+                .openaiFullPayload(openaiFullPayload)
                 .build();
 
         MessageEnhancementAudit saved = auditRepository.save(audit);
