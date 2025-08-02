@@ -41,6 +41,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [canCreateAgent, setCanCreateAgent] = useState(true);
   const [remainingSlots, setRemainingSlots] = useState(1);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<AIAgent | null>(null);
 
   // Carregar modelo padrão
   useEffect(() => {
@@ -274,27 +276,31 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
 
   // Excluir agente
   const handleDeleteAgent = (agent: AIAgent) => {
-    Modal.confirm({
-      title: "Excluir Agente",
-      content: `Tem certeza que deseja excluir o agente "${agent.name}"? Esta ação não pode ser desfeita.`,
-      okText: "Excluir",
-      cancelText: "Cancelar",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await aiAgentApi.deleteAIAgent(agent.id);
-          message.success(`Agente "${agent.name}" excluído com sucesso!`);
-          
-          // Pequeno delay para garantir que o backend processou a exclusão
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await refreshAgentData();
-        } catch (error: unknown) {
-          console.error("Erro ao excluir agente:", error);
-          const errorMessage = (error as Error)?.message || "Erro ao excluir agente";
-          message.error(`Erro ao excluir agente: ${errorMessage}`);
-        }
-      },
-    });
+    console.log("🗑️ [DEBUG] handleDeleteAgent called for:", agent.name);
+    setAgentToDelete(agent);
+    setShowDeleteModal(true);
+  };
+
+  // Confirmar exclusão do agente
+  const handleConfirmDelete = async () => {
+    if (!agentToDelete) return;
+
+    console.log("🗑️ [DEBUG] Confirm delete for:", agentToDelete.name);
+    try {
+      await aiAgentApi.deleteAIAgent(agentToDelete.id);
+      message.success(`Agente "${agentToDelete.name}" excluído com sucesso!`);
+      
+      // Pequeno delay para garantir que o backend processou a exclusão
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await refreshAgentData();
+    } catch (error: unknown) {
+      console.error("Erro ao excluir agente:", error);
+      const errorMessage = (error as Error)?.message || "Erro ao excluir agente";
+      message.error(`Erro ao excluir agente: ${errorMessage}`);
+    } finally {
+      setShowDeleteModal(false);
+      setAgentToDelete(null);
+    }
   };
 
   // Criar novo agente
@@ -406,14 +412,22 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                           key: "edit",
                           label: "Editar",
                           icon: <Edit3 className="w-4 h-4" />,
-                          onClick: () => handleEditAgent(agent),
+                          onClick: (e) => {
+                            console.log("🔧 [DEBUG] Edit clicked for:", agent.name);
+                            e?.domEvent?.stopPropagation();
+                            handleEditAgent(agent);
+                          },
                         },
                         {
                           key: "delete",
                           label: "Excluir",
                           icon: <Trash2 className="w-4 h-4" />,
                           danger: true,
-                          onClick: () => handleDeleteAgent(agent),
+                          onClick: (e) => {
+                            console.log("🗑️ [DEBUG] Delete menu item clicked for:", agent.name);
+                            e?.domEvent?.stopPropagation();
+                            handleDeleteAgent(agent);
+                          },
                         },
                       ],
                     }}
@@ -690,6 +704,26 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal
+        title="Excluir Agente"
+        open={showDeleteModal}
+        onOk={handleConfirmDelete}
+        onCancel={() => {
+          setShowDeleteModal(false);
+          setAgentToDelete(null);
+        }}
+        okText="Excluir"
+        cancelText="Cancelar"
+        okType="danger"
+        centered
+      >
+        <p>
+          Tem certeza que deseja excluir o agente <strong>"{agentToDelete?.name}"</strong>? 
+          Esta ação não pode ser desfeita.
+        </p>
       </Modal>
     </div>
   );
