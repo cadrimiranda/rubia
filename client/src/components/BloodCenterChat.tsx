@@ -962,7 +962,8 @@ export const BloodCenterChat: React.FC = () => {
       updateState({ messageInput: originalMessage + ' ✨' });
 
       const { aiAgentApi } = await import('../api/services/aiAgentApi');
-      const enhancedMessage = await aiAgentApi.enhanceMessage(user.companyId, originalMessage);
+      const conversationId = state.selectedDonor?.conversationId;
+      const enhancedMessage = await aiAgentApi.enhanceMessage(user.companyId, originalMessage, conversationId);
       
       console.log('✅ [AI] Message enhanced successfully');
       

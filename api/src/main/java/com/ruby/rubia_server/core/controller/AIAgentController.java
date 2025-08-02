@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Map;
@@ -281,7 +283,8 @@ public class AIAgentController {
     @PostMapping("/company/{companyId}/enhance-message")
     public ResponseEntity<Map<String, String>> enhanceMessage(
             @PathVariable UUID companyId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
         
         log.debug("Enhancing message for company: {}", companyId);
 
@@ -295,13 +298,52 @@ public class AIAgentController {
         }
 
         try {
-            String enhancedMessage = aiAgentService.enhanceMessage(companyId, originalMessage);
+            // Get current user from security context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UUID userId = authentication != null && authentication.getPrincipal() instanceof UUID 
+                ? (UUID) authentication.getPrincipal() 
+                : null;
+
+            // Extract conversation ID if provided
+            String conversationIdStr = request.get("conversationId");
+            UUID conversationId = conversationIdStr != null ? UUID.fromString(conversationIdStr) : null;
+
+            // Extract request metadata
+            String userAgent = httpRequest.getHeader("User-Agent");
+            String ipAddress = getClientIpAddress(httpRequest);
+
+            String enhancedMessage = aiAgentService.enhanceMessage(
+                companyId, 
+                originalMessage, 
+                userId, 
+                conversationId, 
+                userAgent, 
+                ipAddress
+            );
+            
             return ResponseEntity.ok(Map.of("enhancedMessage", enhancedMessage));
         } catch (Exception e) {
             log.error("Error enhancing message for company {}: {}", companyId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to enhance message: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Extrai o endereço IP real do cliente considerando proxies
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader != null && !xForwardedForHeader.isEmpty()) {
+            return xForwardedForHeader.split(",")[0].trim();
+        }
+        
+        String xRealIpHeader = request.getHeader("X-Real-IP");
+        if (xRealIpHeader != null && !xRealIpHeader.isEmpty()) {
+            return xRealIpHeader;
+        }
+        
+        return request.getRemoteAddr();
     }
 
     private AIAgentDTO convertToDTO(AIAgent aiAgent) {

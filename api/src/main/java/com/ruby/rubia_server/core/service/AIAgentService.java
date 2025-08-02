@@ -5,9 +5,11 @@ import com.ruby.rubia_server.core.dto.UpdateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
 import com.ruby.rubia_server.core.entity.AIModel;
 import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.repository.AIAgentRepository;
 import com.ruby.rubia_server.core.repository.AIModelRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,7 +30,9 @@ public class AIAgentService {
     private final AIAgentRepository aiAgentRepository;
     private final CompanyRepository companyRepository;
     private final AIModelRepository aiModelRepository;
+    private final UserRepository userRepository;
     private final OpenAIService openAIService;
+    private final MessageEnhancementAuditService auditService;
 
     public AIAgent createAIAgent(CreateAIAgentDTO createDTO) {
         log.info("Creating AI agent with name: {} for company: {}", createDTO.getName(), createDTO.getCompanyId());
@@ -213,13 +217,35 @@ public class AIAgentService {
         return aiAgentRepository.findByTemperament(temperament);
     }
 
-    public String enhanceMessage(UUID companyId, String originalMessage) {
+    public String enhanceMessage(UUID companyId, String originalMessage, UUID userId, UUID conversationId, String userAgent, String ipAddress) {
         log.debug("Enhancing message for company: {} with text: {}", companyId, originalMessage);
+
+        long startTime = System.currentTimeMillis();
+
+        // Get company entity
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + companyId));
+
+        // Get user entity (only if userId is provided)
+        User user = null;
+        if (userId != null) {
+            user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+            
+            // Validate user belongs to company
+            if (!user.getCompany().getId().equals(companyId)) {
+                throw new RuntimeException("User does not belong to the specified company");
+            }
+        }
 
         // Get the first active AI agent for the company
         List<AIAgent> activeAgents = getActiveAIAgentsByCompanyId(companyId);
         if (activeAgents.isEmpty()) {
-            throw new RuntimeException("Nenhum agente IA ativo encontrado para esta empresa. Configure um agente primeiro.");
+            String errorMessage = "Nenhum agente IA ativo encontrado para esta empresa. Configure um agente primeiro.";
+            
+            // Record failed enhancement (without agent, so we'll handle this differently)
+            log.error("No active AI agent found for company: {}", companyId);
+            throw new RuntimeException(errorMessage);
         }
 
         AIAgent agent = activeAgents.get(0); // Use the first active agent
@@ -227,18 +253,59 @@ public class AIAgentService {
         // Create enhancement prompt based on the agent's temperament and characteristics
         String enhancementPrompt = buildEnhancementPrompt(agent, originalMessage);
 
-        // Use OpenAI service to enhance the message
         try {
-            return openAIService.enhanceTemplate(
+            // Use OpenAI service to enhance the message
+            String enhancedMessage = openAIService.enhanceTemplate(
                 enhancementPrompt,
                 agent.getAiModel().getName(),
                 agent.getTemperature().doubleValue(),
                 agent.getMaxResponseLength()
             );
+
+            long responseTime = System.currentTimeMillis() - startTime;
+
+            // Record successful enhancement
+            auditService.recordSuccessfulEnhancement(
+                company,
+                user,
+                agent,
+                originalMessage,
+                enhancedMessage,
+                conversationId,
+                estimateTokensUsed(originalMessage, enhancedMessage), // Estimate tokens used
+                responseTime,
+                userAgent,
+                ipAddress
+            );
+
+            log.info("Message enhanced successfully for company: {} in {}ms", companyId, responseTime);
+            return enhancedMessage;
+
         } catch (Exception e) {
-            log.error("Error enhancing message: {}", e.getMessage(), e);
-            throw new RuntimeException("Erro ao melhorar mensagem: " + e.getMessage());
+            long responseTime = System.currentTimeMillis() - startTime;
+            String errorMessage = "Erro ao melhorar mensagem: " + e.getMessage();
+
+            // Record failed enhancement
+            auditService.recordFailedEnhancement(
+                company,
+                user,
+                agent,
+                originalMessage,
+                errorMessage,
+                conversationId,
+                responseTime,
+                userAgent,
+                ipAddress
+            );
+
+            log.error("Error enhancing message for company: {} - {}", companyId, e.getMessage(), e);
+            throw new RuntimeException(errorMessage);
         }
+    }
+
+    // Overload method for backward compatibility
+    public String enhanceMessage(UUID companyId, String originalMessage) {
+        return enhanceMessage(companyId, originalMessage, null, null, null, null);
     }
 
     private String buildEnhancementPrompt(AIAgent agent, String originalMessage) {
@@ -273,5 +340,16 @@ public class AIAgentService {
             default:
                 return "Mantenha um tom equilibrado, claro e respeitoso, adequado ao contexto de saúde e bem-estar social.";
         }
+    }
+
+    /**
+     * Estima o número de tokens usados baseado no comprimento das mensagens
+     * Esta é uma estimativa aproximada, idealmente seria obtida da resposta da OpenAI
+     */
+    private Integer estimateTokensUsed(String originalMessage, String enhancedMessage) {
+        // Estimativa básica: 1 token ≈ 4 caracteres (para português)
+        int inputTokens = originalMessage.length() / 4;
+        int outputTokens = enhancedMessage.length() / 4;
+        return inputTokens + outputTokens;
     }
 }

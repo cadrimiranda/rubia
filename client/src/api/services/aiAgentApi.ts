@@ -233,11 +233,16 @@ class AIAgentApi {
   }
 
   // Enhance message using company's AI agent
-  async enhanceMessage(companyId: string, message: string): Promise<string> {
+  async enhanceMessage(companyId: string, message: string, conversationId?: string): Promise<string> {
     console.log('🔮 [AI] Enhancing message for company:', companyId);
+    const payload: { message: string; conversationId?: string } = { message };
+    if (conversationId) {
+      payload.conversationId = conversationId;
+    }
+    
     const response = await axios.post(
       `${API_BASE_URL}/api/ai-agents/company/${companyId}/enhance-message`,
-      { message },
+      payload,
       { headers: this.getAuthHeaders() }
     )
     return response.data.enhancedMessage
