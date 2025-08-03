@@ -20,6 +20,7 @@ interface MessageInputProps {
   onError?: (error: string) => void;
   onAudioRecorded?: (audioBlob: Blob) => void;
   isLoading?: boolean;
+  isAudioSending?: boolean;
   recordingCooldownMs?: number;
   maxRecordingTimeMs?: number;
   maxFileSizeMB?: number;
@@ -42,6 +43,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onError,
   onAudioRecorded,
   isLoading = false,
+  isAudioSending = false,
   recordingCooldownMs = 2000,
   maxRecordingTimeMs = 300000, // 5 minutos
   maxFileSizeMB = 16,
@@ -285,9 +287,21 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               </button>
               <button
                 onClick={sendAudio}
-                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                disabled={isAudioSending}
+                className={`px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 ${
+                  isAudioSending 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-500 hover:bg-green-600'
+                } text-white`}
               >
-                Enviar
+                {isAudioSending ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  'Enviar'
+                )}
               </button>
             </div>
           </div>

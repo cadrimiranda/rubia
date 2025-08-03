@@ -73,6 +73,7 @@ export const BloodCenterChat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [isAudioSending, setIsAudioSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<ChatStatus>("ativos");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -115,6 +116,11 @@ export const BloodCenterChat: React.FC = () => {
     webSocketMessages.forEach((wsMsg) => {
       if (!allMessages.some((localMsg) => localMsg.id === wsMsg.id)) {
         allMessages.push(wsMsg);
+        
+        // Se recebeu uma mensagem de áudio do usuário via WebSocket, desabilitar loading
+        if (wsMsg.messageType === 'audio' && wsMsg.isFromUser && isAudioSending) {
+          setIsAudioSending(false);
+        }
       }
     });
 
@@ -1060,6 +1066,12 @@ export const BloodCenterChat: React.FC = () => {
       return;
     }
 
+    if (isAudioSending) {
+      handleMediaError("Aguarde o envio do áudio anterior");
+      return;
+    }
+
+    setIsAudioSending(true);
     let conversationId = state.selectedDonor.conversationId;
 
     // Verificar se é a primeira mensagem de um novo contato
@@ -1108,6 +1120,7 @@ export const BloodCenterChat: React.FC = () => {
         console.error("❌ Erro ao criar conversa:", error);
         handleMediaError("Não foi possível criar a conversa. Tente novamente.");
         setIsCreatingConversation(false);
+        setIsAudioSending(false);
         return;
       } finally {
         setIsCreatingConversation(false);
@@ -1116,6 +1129,7 @@ export const BloodCenterChat: React.FC = () => {
 
     if (!conversationId) {
       handleMediaError("ID da conversa não encontrado");
+      setIsAudioSending(false);
       return;
     }
 
@@ -1141,6 +1155,7 @@ export const BloodCenterChat: React.FC = () => {
     } catch (error) {
       console.error("❌ Erro ao enviar áudio:", error);
       handleMediaError("Não foi possível enviar o áudio. Tente novamente.");
+      setIsAudioSending(false);
     }
   };
 
@@ -1674,6 +1689,7 @@ export const BloodCenterChat: React.FC = () => {
                 onEnhanceMessage={handleEnhanceMessage}
                 onError={handleMediaError}
                 onAudioRecorded={handleAudioRecorded}
+                isAudioSending={isAudioSending}
                 maxRecordingTimeMs={300000}
                 maxFileSizeMB={16}
               />
