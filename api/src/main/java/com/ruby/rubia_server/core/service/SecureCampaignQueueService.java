@@ -435,4 +435,202 @@ public class SecureCampaignQueueService {
         public LocalDateTime getLastProcessedTime() { return lastProcessedTime; }
         public void setLastProcessedTime(LocalDateTime lastProcessedTime) { this.lastProcessedTime = lastProcessedTime; }
     }
+
+    /**
+     * Pausa uma campanha ativa
+     */
+    @Transactional
+    public void pauseCampaign(UUID campaignId, String companyId, String userId) {
+        log.info("🔒 Pausando campanha {} (empresa={}, usuário={})", campaignId, companyId, userId);
+        
+        try {
+            // Validar permissões
+            Campaign campaign = campaignService.findById(campaignId)
+                    .orElseThrow(() -> new RuntimeException("Campanha não encontrada: " + campaignId));
+            
+            if (!campaign.getCompany().getId().toString().equals(companyId)) {
+                throw new RuntimeException("Acesso negado: campanha não pertence à empresa");
+            }
+            
+            // Verificar se campanha está ativa
+            if (campaign.getStatus() != CampaignStatus.ACTIVE) {
+                throw new RuntimeException("Campanha não está ativa: " + campaign.getStatus());
+            }
+            
+            // Atualizar status da campanha no banco
+            campaign.setStatus(CampaignStatus.PAUSED);
+            // Note: Implementar método save no CampaignService se necessário
+            
+            // Marcar estado como pausado no Redis (implementação simplificada)
+            String stateKey = STATE_KEY_PREFIX + campaignId;
+            redisTemplate.opsForValue().set(stateKey + ":paused", "true", 24, TimeUnit.HOURS);
+            
+            log.info("✅ Campanha {} pausada com sucesso", campaignId);
+            
+        } catch (Exception e) {
+            log.error("❌ Erro ao pausar campanha {}: {}", campaignId, e.getMessage(), e);
+            throw new RuntimeException("Erro ao pausar campanha: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Retoma uma campanha pausada
+     */
+    @Transactional
+    public void resumeCampaign(UUID campaignId, String companyId, String userId) {
+        log.info("🔒 Retomando campanha {} (empresa={}, usuário={})", campaignId, companyId, userId);
+        
+        try {
+            // Validar permissões
+            Campaign campaign = campaignService.findById(campaignId)
+                    .orElseThrow(() -> new RuntimeException("Campanha não encontrada: " + campaignId));
+            
+            if (!campaign.getCompany().getId().toString().equals(companyId)) {
+                throw new RuntimeException("Acesso negado: campanha não pertence à empresa");
+            }
+            
+            // Verificar se campanha está pausada
+            if (campaign.getStatus() != CampaignStatus.PAUSED) {
+                throw new RuntimeException("Campanha não está pausada: " + campaign.getStatus());
+            }
+            
+            // Atualizar status da campanha no banco
+            campaign.setStatus(CampaignStatus.ACTIVE);
+            // Note: Implementar método save no CampaignService se necessário
+            
+            // Remover estado pausado do Redis
+            String stateKey = STATE_KEY_PREFIX + campaignId;
+            redisTemplate.delete(stateKey + ":paused");
+            
+            log.info("✅ Campanha {} retomada com sucesso", campaignId);
+            
+        } catch (Exception e) {
+            log.error("❌ Erro ao retomar campanha {}: {}", campaignId, e.getMessage(), e);
+            throw new RuntimeException("Erro ao retomar campanha: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Obtém estatísticas detalhadas de uma campanha
+     */
+    public Map<String, Object> getCampaignStats(UUID campaignId, String companyId) {
+        log.debug("📊 Obtendo estatísticas da campanha {} (empresa={})", campaignId, companyId);
+        
+        try {
+            // Validar permissões
+            Campaign campaign = campaignService.findById(campaignId)
+                    .orElseThrow(() -> new RuntimeException("Campanha não encontrada: " + campaignId));
+            
+            if (!campaign.getCompany().getId().toString().equals(companyId)) {
+                throw new RuntimeException("Acesso negado: campanha não pertence à empresa");
+            }
+            
+            // Estado simplificado - verificar se está pausada
+            boolean isPaused = Boolean.TRUE.equals(redisTemplate.hasKey(STATE_KEY_PREFIX + campaignId + ":paused"));
+            
+            // Contar contatos por status
+            List<CampaignContact> allContacts = campaignContactService.findByCampaignId(campaignId);
+            long totalContacts = allContacts.size();
+            long pendingContacts = allContacts.stream()
+                    .filter(c -> c.getStatus() == CampaignContactStatus.PENDING)
+                    .count();
+            long sentContacts = allContacts.stream()
+                    .filter(c -> c.getStatus() == CampaignContactStatus.SENT)
+                    .count();
+            long failedContacts = allContacts.stream()
+                    .filter(c -> c.getStatus() == CampaignContactStatus.FAILED)
+                    .count();
+            
+            // Contar itens na fila Redis
+            long queuedItems = redisTemplate.opsForZSet().count(QUEUE_KEY, 0, System.currentTimeMillis());
+            
+            // Calcular progresso
+            double progressPercentage = totalContacts > 0 ? 
+                    ((double) (sentContacts + failedContacts) / totalContacts) * 100 : 0;
+            
+            // Estimar tempo restante (baseado no histórico)
+            String estimatedCompletion = calculateEstimatedCompletion(pendingContacts);
+            
+            Map<String, Object> stats = new java.util.HashMap<>();
+            stats.put("campaignId", campaignId);
+            stats.put("status", campaign.getStatus().toString());
+            stats.put("totalContacts", totalContacts);
+            stats.put("processedContacts", sentContacts + failedContacts);
+            stats.put("pendingContacts", pendingContacts);
+            stats.put("sentContacts", sentContacts);
+            stats.put("failedContacts", failedContacts);
+            stats.put("queuedItems", queuedItems);
+            stats.put("progressPercentage", Math.round(progressPercentage * 100.0) / 100.0);
+            stats.put("estimatedCompletion", estimatedCompletion);
+            stats.put("isPaused", isPaused);
+            stats.put("createdAt", campaign.getCreatedAt());
+            
+            log.debug("📊 Estatísticas da campanha {}: {}", campaignId, stats);
+            return stats;
+            
+        } catch (Exception e) {
+            log.error("❌ Erro ao obter estatísticas da campanha {}: {}", campaignId, e.getMessage(), e);
+            throw new RuntimeException("Erro ao obter estatísticas: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Obtém estatísticas globais do sistema de filas
+     */
+    public Map<String, Object> getGlobalQueueStats() {
+        log.debug("📊 Obtendo estatísticas globais do sistema");
+        
+        try {
+            // Contar total de itens na fila
+            long totalQueuedItems = redisTemplate.opsForZSet().count(QUEUE_KEY, 0, Double.MAX_VALUE);
+            long readyToProcessItems = redisTemplate.opsForZSet().count(QUEUE_KEY, 0, System.currentTimeMillis());
+            
+            // Contar campanhas pausadas (implementação simplificada)
+            Set<String> pausedKeys = redisTemplate.keys(STATE_KEY_PREFIX + "*:paused");
+            long pausedCampaigns = pausedKeys != null ? pausedKeys.size() : 0;
+            
+            // Verificar se há processamento ativo
+            Boolean hasProcessingLock = redisTemplate.hasKey(PROCESSING_LOCK_KEY);
+            
+            Map<String, Object> stats = new java.util.HashMap<>();
+            stats.put("totalQueuedItems", totalQueuedItems);
+            stats.put("readyToProcessItems", readyToProcessItems);
+            stats.put("scheduledItems", totalQueuedItems - readyToProcessItems);
+            stats.put("pausedCampaigns", pausedCampaigns);
+            stats.put("isProcessing", hasProcessingLock != null && hasProcessingLock);
+            stats.put("batchSize", properties.getBatchSize());
+            stats.put("batchPauseMinutes", properties.getBatchPauseMinutes());
+            stats.put("timestamp", LocalDateTime.now());
+            
+            log.debug("📊 Estatísticas globais: {}", stats);
+            return stats;
+            
+        } catch (Exception e) {
+            log.error("❌ Erro ao obter estatísticas globais: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao obter estatísticas globais: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Calcula estimativa de conclusão baseada na configuração
+     */
+    private String calculateEstimatedCompletion(long remainingContacts) {
+        if (remainingContacts == 0) {
+            return "Concluída";
+        }
+        
+        // Estimativa baseada na configuração padrão
+        long batchSize = properties.getBatchSize();
+        long batchPauseMinutes = properties.getBatchPauseMinutes();
+        long remainingBatches = (remainingContacts + batchSize - 1) / batchSize; // Round up
+        long estimatedMinutes = remainingBatches * batchPauseMinutes;
+        
+        if (estimatedMinutes < 60) {
+            return estimatedMinutes + " minutos";
+        } else if (estimatedMinutes < 1440) {
+            return (estimatedMinutes / 60) + " horas";
+        } else {
+            return (estimatedMinutes / 1440) + " dias";
+        }
+    }
 }

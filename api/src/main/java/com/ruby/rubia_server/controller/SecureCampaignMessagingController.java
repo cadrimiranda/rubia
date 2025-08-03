@@ -125,8 +125,8 @@ public class SecureCampaignMessagingController {
                 ));
             }
             
-            // TODO: Implementar pausar campanha no Redis
-            // secureCampaignQueueService.pauseCampaign(campaignId, companyId, userId);
+            // Pausar campanha no Redis
+            secureCampaignQueueService.pauseCampaign(campaignId, companyId, userId);
             
             log.info("⏸️ Campanha {} pausada por usuário {} da empresa {}", 
                     campaignId, userId, companyId);
@@ -140,6 +140,53 @@ public class SecureCampaignMessagingController {
             
         } catch (Exception e) {
             log.error("❌ Erro ao pausar campanha {}: {}", campaignId, e.getMessage());
+            
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "error", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Retoma uma campanha pausada (apenas usuários autenticados da empresa)
+     */
+    @PostMapping("/{campaignId}/resume-messaging")
+    @PreAuthorize("hasRole('CAMPAIGN_MANAGER') or hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> resumeSecureCampaignMessaging(
+            @PathVariable UUID campaignId,
+            Authentication authentication) {
+        
+        log.info("🔒 Retomando campanha segura: {} por usuário: {}", 
+                campaignId, authentication.getName());
+        
+        try {
+            // Extrair informações do usuário autenticado
+            String userId = extractUserId(authentication);
+            String companyId = extractCompanyId(authentication);
+            
+            if (!hasAccessToCampaign(campaignId, companyId, userId)) {
+                return ResponseEntity.status(403).body(Map.of(
+                    "success", false,
+                    "error", "Acesso negado à campanha"
+                ));
+            }
+            
+            // Retomar campanha no Redis
+            secureCampaignQueueService.resumeCampaign(campaignId, companyId, userId);
+            
+            log.info("▶️ Campanha {} retomada por usuário {} da empresa {}", 
+                    campaignId, userId, companyId);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Campanha retomada com sucesso",
+                "campaignId", campaignId,
+                "resumedBy", userId
+            ));
+            
+        } catch (Exception e) {
+            log.error("❌ Erro ao retomar campanha {}: {}", campaignId, e.getMessage());
             
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
@@ -168,19 +215,12 @@ public class SecureCampaignMessagingController {
                 ));
             }
             
-            // TODO: Implementar obter estatísticas do Redis
-            // Map<String, Object> stats = secureCampaignQueueService.getCampaignStats(campaignId, companyId);
-            
-            Map<String, Object> stats = Map.of(
-                "campaignId", campaignId,
-                "message", "Estatísticas em desenvolvimento",
-                "accessedBy", userId,
-                "companyId", companyId
-            );
+            Map<String, Object> stats = secureCampaignQueueService.getCampaignStats(campaignId, companyId);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "data", stats
+                "message", "Estatísticas obtidas com sucesso",
+                "stats", stats
             ));
             
         } catch (Exception e) {
@@ -207,16 +247,12 @@ public class SecureCampaignMessagingController {
             String userId = extractUserId(authentication);
             String companyId = extractCompanyId(authentication);
             
-            // TODO: Implementar estatísticas globais do Redis
-            Map<String, Object> stats = Map.of(
-                "message", "Estatísticas globais em desenvolvimento",
-                "accessedBy", userId,
-                "timestamp", java.time.LocalDateTime.now()
-            );
+            Map<String, Object> globalStats = secureCampaignQueueService.getGlobalQueueStats();
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "data", stats
+                "message", "Estatísticas globais obtidas com sucesso",
+                "stats", globalStats
             ));
             
         } catch (Exception e) {
