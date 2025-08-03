@@ -32,6 +32,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
   const {
     addMessage,
     updateConversation,
+    setUserTyping,
   } = useChatStore();
 
   const handleNewMessage = useCallback(
@@ -95,7 +96,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
         );
       }
     },
-    [setUserTyping]
+    []
   );
 
   const connect = useCallback(() => {

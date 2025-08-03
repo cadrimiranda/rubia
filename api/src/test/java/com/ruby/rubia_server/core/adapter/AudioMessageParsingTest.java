@@ -20,7 +20,7 @@ public class AudioMessageParsingTest extends AbstractIntegrationTest {
     @BeforeEach
     void setUp() {
         PhoneService phoneService = new PhoneService();
-        adapter = new ZApiAdapter(phoneService);
+        adapter = new ZApiAdapter(new org.springframework.web.client.RestTemplate(), phoneService);
         objectMapper = new ObjectMapper();
     }
     

@@ -23,6 +23,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   messageInput,
   attachments,
   pendingMedia,
+  draftMessage,
   onMessageChange,
   onSendMessage,
   onFileUpload,

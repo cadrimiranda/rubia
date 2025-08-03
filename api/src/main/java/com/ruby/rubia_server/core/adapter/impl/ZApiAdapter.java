@@ -44,8 +44,8 @@ public class ZApiAdapter implements MessagingAdapter {
     private final RestTemplate restTemplate;
     private final PhoneService phoneService;
 
-    public ZApiAdapter(PhoneService phoneService) {
-        this.restTemplate = new RestTemplate();
+    public ZApiAdapter(RestTemplate restTemplate, PhoneService phoneService) {
+        this.restTemplate = restTemplate;
         this.phoneService = phoneService;
     }
 

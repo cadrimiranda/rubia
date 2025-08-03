@@ -90,17 +90,22 @@ export interface Message {
   id: string;
   senderId: string;
   content: string;
-  timestamp: string;
+  timestamp: Date;
   isFromUser: boolean;
   isAI?: boolean;
   messageType: 'text' | 'image' | 'file' | 'audio';
-  status: 'sent' | 'delivered' | 'read' | 'error';
+  status: 'sending' | 'sent' | 'delivered' | 'read';
   mediaUrl?: string;
   mimeType?: string;
   audioDuration?: number;
   attachments?: FileAttachment[];
   media?: ConversationMedia[];
   campaignId?: string;
+  externalMessageId?: string;
+  isAiGenerated?: boolean;
+  aiConfidence?: number;
+  deliveredAt?: Date;
+  readAt?: Date;
 }
 
 export interface ContextMenu {

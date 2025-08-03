@@ -651,6 +651,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     searchMessages: async (query: string) => {
       try {
         const response = await messageApi.search(query);
+        console.log("Search results:", response);
         // TODO: implementar exibição dos resultados
       } catch (error) {
         console.error("Erro na busca de mensagens:", error);
