@@ -60,11 +60,11 @@ class WebhookSimpleTest extends AbstractIntegrationTest {
         // Act - Parse message
         IncomingMessage result = zApiAdapter.parseIncomingMessage(webhookPayload);
 
-        // Assert - Message parsed correctly with swapped from/to
+        // Assert - Message parsed correctly (from/to as provided in payload)
         assertThat(result).isNotNull();
         assertThat(result.getMessageId()).isEqualTo("MSG456");
-        assertThat(result.getFrom()).isEqualTo("5511888888888"); // ConnectedPhone when fromMe=true
-        assertThat(result.getTo()).isEqualTo("5511999999999"); // Phone when fromMe=true
+        assertThat(result.getFrom()).isEqualTo("5511999999999"); // Phone as provided
+        assertThat(result.getTo()).isEqualTo("5511888888888"); // ConnectedPhone as provided
         assertThat(result.getBody()).isEqualTo("Olá! Como posso ajudar?");
         assertThat(result.isFromMe()).isTrue();
         assertThat(result.getSenderName()).isEqualTo("Eu");
