@@ -207,7 +207,7 @@ class WebSocketClient {
     try {
       // Separar headers e body da mensagem STOMP
       const parts = rawData.split('\n\n')
-      const headersPart = parts[0]
+      const _headersPart = parts[0]
       const bodyPart = parts[1]?.replace(/\u0000$/, '') // Remove null terminator
       
       // Parsear body como JSON

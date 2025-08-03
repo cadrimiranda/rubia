@@ -553,9 +553,9 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
 
       try {
         if (chat.isPinned) {
-          await conversationApi.unpin(chatId);
+          await (conversationApi as any).unpin(chatId);
         } else {
-          await conversationApi.pin(chatId);
+          await (conversationApi as any).pin(chatId);
         }
 
         // Atualiza chat local
@@ -710,8 +710,8 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
             return hours * 60 + minutes;
           };
 
-          const timeA = parseTime(a.timestamp || "00:00");
-          const timeB = parseTime(b.timestamp || "00:00");
+          const timeA = parseTime(String(a.timestamp || "00:00"));
+          const timeB = parseTime(String(b.timestamp || "00:00"));
 
           return timeA - timeB;
         });

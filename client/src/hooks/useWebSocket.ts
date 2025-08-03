@@ -32,7 +32,6 @@ export const useWebSocket = (): UseWebSocketReturn => {
   const {
     addMessage,
     updateConversation,
-    setTypingUser: setUserTyping,
   } = useChatStore();
 
   const handleNewMessage = useCallback(
@@ -133,7 +132,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
       heartbeatOutgoing: 4000,
     });
 
-    client.onConnect = (frame: IFrame) => {
+    client.onConnect = () => {
       setIsConnected(true);
 
       if (!user?.companyId) {
@@ -189,12 +188,12 @@ export const useWebSocket = (): UseWebSocketReturn => {
       subscriptionsRef.current = false;
     };
 
-    client.onWebSocketClose = (event: any) => {
+    client.onWebSocketClose = () => {
       setIsConnected(false);
       subscriptionsRef.current = false;
     };
 
-    client.onDisconnect = (frame: IFrame) => {
+    client.onDisconnect = () => {
       setIsConnected(false);
       subscriptionsRef.current = false;
     };

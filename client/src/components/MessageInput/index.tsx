@@ -2,12 +2,9 @@ import React, { useRef } from "react";
 import { Paperclip, Send, Sparkles, Loader2 } from "lucide-react";
 import type {
   FileAttachment as FileAttachmentType,
-  ConversationMedia,
   PendingMedia,
 } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
-import { MediaUpload } from "../MediaUpload";
-import { MediaPreview } from "../MediaPreview";
 
 interface MessageInputProps {
   messageInput: string;
@@ -30,7 +27,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   messageInput,
   attachments,
   pendingMedia = [],
-  conversationId,
   onMessageChange,
   onSendMessage,
   onFileUpload,
@@ -39,7 +35,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onRemovePendingMedia,
   onKeyPress,
   onEnhanceMessage,
-  onError,
   isLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);

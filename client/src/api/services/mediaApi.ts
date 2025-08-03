@@ -21,8 +21,7 @@ export const mediaApi = {
   // Testar se a conversa existe e se temos acesso
   testConversationAccess: async (conversationId: string): Promise<boolean> => {
     try {
-      // Tentar acessar a conversa primeiro
-      const response = await apiClient.get(
+      await apiClient.get(
         `/api/conversations/${conversationId}`
       );
       return true;

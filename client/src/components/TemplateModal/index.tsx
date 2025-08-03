@@ -200,7 +200,6 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                   message="Placeholder obrigatório"
                   description="Inclua {{nome}} na sua mensagem para personalizá-la com o nome do doador"
                   type="warning"
-                  size="small"
                   showIcon
                 />
               )}

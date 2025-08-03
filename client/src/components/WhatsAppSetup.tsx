@@ -34,7 +34,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
 
   // Polling para atualizar status da instância quando estiver no step 2 (QR code)
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: number | null = null;
     
     if (currentStep === 2 && selectedInstance && selectedInstance.status !== 'CONNECTED') {
       interval = setInterval(async () => {
@@ -70,8 +70,8 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       
       // Para cada instância, forçar verificação de status se for suspeita de estar desconectada
       for (const instance of status.instances) {
-        if (instance.status === 'CONNECTED' && instance.lastStatusCheck) {
-          const lastCheck = new Date(instance.lastStatusCheck);
+        if (instance.status === 'CONNECTED' && (instance as any).lastStatusCheck) {
+          const lastCheck = new Date((instance as any).lastStatusCheck);
           const now = new Date();
           const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60);
           

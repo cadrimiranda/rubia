@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Upload,
-  User,
   Check,
   Plus,
   Edit3,

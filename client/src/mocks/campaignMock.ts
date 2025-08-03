@@ -101,7 +101,7 @@ const generateContactData = (): CreateCustomerRequest => {
  */
 export const processCampaignFile = async (
   campaignData: CampaignData,
-  file: File,
+  _file: File,
   selectedTemplates: ConversationTemplate[]
 ): Promise<{
   campaignId: string
@@ -118,7 +118,6 @@ export const processCampaignFile = async (
   const campaignId = `camp_${Date.now()}`
   
   // Fixar em exatamente 20 contatos para novas campanhas criadas
-  const contactsFromFile = 20
   const contactsProcessed = 20
   
   
@@ -159,6 +158,7 @@ export const processCampaignFile = async (
       whatsappId: contactData.whatsappId,
       profileUrl: contactData.profileUrl,
       isBlocked: false,
+      companyId: 'company_1',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -191,7 +191,6 @@ export const processCampaignFile = async (
     const conversation: ConversationDTO = {
       id: `conv_${campaignId}_${i}`,
       customerId: contact.customer.id,
-      customer: contact.customer,
       status: 'ENTRADA', // Sempre ENTRADA = Ativos
       channel: 'WHATSAPP',
       priority: 1,
@@ -261,10 +260,10 @@ const generateAutomaticResponse = async (
     'Olá! Qual o endereço do centro de doação?'
   ]
   
-  const response = responses[Math.floor(Math.random() * responses.length)]
+  const _response = responses[Math.floor(Math.random() * responses.length)]
   
   // Simular delay de resposta (30 segundos a 5 minutos)
-  const responseDelay = Math.floor(Math.random() * 270 + 30) * 1000
+  const _responseDelay = Math.floor(Math.random() * 270 + 30) * 1000
   
   setTimeout(() => {
     // const responseMessage: MessageDTO = {

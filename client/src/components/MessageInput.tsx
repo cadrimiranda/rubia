@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { Send, Paperclip, Sparkles } from "lucide-react";
 import type { FileAttachment, PendingMedia } from "../types/types";
-import { messageApi } from "../api/services/messageApi";
-import type { MessageDTO } from "../api/types";
 
 interface MessageInputProps {
   messageInput: string;
@@ -25,8 +23,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   messageInput,
   attachments,
   pendingMedia,
-  conversationId,
-  draftMessage,
   onMessageChange,
   onSendMessage,
   onFileUpload,
@@ -34,7 +30,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onRemovePendingMedia,
   onKeyPress,
   onEnhanceMessage,
-  onError,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 

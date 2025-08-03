@@ -91,7 +91,7 @@ export const BloodCenterChat: React.FC = () => {
     useRef<(status?: ChatStatus, reset?: boolean) => Promise<void>>();
 
   // WebSocket para atualizações em tempo real
-  const webSocket = useWebSocket();
+  useWebSocket();
 
   // Chat store para mensagens em tempo real
   const { messagesCache } = useChatStore();
@@ -289,7 +289,7 @@ export const BloodCenterChat: React.FC = () => {
 
         // Atualizar estado da paginação
         currentPageRef.current = pageToLoad;
-        const hasMore = pageToLoad + 1 < response.page.totalPages;
+        const hasMore = pageToLoad + 1 < (response.totalPages || 0);
         setHasMorePages(hasMore);
 
         if (!hasMore) {
@@ -445,14 +445,6 @@ export const BloodCenterChat: React.FC = () => {
         }
 
         // Mostrar feedback
-        const statusLabels: Record<ChatStatus, string> = {
-          ativos: "Ativo",
-          aguardando: "Aguardando",
-          inativo: "Inativo",
-          entrada: "Entrada",
-          esperando: "Esperando",
-          finalizados: "Finalizados",
-        };
 
         // Se mudou para o status atual, recarregar para mostrar na lista
         if (newStatus === currentStatus) {
@@ -755,6 +747,8 @@ export const BloodCenterChat: React.FC = () => {
               senderId: msg.senderId,
               timestamp: msg.timestamp,
               isFromUser: !msg.isAI,
+              messageType: msg.messageType || 'text',
+              status: 'delivered',
               attachments: msg.attachments,
               media: msg.media,
             })),
@@ -1086,6 +1080,9 @@ export const BloodCenterChat: React.FC = () => {
       return;
     }
 
+    // Armazenar conteúdo antes de qualquer processamento
+    const messageContent = state.messageInput;
+    
     let conversationId = state.selectedDonor.conversationId;
 
     // Verificar se é a primeira mensagem de um novo contato
@@ -1172,8 +1169,7 @@ export const BloodCenterChat: React.FC = () => {
       return;
     }
 
-    // Armazenar conteúdo antes de limpar o input
-    const messageContent = state.messageInput;
+    // Conteúdo já foi armazenado no início da função
 
     // Se há mensagem DRAFT, atualizar status para SENT
     if (currentDraftMessage) {
