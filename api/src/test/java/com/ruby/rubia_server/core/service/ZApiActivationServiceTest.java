@@ -7,6 +7,7 @@ import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -371,5 +374,235 @@ class ZApiActivationServiceTest {
         assertTrue(capturedEntity.getHeaders().containsKey("client-token"));
         assertEquals(CLIENT_TOKEN, capturedEntity.getHeaders().getFirst("client-token"));
         assertEquals("application/json", capturedEntity.getHeaders().getFirst("Content-Type"));
+    }
+
+    @Test
+    void shouldUseDynamicInstanceDataFromService() {
+        // Arrange - Different instance data than mock setup
+        Company testCompany = new Company();
+        WhatsAppInstance dynamicInstance = WhatsAppInstance.builder()
+            .instanceId("dynamic-test-instance")
+            .accessToken("dynamic-test-token")
+            .build();
+            
+        when(companyContextUtil.getCurrentCompany()).thenReturn(testCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(testCompany))
+            .thenReturn(Optional.of(dynamicInstance));
+
+        Map<String, Object> mockResponse = Map.of("connected", "true");
+        ResponseEntity<Map> responseEntity = new ResponseEntity<>(mockResponse, HttpStatus.OK);
+        
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+            .thenAnswer(invocation -> {
+                String url = invocation.getArgument(0);
+                
+                // Verify URL uses dynamic instance data
+                assertTrue(url.contains("dynamic-test-instance"), "URL should contain dynamic instance ID");
+                assertTrue(url.contains("dynamic-test-token"), "URL should contain dynamic token");
+                
+                return responseEntity;
+            });
+
+        // Act
+        ZApiStatus result = zapiActivationService.getInstanceStatus();
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isConnected());
+        
+        // Verify service methods were called
+        verify(companyContextUtil).getCurrentCompany();
+        verify(whatsAppInstanceService).findActiveConnectedInstance(testCompany);
+    }
+
+    @Test
+    void shouldFallbackToConfiguringInstanceWhenNoConnectedInstance() {
+        // Arrange - No connected instance but one in configuration
+        Company testCompany = new Company();
+        
+        WhatsAppInstance configuringInstance = WhatsAppInstance.builder()
+            .instanceId("configuring-instance")
+            .accessToken("configuring-token")
+            .status(WhatsAppInstanceStatus.CONFIGURING)
+            .isActive(true)
+            .build();
+
+        List<WhatsAppInstance> allInstances = List.of(configuringInstance);
+        
+        when(companyContextUtil.getCurrentCompany()).thenReturn(testCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(testCompany))
+            .thenReturn(Optional.empty()); // No connected instance
+        when(whatsAppInstanceService.findByCompany(testCompany))
+            .thenReturn(allInstances);
+
+        Map<String, Object> mockResponse = Map.of("connected", "false", "session", "");
+        ResponseEntity<Map> responseEntity = new ResponseEntity<>(mockResponse, HttpStatus.OK);
+        
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+            .thenAnswer(invocation -> {
+                String url = invocation.getArgument(0);
+                
+                // Verify URL uses configuring instance data
+                assertTrue(url.contains("configuring-instance"), "URL should contain configuring instance ID");
+                assertTrue(url.contains("configuring-token"), "URL should contain configuring token");
+                
+                return responseEntity;
+            });
+
+        // Act
+        ZApiStatus result = zapiActivationService.getInstanceStatus();
+
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isConnected());
+        
+        // Verify fallback logic was used
+        verify(whatsAppInstanceService).findActiveConnectedInstance(testCompany);
+        verify(whatsAppInstanceService).findByCompany(testCompany);
+    }
+
+    @Test
+    void shouldHandleInstanceInAwaitingQrScanState() {
+        // Arrange - Instance in QR scan state
+        Company testCompany = new Company();
+        
+        WhatsAppInstance qrScanInstance = WhatsAppInstance.builder()
+            .instanceId("qr-scan-instance")
+            .accessToken("qr-scan-token")
+            .status(WhatsAppInstanceStatus.AWAITING_QR_SCAN)
+            .isActive(true)
+            .build();
+
+        List<WhatsAppInstance> allInstances = List.of(qrScanInstance);
+        
+        when(companyContextUtil.getCurrentCompany()).thenReturn(testCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(testCompany))
+            .thenReturn(Optional.empty());
+        when(whatsAppInstanceService.findByCompany(testCompany))
+            .thenReturn(allInstances);
+
+        byte[] mockQrBytes = "mock-qr-code".getBytes();
+        ResponseEntity<byte[]> responseEntity = new ResponseEntity<>(mockQrBytes, HttpStatus.OK);
+        
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(byte[].class)))
+            .thenAnswer(invocation -> {
+                String url = invocation.getArgument(0);
+                
+                // Verify URL uses QR scan instance data
+                assertTrue(url.contains("qr-scan-instance"), "URL should contain QR scan instance ID");
+                assertTrue(url.contains("qr-scan-token"), "URL should contain QR scan token");
+                
+                return responseEntity;
+            });
+
+        // Act
+        QrCodeResult result = zapiActivationService.getQrCodeBytes();
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isSuccess());
+        assertEquals("bytes", result.getType());
+        assertArrayEquals(mockQrBytes, (byte[]) result.getData());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenNoConfiguredInstanceFound() {
+        // Arrange - Reset mocks and configure no instances with proper configuration
+        reset(companyContextUtil, whatsAppInstanceService);
+        Company testCompany = new Company();
+        
+        WhatsAppInstance notConfiguredInstance = WhatsAppInstance.builder()
+            .instanceId(null) // Missing configuration
+            .accessToken(null)
+            .status(WhatsAppInstanceStatus.NOT_CONFIGURED)
+            .isActive(true)
+            .build();
+
+        List<WhatsAppInstance> allInstances = List.of(notConfiguredInstance);
+        
+        when(companyContextUtil.getCurrentCompany()).thenReturn(testCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(testCompany))
+            .thenReturn(Optional.empty());
+        when(whatsAppInstanceService.findByCompany(testCompany))
+            .thenReturn(allInstances);
+
+        // Act & Assert
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> zapiActivationService.getInstanceStatus()
+        );
+
+        assertEquals("No configured WhatsApp instance found for activation", exception.getMessage());
+        
+        // Verify no REST call was made
+        verify(restTemplate, never()).exchange(
+            anyString(), 
+            eq(HttpMethod.GET), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
+
+    @Test
+    void shouldHandleCompanyContextError() {
+        // Arrange - Reset mocks and configure company context error
+        reset(companyContextUtil, whatsAppInstanceService);
+        when(companyContextUtil.getCurrentCompany())
+            .thenThrow(new IllegalStateException("No company context"));
+
+        // Act & Assert
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> zapiActivationService.getInstanceStatus()
+        );
+
+        assertEquals("Cannot determine active WhatsApp instance", exception.getMessage());
+        
+        // Verify no service calls were made
+        verify(whatsAppInstanceService, never()).findActiveConnectedInstance(any());
+        verify(whatsAppInstanceService, never()).findByCompany(any());
+    }
+
+    @Test
+    void shouldUseConnectedInstanceWhenAvailableDuringActivation() {
+        // Arrange - Both connected and configuring instances available
+        Company testCompany = new Company();
+        
+        WhatsAppInstance connectedInstance = WhatsAppInstance.builder()
+            .instanceId("connected-instance")
+            .accessToken("connected-token")
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isPrimary(true)
+            .isActive(true)
+            .build();
+
+        when(companyContextUtil.getCurrentCompany()).thenReturn(testCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(testCompany))
+            .thenReturn(Optional.of(connectedInstance));
+
+        Map<String, Object> mockResponse = Map.of("connected", "true", "session", "active");
+        ResponseEntity<Map> responseEntity = new ResponseEntity<>(mockResponse, HttpStatus.OK);
+        
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+            .thenAnswer(invocation -> {
+                String url = invocation.getArgument(0);
+                
+                // Should prefer connected instance over configuring ones
+                assertTrue(url.contains("connected-instance"), "URL should use connected instance");
+                assertTrue(url.contains("connected-token"), "URL should use connected token");
+                
+                return responseEntity;
+            });
+
+        // Act
+        ZApiStatus result = zapiActivationService.getInstanceStatus();
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isConnected());
+        
+        // Should not need to check for other instances
+        verify(whatsAppInstanceService).findActiveConnectedInstance(testCompany);
+        verify(whatsAppInstanceService, never()).findByCompany(testCompany);
     }
 }

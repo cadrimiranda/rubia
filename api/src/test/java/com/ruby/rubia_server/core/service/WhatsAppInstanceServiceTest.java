@@ -415,4 +415,211 @@ class WhatsAppInstanceServiceTest {
         assertTrue(result.contains(errorInstance));
         assertFalse(result.contains(connectedInstance));
     }
+
+    @Test
+    void findActiveConnectedInstance_WithPrimaryConnectedInstance_ShouldReturnPrimary() {
+        // Arrange
+        WhatsAppInstance primaryInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isPrimary(true)
+            .isActive(true)
+            .instanceId("primary-instance")
+            .accessToken("primary-token")
+            .build();
+
+        WhatsAppInstance secondaryInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isPrimary(false)
+            .isActive(true)
+            .instanceId("secondary-instance")
+            .accessToken("secondary-token")
+            .build();
+
+        List<WhatsAppInstance> connectedInstances = List.of(primaryInstance, secondaryInstance);
+        when(whatsappInstanceRepository.findByCompanyAndStatusAndIsActiveTrue(
+            testCompany, WhatsAppInstanceStatus.CONNECTED))
+            .thenReturn(connectedInstances);
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findActiveConnectedInstance(testCompany);
+
+        // Assert
+        assertTrue(result.isPresent());
+        assertEquals(primaryInstance, result.get());
+        assertTrue(result.get().getIsPrimary());
+        verify(whatsappInstanceRepository).findByCompanyAndStatusAndIsActiveTrue(
+            testCompany, WhatsAppInstanceStatus.CONNECTED);
+    }
+
+    @Test
+    void findActiveConnectedInstance_WithNoPrimaryButConnectedInstances_ShouldReturnFirstConnected() {
+        // Arrange
+        WhatsAppInstance firstInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isPrimary(false)
+            .isActive(true)
+            .instanceId("first-instance")
+            .accessToken("first-token")
+            .build();
+
+        WhatsAppInstance secondInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isPrimary(false)
+            .isActive(true)
+            .instanceId("second-instance")
+            .accessToken("second-token")
+            .build();
+
+        List<WhatsAppInstance> connectedInstances = List.of(firstInstance, secondInstance);
+        when(whatsappInstanceRepository.findByCompanyAndStatusAndIsActiveTrue(
+            testCompany, WhatsAppInstanceStatus.CONNECTED))
+            .thenReturn(connectedInstances);
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findActiveConnectedInstance(testCompany);
+
+        // Assert
+        assertTrue(result.isPresent());
+        assertEquals(firstInstance, result.get());
+        assertFalse(result.get().getIsPrimary());
+    }
+
+    @Test
+    void findActiveConnectedInstance_WithNoConnectedInstances_ShouldReturnEmpty() {
+        // Arrange
+        when(whatsappInstanceRepository.findByCompanyAndStatusAndIsActiveTrue(
+            testCompany, WhatsAppInstanceStatus.CONNECTED))
+            .thenReturn(List.of());
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findActiveConnectedInstance(testCompany);
+
+        // Assert
+        assertTrue(result.isEmpty());
+        verify(whatsappInstanceRepository).findByCompanyAndStatusAndIsActiveTrue(
+            testCompany, WhatsAppInstanceStatus.CONNECTED);
+    }
+
+    @Test
+    void findActiveConnectedInstance_WithMixedStatusInstances_ShouldOnlyConsiderConnected() {
+        // Arrange
+        WhatsAppInstance connectedInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isPrimary(true)
+            .isActive(true)
+            .instanceId("connected-instance")
+            .accessToken("connected-token")
+            .build();
+
+        WhatsAppInstance disconnectedInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.DISCONNECTED)
+            .isPrimary(false)
+            .isActive(true)
+            .instanceId("disconnected-instance")
+            .accessToken("disconnected-token")
+            .build();
+
+        WhatsAppInstance errorInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .status(WhatsAppInstanceStatus.ERROR)
+            .isPrimary(false)
+            .isActive(true)
+            .instanceId("error-instance")
+            .accessToken("error-token")
+            .build();
+
+        // Repository only returns connected instances
+        List<WhatsAppInstance> connectedInstances = List.of(connectedInstance);
+        when(whatsappInstanceRepository.findByCompanyAndStatusAndIsActiveTrue(
+            testCompany, WhatsAppInstanceStatus.CONNECTED))
+            .thenReturn(connectedInstances);
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findActiveConnectedInstance(testCompany);
+
+        // Assert
+        assertTrue(result.isPresent());
+        assertEquals(connectedInstance, result.get());
+        assertEquals(WhatsAppInstanceStatus.CONNECTED, result.get().getStatus());
+    }
+
+    @Test
+    void findInstanceForMessaging_WithValidPhoneNumber_ShouldReturnInstanceByPhone() {
+        // Arrange
+        String phoneNumber = "5511999888777";
+        WhatsAppInstance instanceForPhone = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .phoneNumber(phoneNumber)
+            .status(WhatsAppInstanceStatus.CONNECTED)
+            .isActive(true)
+            .instanceId("phone-instance")
+            .accessToken("phone-token")
+            .build();
+
+        when(whatsappInstanceRepository.findByPhoneNumberAndIsActiveTrue(phoneNumber))
+            .thenReturn(Optional.of(instanceForPhone));
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findInstanceForMessaging(phoneNumber);
+
+        // Assert
+        assertTrue(result.isPresent());
+        assertEquals(instanceForPhone, result.get());
+        assertEquals(phoneNumber, result.get().getPhoneNumber());
+        verify(whatsappInstanceRepository).findByPhoneNumberAndIsActiveTrue(phoneNumber);
+    }
+
+    @Test
+    void findInstanceForMessaging_WithDisconnectedPhoneInstance_ShouldReturnEmpty() {
+        // Arrange
+        String phoneNumber = "5511999888777";
+        WhatsAppInstance disconnectedInstance = WhatsAppInstance.builder()
+            .id(UUID.randomUUID())
+            .company(testCompany)
+            .phoneNumber(phoneNumber)
+            .status(WhatsAppInstanceStatus.DISCONNECTED)
+            .isActive(true)
+            .instanceId("disconnected-instance")
+            .accessToken("disconnected-token")
+            .build();
+
+        when(whatsappInstanceRepository.findByPhoneNumberAndIsActiveTrue(phoneNumber))
+            .thenReturn(Optional.of(disconnectedInstance));
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findInstanceForMessaging(phoneNumber);
+
+        // Assert
+        assertTrue(result.isEmpty());
+        verify(whatsappInstanceRepository).findByPhoneNumberAndIsActiveTrue(phoneNumber);
+    }
+
+    @Test
+    void findInstanceForMessaging_WithInvalidPhoneNumber_ShouldReturnEmpty() {
+        // Arrange
+        String invalidPhoneNumber = "invalid-phone";
+        when(whatsappInstanceRepository.findByPhoneNumberAndIsActiveTrue(invalidPhoneNumber))
+            .thenReturn(Optional.empty());
+
+        // Act
+        Optional<WhatsAppInstance> result = whatsappInstanceService.findInstanceForMessaging(invalidPhoneNumber);
+
+        // Assert
+        assertTrue(result.isEmpty());
+        verify(whatsappInstanceRepository).findByPhoneNumberAndIsActiveTrue(invalidPhoneNumber);
+    }
 }

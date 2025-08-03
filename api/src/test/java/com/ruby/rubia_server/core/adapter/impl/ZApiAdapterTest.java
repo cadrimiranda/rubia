@@ -21,6 +21,7 @@ import java.net.SocketTimeoutException;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -32,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.UUID;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class ZApiAdapterTest {
@@ -67,13 +70,14 @@ class ZApiAdapterTest {
             return cleaned;
         });
         
-        // Mock company and instance setup
+        // Setup default mocks for basic functionality - these will be overridden in specific tests
         Company mockCompany = new Company();
         WhatsAppInstance mockInstance = WhatsAppInstance.builder()
             .instanceId("test-instance")
             .accessToken("test-token")
             .build();
             
+        // Use lenient to allow overriding in individual tests
         lenient().when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
         lenient().when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
             .thenReturn(java.util.Optional.of(mockInstance));
@@ -634,5 +638,198 @@ class ZApiAdapterTest {
             any(HttpEntity.class), 
             eq(Map.class)
         );
+    }
+
+    @Test
+    void shouldUseDynamicInstanceDataFromService() {
+        // Given - Different instance data from service
+        Company mockCompany = new Company();
+        WhatsAppInstance dynamicInstance = WhatsAppInstance.builder()
+            .instanceId("dynamic-instance-123")
+            .accessToken("dynamic-token-456")
+            .build();
+            
+        when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
+            .thenReturn(Optional.of(dynamicInstance));
+
+        String phoneNumber = "+5511999999999";
+        String message = "Dynamic instance test";
+        
+        // Mock successful response
+        Map<String, Object> successResponse = Map.of("messageId", "dynamic_123");
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenAnswer(invocation -> {
+            String url = invocation.getArgument(0);
+            
+            // Verify URL uses dynamic instance data
+            assertTrue(url.contains("dynamic-instance-123"), "URL should contain dynamic instance ID");
+            assertTrue(url.contains("dynamic-token-456"), "URL should contain dynamic token");
+            
+            return ResponseEntity.ok(successResponse);
+        });
+
+        // When
+        MessageResult result = zApiAdapter.sendMessage(phoneNumber, message);
+
+        // Then
+        assertTrue(result.isSuccess());
+        assertEquals("dynamic_123", result.getMessageId());
+        
+        // Verify service methods were called
+        verify(companyContextUtil).getCurrentCompany();
+        verify(whatsAppInstanceService).findActiveConnectedInstance(mockCompany);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenNoActiveInstanceFound() {
+        // Given - Reset mocks and configure no active instance available
+        reset(companyContextUtil, whatsAppInstanceService);
+        Company mockCompany = new Company();
+        when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
+            .thenReturn(Optional.empty());
+
+        String phoneNumber = "+5511999999999";
+        String message = "Test message";
+
+        // When & Then
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class, 
+            () -> zApiAdapter.sendMessage(phoneNumber, message)
+        );
+
+        assertEquals("No connected WhatsApp instance found for company", exception.getMessage());
+        
+        // Verify no REST call was made
+        verify(restTemplate, never()).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInstanceConfigurationIncomplete() {
+        // Given - Reset mocks and configure instance with missing configuration
+        reset(companyContextUtil, whatsAppInstanceService);
+        Company mockCompany = new Company();
+        WhatsAppInstance incompleteInstance = WhatsAppInstance.builder()
+            .instanceId(null) // Missing instance ID
+            .accessToken("some-token")
+            .build();
+            
+        when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
+        when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
+            .thenReturn(Optional.of(incompleteInstance));
+
+        String phoneNumber = "+5511999999999";
+        String message = "Test message";
+
+        // When & Then
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class, 
+            () -> zApiAdapter.sendMessage(phoneNumber, message)
+        );
+
+        assertEquals("WhatsApp instance is not properly configured (missing instanceId or accessToken)", 
+                    exception.getMessage());
+        
+        // Verify no REST call was made
+        verify(restTemplate, never()).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
+
+    @Test
+    void shouldHandleCompanyContextResolutionError() {
+        // Given - Reset mocks and configure error resolving company context
+        reset(companyContextUtil, whatsAppInstanceService);
+        when(companyContextUtil.getCurrentCompany())
+            .thenThrow(new IllegalStateException("No company context found"));
+
+        String phoneNumber = "+5511999999999";
+        String message = "Test message";
+
+        // When & Then
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class, 
+            () -> zApiAdapter.sendMessage(phoneNumber, message)
+        );
+
+        assertEquals("Cannot determine active WhatsApp instance", exception.getMessage());
+        
+        // Verify no instance service call was made
+        verify(whatsAppInstanceService, never()).findActiveConnectedInstance(any());
+        verify(restTemplate, never()).exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        );
+    }
+
+    @Test
+    void shouldUseCorrectInstanceForMultipleCompanies() {
+        // Given - Two different companies with different instances
+        Company company1 = Company.builder().id(UUID.randomUUID()).name("Company 1").build();
+        Company company2 = Company.builder().id(UUID.randomUUID()).name("Company 2").build();
+        
+        WhatsAppInstance instance1 = WhatsAppInstance.builder()
+            .instanceId("company1-instance")
+            .accessToken("company1-token")
+            .build();
+            
+        WhatsAppInstance instance2 = WhatsAppInstance.builder()
+            .instanceId("company2-instance") 
+            .accessToken("company2-token")
+            .build();
+
+        // Mock responses for different companies
+        when(companyContextUtil.getCurrentCompany())
+            .thenReturn(company1)
+            .thenReturn(company2);
+            
+        when(whatsAppInstanceService.findActiveConnectedInstance(company1))
+            .thenReturn(Optional.of(instance1));
+        when(whatsAppInstanceService.findActiveConnectedInstance(company2))
+            .thenReturn(Optional.of(instance2));
+
+        String phoneNumber = "+5511999999999";
+        
+        // Mock successful responses
+        when(restTemplate.exchange(
+            anyString(), 
+            eq(HttpMethod.POST), 
+            any(HttpEntity.class), 
+            eq(Map.class)
+        )).thenAnswer(invocation -> {
+            String url = invocation.getArgument(0);
+            String messageId = url.contains("company1-instance") ? "msg1" : "msg2";
+            return ResponseEntity.ok(Map.of("messageId", messageId));
+        });
+
+        // When - Send messages as different companies
+        MessageResult result1 = zApiAdapter.sendMessage(phoneNumber, "Message from company 1");
+        MessageResult result2 = zApiAdapter.sendMessage(phoneNumber, "Message from company 2");
+
+        // Then - Verify correct instances were used
+        assertTrue(result1.isSuccess());
+        assertTrue(result2.isSuccess());
+        assertEquals("msg1", result1.getMessageId());
+        assertEquals("msg2", result2.getMessageId());
+        
+        // Verify both companies were resolved
+        verify(companyContextUtil, times(2)).getCurrentCompany();
+        verify(whatsAppInstanceService).findActiveConnectedInstance(company1);
+        verify(whatsAppInstanceService).findActiveConnectedInstance(company2);
     }
 }
