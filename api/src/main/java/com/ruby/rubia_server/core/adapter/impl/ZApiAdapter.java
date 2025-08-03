@@ -70,6 +70,14 @@ public class ZApiAdapter implements MessagingAdapter {
             instanceValidator.validateInstanceReadyForMessaging(instance);
             
             return instance;
+        } catch (IllegalStateException e) {
+            // For company context resolution errors, wrap with generic message
+            if (e.getMessage() != null && e.getMessage().contains("company context")) {
+                log.error("Error getting active instance: {}", e.getMessage());
+                throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
+            }
+            // For other IllegalStateExceptions (instance not found, validation failures), re-throw as-is
+            throw e;
         } catch (Exception e) {
             log.error("Error getting active instance: {}", e.getMessage());
             throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
@@ -125,6 +133,9 @@ public class ZApiAdapter implements MessagingAdapter {
                 return MessageResult.error(error, "z-api");
             }
 
+        } catch (IllegalStateException e) {
+            // Re-throw IllegalStateException to allow tests to verify proper error handling
+            throw e;
         } catch (Exception e) {
             String error = "Error sending message via Z-API: " + e.getMessage();
             log.error(error, e);
