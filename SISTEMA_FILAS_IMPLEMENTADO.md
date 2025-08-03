@@ -1,44 +1,52 @@
-# Sistema de Filas para Campanhas - Implementação Finalizada
+# Sistema de Filas para Campanhas - Implementação Segura Finalizada
 
 ## ✅ **Implementação Concluída**
 
-O sistema de filas está **100% implementado** e pronto para uso, seguindo as boas práticas WHAPI para evitar bloqueios.
+O sistema de filas está **100% implementado** com **Redis seguro** e pronto para produção, seguindo as boas práticas WHAPI para evitar bloqueios.
 
 ## 🏗️ **Arquitetura do Sistema**
 
-### **1. CampaignQueueService (Núcleo)**
-- **Fila Principal**: `LinkedBlockingQueue<CampaignQueueItem>`
-- **Estados**: `Map<UUID, CampaignState>` para controle de campanhas
-- **Processador**: `@Scheduled(fixedDelay = 30000)` executa a cada 30s
+### **1. SecureCampaignQueueService (Redis)**
+- **Fila Principal**: `Redis Sorted Set` com score baseado em timestamp
+- **Estados**: `Redis Hash` com controle por empresa
+- **Processador**: `@Scheduled(fixedDelay = 30000)` com lock distribuído
 - **Agendamento Inteligente**: Respeita delays e pausas WHAPI
+- **Segurança**: Validação de empresa, autenticação JWT obrigatória
 
 ### **2. Estruturas de Dados**
 
-#### CampaignQueueItem
+#### SecureCampaignQueueItem
 ```java
 - UUID campaignId
 - UUID campaignContactId  
 - LocalDateTime scheduledTime  // Quando enviar
 - int batchNumber             // Lote 1, 2, 3...
+- String companyId            // Isolamento por empresa  
+- String createdBy            // Auditoria
 ```
 
-#### CampaignState
+#### CampaignState (Redis)
 ```java
 - UUID campaignId
 - CampaignStatus status       // ACTIVE, PAUSED, COMPLETED
 - int totalContacts          // 100
 - int processedContacts      // 45
-- int currentBatch           // 3
+- String companyId           // Segurança por empresa
+- String createdBy           // Auditoria
+- LocalDateTime createdAt
 - LocalDateTime lastProcessedTime
-- LocalDateTime nextBatchTime
 ```
 
 ## 📋 **Fluxo Completo**
 
 ### **1. Criação da Campanha**
 ```java
-// CampaignProcessingService.java:210
-campaignQueueService.enqueueCampaign(campaign.getId());
+// CampaignProcessingService.java:213
+secureCampaignQueueService.enqueueCampaign(
+    campaign.getId(), 
+    companyId.toString(), 
+    "system-auto"
+);
 ```
 
 ### **2. Agendamento Inteligente**
@@ -53,16 +61,19 @@ LocalDateTime scheduleTime;
 // Lote 3: now + 2h + 0s, 30s, 60s... (20 mensagens)
 ```
 
-### **3. Processamento Automático**
+### **3. Processamento Automático Seguro**
 ```java
 @Scheduled(fixedDelay = 30000) // A cada 30s
 public void processMessageQueue() {
-    // 1. Busca itens prontos (scheduledTime <= now)
-    // 2. Verifica se campanha está ACTIVE
-    // 3. Envia via CampaignMessagingService.sendSingleMessage()
-    // 4. Atualiza status: PENDING → SENT/FAILED
-    // 5. Remove da fila
-    // 6. Atualiza estatísticas
+    // 1. Adquire lock distribuído no Redis
+    // 2. Busca itens prontos do Redis Sorted Set
+    // 3. Valida permissões por empresa
+    // 4. Verifica se campanha está ACTIVE
+    // 5. Envia via CampaignMessagingService.sendSingleMessage()
+    // 6. Atualiza status: PENDING → SENT/FAILED
+    // 7. Remove da fila Redis
+    // 8. Atualiza estatísticas no Redis
+    // 9. Libera lock distribuído
 }
 ```
 
@@ -84,27 +95,28 @@ public void processMessageQueue() {
 - ✅ **Status tracking granular por contato**
 - ✅ **Logs detalhados para auditoria**
 
-## 🔌 **APIs Disponíveis**
+## 🔌 **APIs Seguras Disponíveis**
 
-### **Controle de Campanhas**
+### **Controle de Campanhas (Autenticação JWT Obrigatória)**
 ```bash
-# Adicionar à fila (automático na criação)
-POST /api/campaigns/{id}/start-messaging
+# Adicionar à fila (automático na criação ou manual)
+POST /api/secure/campaigns/{id}/start-messaging
+Authorization: Bearer {JWT_TOKEN}
 
 # Pausar campanha  
-POST /api/campaigns/{id}/pause-messaging
+POST /api/secure/campaigns/{id}/pause-messaging
+Authorization: Bearer {JWT_TOKEN}
 
-# Retomar campanha
-POST /api/campaigns/{id}/resume-messaging
+# Estatísticas de campanha específica
+GET /api/secure/campaigns/{id}/messaging-stats
+Authorization: Bearer {JWT_TOKEN}
 ```
 
-### **Monitoramento**
+### **Monitoramento Administrativo**
 ```bash
-# Estatísticas de campanha específica
-GET /api/campaigns/{id}/messaging-stats
-
-# Estatísticas globais da fila
-GET /api/campaigns/queue/global-stats
+# Estatísticas globais da fila (apenas ADMIN)
+GET /api/secure/campaigns/queue/global-stats
+Authorization: Bearer {JWT_TOKEN}
 ```
 
 ## 📊 **Estatísticas Detalhadas**
@@ -193,33 +205,47 @@ private static final int CONSERVATIVE_MAX_DELAY = 60000; // 60s máx
 ## ✅ **Vantagens da Implementação**
 
 ### **vs. Versão Original**
-| Critério | Original | Nova (Filas) |
-|----------|----------|--------------|
+| Critério | Original | Nova (Redis Segura) |
+|----------|----------|---------------------|
 | **Thread Bloqueio** | ❌ Thread.sleep() | ✅ Sem bloqueio |
-| **Persistência** | ❌ Perde em restart | ✅ Estado mantido |
+| **Persistência** | ❌ Perde em restart | ✅ Redis persistente |
 | **Controle** | ❌ Difícil pausar | ✅ Pausar/retomar fácil |
 | **Observabilidade** | ❌ Pouco visível | ✅ Stats em tempo real |
-| **Escalabilidade** | ❌ Uma por vez | ✅ Múltiplas campanhas |
+| **Escalabilidade** | ❌ Uma por vez | ✅ Múltiplas instâncias |
+| **Segurança** | ❌ Sem validação | ✅ JWT + validação empresa |
 | **Manutenção** | ❌ Difícil debug | ✅ Logs detalhados |
 
 ### **Benefícios Técnicos**
-- ✅ **Zero dependências externas** (Redis/RabbitMQ opcional)
-- ✅ **Thread-safe** com ConcurrentHashMap
+- ✅ **Redis enterprise-ready** com autenticação
+- ✅ **Thread-safe** com lock distribuído
 - ✅ **Auto-recovery** se houver falhas
-- ✅ **Monitoring built-in** via endpoints
+- ✅ **Monitoring built-in** via endpoints seguros
 - ✅ **WHAPI compliant** evita bans
+- ✅ **Multi-tenant** com isolamento por empresa
 
-## 🎯 **Sistema Pronto Para Produção**
+## 🎯 **Sistema Seguro Pronto Para Produção**
 
 A implementação está **100% funcional** e pronta para:
-- ✅ Criação automática de campanhas
+- ✅ Criação automática de campanhas com segurança
 - ✅ Envio respeitando boas práticas WHAPI  
-- ✅ Controle manual via API
-- ✅ Monitoramento em tempo real
-- ✅ Logs detalhados para troubleshooting
+- ✅ Controle manual via API segura (JWT obrigatório)
+- ✅ Monitoramento em tempo real com isolamento por empresa
+- ✅ Logs detalhados para troubleshooting e auditoria
+- ✅ Redis enterprise-ready com autenticação
+- ✅ Lock distribuído para múltiplas instâncias
+
+**Configuração de Produção:**
+```properties
+# Habilitar versão segura
+campaign.queue.provider=redis
+
+# Redis com autenticação
+spring.data.redis.password=${REDIS_PASSWORD}
+spring.data.redis.ssl=true
+```
 
 **Próximos passos opcionais:**
-- 🔄 Migrar para Redis/RabbitMQ (se necessário maior volume)
 - 📊 Dashboard frontend para monitoramento
 - 🔔 Notificações WebSocket de progresso
 - ⚙️ Configurações dinâmicas via admin panel
+- 🔐 Rotação automática de chaves Redis
