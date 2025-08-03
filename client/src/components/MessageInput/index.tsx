@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Mic, MicOff, Send, Sparkles, Loader2, Play, Pause, Trash2 } from "lucide-react";
 import type { FileAttachment as FileAttachmentType, ConversationMedia, PendingMedia } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
@@ -50,9 +50,23 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [lastRecordingTime, setLastRecordingTime] = useState(0);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Validação de MIME types para áudio
+  const ALLOWED_AUDIO_MIME_TYPES = ['audio/wav', 'audio/mp3', 'audio/ogg', 'audio/webm'];
+
+  // Rate limiting para gravações
+  const RECORDING_COOLDOWN_MS = 2000; // 2 segundos entre gravações
+
   const startRecording = useCallback(async () => {
+    // Rate limiting
+    const now = Date.now();
+    if (now - lastRecordingTime < RECORDING_COOLDOWN_MS) {
+      onError?.(`Aguarde ${Math.ceil((RECORDING_COOLDOWN_MS - (now - lastRecordingTime)) / 1000)} segundos antes de gravar novamente`);
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -67,9 +81,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        
+        // Validação de MIME type
+        if (!ALLOWED_AUDIO_MIME_TYPES.includes(audioBlob.type)) {
+          onError?.('Formato de áudio não suportado');
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        
         setRecordedAudio(audioBlob);
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
+        setLastRecordingTime(Date.now());
         stream.getTracks().forEach(track => track.stop());
       };
       
@@ -83,7 +106,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     } catch (error) {
       onError?.('Erro ao acessar o microfone');
     }
-  }, [onError]);
+  }, [onError, lastRecordingTime]);
   
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -135,6 +158,21 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     setAudioUrl(null);
     setIsPlaying(false);
     setRecordingTime(0);
+  }, [audioUrl]);
+
+  // Cleanup para evitar memory leaks
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    };
   }, [audioUrl]);
   
   const sendAudio = useCallback(() => {
