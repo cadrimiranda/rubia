@@ -1020,6 +1020,101 @@ export const BloodCenterChat: React.FC = () => {
     });
   };
 
+  const handleAudioRecorded = async (audioBlob: Blob) => {
+    if (!state.selectedDonor) {
+      handleMediaError("Selecione um doador para enviar áudio");
+      return;
+    }
+
+    if (isCreatingConversation) {
+      handleMediaError("Aguarde a criação da conversa");
+      return;
+    }
+
+    let conversationId = state.selectedDonor.conversationId;
+
+    // Verificar se é a primeira mensagem de um novo contato
+    const isFirstMessage =
+      !state.selectedDonor.hasActiveConversation &&
+      !state.selectedDonor.lastMessage;
+
+    if (isFirstMessage) {
+      setIsCreatingConversation(true);
+
+      try {
+        // Criar conversa para este cliente usando o adapter
+        const createRequest = conversationAdapter.toCreateRequest(
+          state.selectedDonor.id,
+          "WHATSAPP"
+        );
+
+        const newConversation = await conversationApi.create(createRequest);
+        conversationId = newConversation.id;
+
+        // Atualizar o donor para marcar que agora tem conversa ativa
+        const updatedDonor = {
+          ...state.selectedDonor,
+          conversationId: newConversation.id,
+          hasActiveConversation: true,
+        };
+
+        // Atualizar lista de donors
+        setDonors((prev) => {
+          const existingDonorIndex = prev.findIndex(
+            (d) => d.id === state.selectedDonor?.id
+          );
+
+          if (existingDonorIndex >= 0) {
+            return prev.map((d) =>
+              d.id === state.selectedDonor?.id ? updatedDonor : d
+            );
+          } else {
+            return [...prev, updatedDonor];
+          }
+        });
+
+        // Atualizar selectedDonor
+        updateState({ selectedDonor: updatedDonor });
+      } catch (error) {
+        console.error("❌ Erro ao criar conversa:", error);
+        handleMediaError("Não foi possível criar a conversa. Tente novamente.");
+        setIsCreatingConversation(false);
+        return;
+      } finally {
+        setIsCreatingConversation(false);
+      }
+    }
+
+    if (!conversationId) {
+      handleMediaError("ID da conversa não encontrado");
+      return;
+    }
+
+    try {
+      // Criar arquivo a partir do blob
+      const audioFile = new File([audioBlob], `audio-${Date.now()}.wav`, {
+        type: audioBlob.type,
+      });
+
+      const donorPhone = state.selectedDonor.phone;
+      if (!donorPhone) {
+        throw new Error("Número de telefone do doador não encontrado");
+      }
+
+      // Enviar áudio via Z-API e aguardar WebSocket
+      await mediaApi.uploadForZApi(
+        audioFile,
+        donorPhone,
+        undefined // sem texto para áudio
+      );
+
+      // Não fazer nada aqui - aguardar mensagem chegar via WebSocket
+    } catch (error) {
+      console.error("❌ Erro ao enviar áudio:", error);
+      handleMediaError("Não foi possível enviar o áudio. Tente novamente.");
+    }
+  };
+
   const handleSendMessage = async () => {
     if (
       !state.messageInput.trim() &&
@@ -1537,6 +1632,7 @@ export const BloodCenterChat: React.FC = () => {
               onKeyPress={handleKeyPress}
               onEnhanceMessage={handleEnhanceMessage}
               onError={handleMediaError}
+              onAudioRecorded={handleAudioRecorded}
             />
           </>
         ) : (
