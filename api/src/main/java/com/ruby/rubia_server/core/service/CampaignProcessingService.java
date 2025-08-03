@@ -47,6 +47,8 @@ public class CampaignProcessingService {
     private final MessageTemplateService messageTemplateService;
     private final ConversationService conversationService;
     private final MessageService messageService;
+    private final CampaignMessagingService campaignMessagingService;
+    private final CampaignQueueService campaignQueueService;
 
     public static class CampaignProcessingResult {
         private final Campaign campaign;
@@ -200,6 +202,13 @@ public class CampaignProcessingService {
 
         log.info("Campanha {} criada com {} contatos. Processados: {}, Criados: {}, Duplicados: {}", 
                 campaignName, created, processed, created, duplicates);
+
+        // Adicionar campanha à fila de processamento se houver contatos criados
+        if (created > 0) {
+            log.info("Adicionando campanha {} à fila de processamento com {} contatos", 
+                    campaign.getId(), created);
+            campaignQueueService.enqueueCampaign(campaign.getId());
+        }
 
         return new CampaignProcessingResult(campaign, campaignContacts, errors, processed, created, duplicates);
     }
