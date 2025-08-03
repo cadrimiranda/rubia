@@ -8,8 +8,10 @@ export interface AIAgent {
   companyName: string
   name: string
   description?: string
-  avatarUrl?: string
-  aiModelType: string
+  avatarBase64?: string
+  aiModelId: string
+  aiModelName: string
+  aiModelDisplayName: string
   temperament: string
   maxResponseLength: number
   temperature: number
@@ -22,8 +24,8 @@ export interface CreateAIAgentDTO {
   companyId: string
   name: string
   description?: string
-  avatarUrl?: string
-  aiModelType: string
+  avatarBase64?: string
+  aiModelId: string
   temperament: string
   maxResponseLength?: number
   temperature?: number
@@ -33,8 +35,8 @@ export interface CreateAIAgentDTO {
 export interface UpdateAIAgentDTO {
   name?: string
   description?: string
-  avatarUrl?: string
-  aiModelType?: string
+  avatarBase64?: string
+  aiModelId?: string
   temperament?: string
   maxResponseLength?: number
   temperature?: number
@@ -53,7 +55,18 @@ export interface PaginatedResponse<T> {
 
 class AIAgentApi {
   private getAuthHeaders() {
-    const token = localStorage.getItem('authToken')
+    const token = localStorage.getItem('auth_token')
+    const user = localStorage.getItem('auth_user')
+    const companyId = localStorage.getItem('auth_company_id')
+    
+    console.log('🔍 [DEBUG] Auth headers debug:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      hasUser: !!user,
+      hasCompanyId: !!companyId,
+      tokenPreview: token?.substring(0, 20) + '...'
+    })
+    
     return {
       Authorization: token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'
@@ -172,10 +185,10 @@ class AIAgentApi {
     return response.data
   }
 
-  // Get AI Agents by model type
-  async getAIAgentsByModelType(modelType: string): Promise<AIAgent[]> {
+  // Get AI Agents by model ID
+  async getAIAgentsByModelId(modelId: string): Promise<AIAgent[]> {
     const response = await axios.get(
-      `${API_BASE_URL}/api/ai-agents/model-type/${encodeURIComponent(modelType)}`,
+      `${API_BASE_URL}/api/ai-agents/model-id/${encodeURIComponent(modelId)}`,
       { headers: this.getAuthHeaders() }
     )
     return response.data
@@ -189,6 +202,52 @@ class AIAgentApi {
     )
     return response.data
   }
+
+  // Check if company can create more AI agents
+  async canCreateAgent(companyId: string): Promise<boolean> {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/ai-agents/company/${companyId}/can-create`,
+      { headers: this.getAuthHeaders() }
+    )
+    return response.data
+  }
+
+  // Get remaining agent slots for company
+  async getRemainingAgentSlots(companyId: string): Promise<number> {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/ai-agents/company/${companyId}/remaining-slots`,
+      { headers: this.getAuthHeaders() }
+    )
+    return response.data
+  }
+
+  // Debug context
+  async debugContext(): Promise<any> {
+    console.log('🔍 [DEBUG] Calling debug context endpoint...');
+    const response = await axios.get(
+      `${API_BASE_URL}/api/ai-agents/debug/context`,
+      { headers: this.getAuthHeaders() }
+    )
+    console.log('🔍 [DEBUG] Context response:', response.data);
+    return response.data
+  }
+
+  // Enhance message using company's AI agent
+  async enhanceMessage(companyId: string, message: string, conversationId?: string): Promise<string> {
+    console.log('🔮 [AI] Enhancing message for company:', companyId);
+    const payload: { message: string; conversationId?: string } = { message };
+    if (conversationId) {
+      payload.conversationId = conversationId;
+    }
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/api/ai-agents/company/${companyId}/enhance-message`,
+      payload,
+      { headers: this.getAuthHeaders() }
+    )
+    return response.data.enhancedMessage
+  }
+
 }
 
 export const aiAgentApi = new AIAgentApi()

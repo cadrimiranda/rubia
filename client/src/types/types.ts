@@ -4,9 +4,13 @@ export interface Campaign {
   description?: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'completed' | 'paused';
+  status: 'active' | 'completed' | 'paused' | 'ativa' | 'pausada' | 'concluida';
   color?: string;
-  templatesUsed: string[];
+  templatesUsed: number;
+  totalContacts: number;
+  contactsReached: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CampaignData {
@@ -86,15 +90,22 @@ export interface Message {
   id: string;
   senderId: string;
   content: string;
-  timestamp: string;
-  isAI: boolean;
-  messageType?: 'text' | 'image' | 'file' | 'audio';
+  timestamp: Date;
+  isFromUser: boolean;
+  isAI?: boolean;
+  messageType: 'text' | 'image' | 'file' | 'audio';
+  status: 'sending' | 'sent' | 'delivered' | 'read';
   mediaUrl?: string;
   mimeType?: string;
   audioDuration?: number;
   attachments?: FileAttachment[];
   media?: ConversationMedia[];
-  campaignId?: string; // ID da campanha
+  campaignId?: string;
+  externalMessageId?: string;
+  isAiGenerated?: boolean;
+  aiConfidence?: number;
+  deliveredAt?: Date;
+  readAt?: Date;
 }
 
 export interface ContextMenu {

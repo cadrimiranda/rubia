@@ -17,8 +17,13 @@ const LoginScreen: React.FC = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<LoginFormData>>({});
-  
-  const { login, isLoggingIn, error: authError, isAuthenticated } = useAuthStore();
+
+  const {
+    login,
+    isLoggingIn,
+    error: authError,
+    isAuthenticated,
+  } = useAuthStore();
   const navigate = useNavigate();
 
   // Se já está autenticado, redirecionar para home
@@ -55,9 +60,9 @@ const LoginScreen: React.FC = () => {
     try {
       await login({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
       });
-      
+
       // Login bem-sucedido, redirecionar para a página principal
       navigate("/");
     } catch (error) {
@@ -88,7 +93,7 @@ const LoginScreen: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="bg-white p-3 rounded-full shadow-sm">
+            <div className="bg-white p-3 rounded-xl shadow-sm">
               <Heart className="w-12 h-12 text-red-500" fill="currentColor" />
             </div>
           </div>
@@ -97,7 +102,6 @@ const LoginScreen: React.FC = () => {
             Sistema de Comunicação com Doadores
           </p>
         </div>
-
 
         <div className="bg-white py-8 px-6 shadow-sm rounded-lg border border-gray-200">
           <div className="space-y-6">
@@ -224,7 +228,7 @@ const LoginScreen: React.FC = () => {
                 )}
               </button>
             </div>
-            
+
             {authError && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-600">{authError}</p>

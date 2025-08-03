@@ -2,8 +2,6 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Mic, MicOff, Send, Sparkles, Loader2, Play, Pause, Trash2 } from "lucide-react";
 import type { FileAttachment as FileAttachmentType, ConversationMedia, PendingMedia } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
-import { MediaUpload } from "../MediaUpload";
-import { MediaPreview } from "../MediaPreview";
 
 interface MessageInputProps {
   messageInput: string;
@@ -310,16 +308,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             ))}
             {pendingMedia.map((mediaItem) => (
               <div key={mediaItem.id} className="relative">
-                {mediaItem.mediaType === 'IMAGE' && mediaItem.previewUrl ? (
+                {mediaItem.mediaType === "IMAGE" && mediaItem.previewUrl ? (
                   <div className="relative">
-                    <img 
-                      src={mediaItem.previewUrl} 
+                    <img
+                      src={mediaItem.previewUrl}
                       alt={mediaItem.originalFileName}
                       className="w-20 h-20 object-cover rounded-lg border"
                     />
                     <button
                       onClick={() => onRemovePendingMedia?.(mediaItem.id)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-xl w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
                     >
                       ×
                     </button>
@@ -327,8 +325,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 ) : (
                   <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg border">
                     <div className="text-sm">
-                      <div className="font-medium">{mediaItem.originalFileName}</div>
-                      <div className="text-gray-500">{(mediaItem.fileSizeBytes / 1024).toFixed(1)} KB</div>
+                      <div className="font-medium">
+                        {mediaItem.originalFileName}
+                      </div>
+                      <div className="text-gray-500">
+                        {(mediaItem.fileSizeBytes / 1024).toFixed(1)} KB
+                      </div>
                     </div>
                     <button
                       onClick={() => onRemovePendingMedia?.(mediaItem.id)}
@@ -379,7 +381,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             style={{ minHeight: "40px", maxHeight: "120px" }}
           />
-          
+
           {onEnhanceMessage && messageInput.trim() && (
             <button
               onClick={onEnhanceMessage}
@@ -401,7 +403,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               ? "bg-yellow-500 hover:bg-yellow-600 text-white"
               : "bg-blue-500 hover:bg-blue-600 text-white"
           }`}
-          title={draftMessage ? "Enviar mensagem da campanha" : "Enviar mensagem"}
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />

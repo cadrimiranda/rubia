@@ -1,36 +1,36 @@
-import React from 'react';
-import { FileText, Download, Trash2, Volume2 } from 'lucide-react';
-import type { ConversationMedia } from '../../types/types';
-import { MediaPlayer } from '../MediaPlayer';
+import React from "react";
+import { FileText, Download, Trash2, Volume2 } from "lucide-react";
+import type { ConversationMedia } from "../../types/types";
+import { MediaPlayer } from "../MediaPlayer";
 
 interface MediaPreviewProps {
   media: ConversationMedia;
-  variant?: 'preview' | 'message';
+  variant?: "preview" | "message";
   onRemove?: (mediaId: string) => void;
   onDownload?: (mediaId: string) => void;
 }
 
 export const MediaPreview: React.FC<MediaPreviewProps> = ({
   media,
-  variant = 'message',
+  variant = "message",
   onRemove,
-  onDownload
+  onDownload,
 }) => {
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   const getFileIcon = (mediaType: string) => {
     switch (mediaType) {
-      case 'AUDIO':
+      case "AUDIO":
         return <Volume2 className="w-4 h-4 text-red-500" />;
-      case 'VIDEO':
+      case "VIDEO":
         return <Volume2 className="w-4 h-4 text-blue-500" />;
-      case 'IMAGE':
+      case "IMAGE":
         return null; // Mostra a imagem
       default:
         return <FileText className="w-4 h-4 text-gray-500" />;
@@ -42,7 +42,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
       onDownload(media.id);
     } else {
       // Download direto
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = media.fileUrl;
       link.download = media.originalFileName;
       link.click();
@@ -51,7 +51,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
 
   const renderContent = () => {
     switch (media.mediaType) {
-      case 'IMAGE':
+      case "IMAGE":
         return (
           <div className="relative">
             <img
@@ -59,10 +59,10 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
               alt={media.originalFileName}
               className="max-w-xs max-h-48 rounded-lg object-cover"
             />
-            {variant === 'preview' && onRemove && (
+            {variant === "preview" && onRemove && (
               <button
                 onClick={() => onRemove(media.id)}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-xl p-1 hover:bg-red-600"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -70,18 +70,18 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
           </div>
         );
 
-      case 'VIDEO':
-      case 'AUDIO':
+      case "VIDEO":
+      case "AUDIO":
         return (
           <div className="relative">
-            <MediaPlayer 
-              media={media} 
-              variant={variant === 'preview' ? 'modal' : 'inline'}
+            <MediaPlayer
+              media={media}
+              variant={variant === "preview" ? "modal" : "inline"}
             />
-            {variant === 'preview' && onRemove && (
+            {variant === "preview" && onRemove && (
               <button
                 onClick={() => onRemove(media.id)}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-xl p-1 hover:bg-red-600 z-10"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -110,7 +110,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
               >
                 <Download className="w-4 h-4" />
               </button>
-              {variant === 'preview' && onRemove && (
+              {variant === "preview" && onRemove && (
                 <button
                   onClick={() => onRemove(media.id)}
                   className="p-1 text-red-500 hover:text-red-700"
@@ -124,9 +124,5 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
     }
   };
 
-  return (
-    <div className="inline-block">
-      {renderContent()}
-    </div>
-  );
+  return <div className="inline-block">{renderContent()}</div>;
 };

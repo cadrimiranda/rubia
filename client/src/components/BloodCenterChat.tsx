@@ -89,7 +89,7 @@ export const BloodCenterChat: React.FC = () => {
   // Refs para controlar paginação e evitar dependências circulares
   const currentPageRef = useRef(0);
   const loadConversationsRef =
-    useRef<(status?: ChatStatus, reset?: boolean) => Promise<void>>();
+    useRef<(status?: ChatStatus, reset?: boolean) => Promise<void>>(async () => {});
 
   // WebSocket para atualizações em tempo real
   const webSocket = useWebSocket();
@@ -107,24 +107,7 @@ export const BloodCenterChat: React.FC = () => {
     // Mensagens do WebSocket (apenas de outros usuários)
     const webSocketMessages =
       conversationId && messagesCache[conversationId]
-        ? messagesCache[conversationId].messages.map((msg) => {
-            return {
-              id: msg.id,
-              senderId: msg.senderId || "unknown",
-              content: msg.content,
-              timestamp: msg.timestamp
-                ? new Date(msg.timestamp).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "",
-              isAI: msg.isFromUser === false, // false = recebida do cliente (esquerda azul), true = enviada por mim/sistema (direita branco)
-              messageType: msg.messageType,
-              mediaUrl: msg.mediaUrl,
-              mimeType: msg.mimeType,
-              audioDuration: msg.audioDuration,
-            };
-          })
+        ? messagesCache[conversationId].messages
         : [];
 
     // Combinar e remover duplicatas (apenas por ID exato)
@@ -137,8 +120,8 @@ export const BloodCenterChat: React.FC = () => {
 
     // Ordenar por timestamp
     const sortedMessages = allMessages.sort((a, b) => {
-      const timeA = new Date(`1970-01-01 ${a.timestamp || "00:00"}`).getTime();
-      const timeB = new Date(`1970-01-01 ${b.timestamp || "00:00"}`).getTime();
+      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
       return timeA - timeB;
     });
 
@@ -290,7 +273,7 @@ export const BloodCenterChat: React.FC = () => {
 
         // Atualizar estado da paginação
         currentPageRef.current = pageToLoad;
-        const hasMore = pageToLoad + 1 < response.page.totalPages;
+        const hasMore = pageToLoad + 1 < (response.totalPages || 0);
         setHasMorePages(hasMore);
 
         if (!hasMore) {
@@ -446,14 +429,6 @@ export const BloodCenterChat: React.FC = () => {
         }
 
         // Mostrar feedback
-        const statusLabels: Record<ChatStatus, string> = {
-          ativos: "Ativo",
-          aguardando: "Aguardando",
-          inativo: "Inativo",
-          entrada: "Entrada",
-          esperando: "Esperando",
-          finalizados: "Finalizados",
-        };
 
         // Se mudou para o status atual, recarregar para mostrar na lista
         if (newStatus === currentStatus) {
@@ -514,7 +489,7 @@ export const BloodCenterChat: React.FC = () => {
       };
 
       // Adicionar mensagem de agendamento à conversa
-      const agendamentoMessage = {
+      const agendamentoMessage: Message = {
         id: `schedule_${Date.now()}`,
         senderId: "ai",
         content: `Perfeito! Agendei sua ${
@@ -524,8 +499,10 @@ export const BloodCenterChat: React.FC = () => {
         }. Confirma presença? 📅${
           scheduleData.notes ? `\n\nObservações: ${scheduleData.notes}` : ""
         }`,
-        timestamp: getCurrentTimestamp(),
-        isAI: true,
+        timestamp: new Date(),
+        isFromUser: false,
+        messageType: 'text',
+        status: 'sent',
       };
 
       // Se é a conversa ativa, adicionar a mensagem
@@ -639,18 +616,14 @@ export const BloodCenterChat: React.FC = () => {
 
             // Log das mensagens após ordenação
 
-            donorMessages = sortedMessages.map((msg) => ({
+            donorMessages = sortedMessages.map((msg): Message => ({
               id: msg.id,
               senderId: msg.senderId || "unknown",
               content: msg.content,
-              timestamp: msg.createdAt
-                ? new Date(msg.createdAt).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "",
-              isAI: msg.senderType === "CUSTOMER", // true = recebida do cliente (esquerda azul), false = enviada por mim/sistema (direita branco)
-              messageType: msg.messageType?.toLowerCase(), // Convert to lowercase
+              timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
+              isFromUser: msg.senderType !== "CUSTOMER", // CUSTOMER = false (recebida do cliente), !CUSTOMER = true (enviada por mim/sistema)
+              messageType: (msg.messageType?.toLowerCase() as 'text' | 'image' | 'file' | 'audio') || 'text',
+              status: 'delivered',
               mediaUrl: msg.mediaUrl,
               mimeType: msg.mimeType,
               audioDuration: msg.audioDuration,
@@ -696,13 +669,17 @@ export const BloodCenterChat: React.FC = () => {
 
           // Para mensagens temporárias, usar timestamp atual
           if (a.id.startsWith("temp-") && b.id.startsWith("temp-")) {
-            return parseTime(a.timestamp) - parseTime(b.timestamp);
+            const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : parseTime(a.timestamp);
+            const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : parseTime(b.timestamp);
+            return timeA - timeB;
           }
           // Se uma é temporária, ela vai por último (mais recente)
           if (a.id.startsWith("temp-")) return 1;
           if (b.id.startsWith("temp-")) return -1;
           // Para mensagens reais, usar timestamp
-          return parseTime(a.timestamp) - parseTime(b.timestamp);
+          const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : parseTime(a.timestamp);
+          const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : parseTime(b.timestamp);
+          return timeA - timeB;
         });
 
         messagesToUse = sortedLocalMessages;
@@ -725,8 +702,8 @@ export const BloodCenterChat: React.FC = () => {
 
       // Ordenar mensagens cronologicamente (mais antigas primeiro)
       messagesToUse.sort((a, b) => {
-        const timeA = parseTimeToMinutes(a.timestamp);
-        const timeB = parseTimeToMinutes(b.timestamp);
+        const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : parseTimeToMinutes(a.timestamp);
+        const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : parseTimeToMinutes(b.timestamp);
         return timeA - timeB;
       });
 
@@ -756,6 +733,8 @@ export const BloodCenterChat: React.FC = () => {
               senderId: msg.senderId,
               timestamp: msg.timestamp,
               isFromUser: !msg.isAI,
+              messageType: msg.messageType || 'text',
+              status: 'delivered',
               attachments: msg.attachments,
               media: msg.media,
             })),
@@ -943,8 +922,57 @@ export const BloodCenterChat: React.FC = () => {
     });
   };
 
-  const handleEnhanceMessage = () => {
-    setShowMessageEnhancer(true);
+  const handleEnhanceMessage = async () => {
+    if (!state.messageInput.trim()) {
+      return;
+    }
+
+    const { user } = useAuthStore.getState();
+    if (!user?.companyId) {
+      console.error('❌ Company ID not found for message enhancement');
+      return;
+    }
+
+    const originalMessage = state.messageInput;
+
+    try {
+      console.log('🔮 [AI] Starting message enhancement...');
+      
+      // Show loading state in the input
+      updateState({ messageInput: originalMessage + ' ✨' });
+
+      const { aiAgentApi } = await import('../api/services/aiAgentApi');
+      const conversationId = state.selectedDonor?.conversationId;
+      const enhancedMessage = await aiAgentApi.enhanceMessage(user.companyId, originalMessage, conversationId);
+      
+      console.log('✅ [AI] Message enhanced successfully');
+      
+      // Update the message input with the enhanced version
+      updateState({ messageInput: enhancedMessage });
+      
+    } catch (error) {
+      console.error('❌ Error enhancing message:', error);
+      
+      // Restore original message
+      updateState({ messageInput: originalMessage });
+      
+      // Show error modal
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: "Erro na Melhoria de Mensagem",
+          message: "Não foi possível melhorar a mensagem com IA. Verifique se você tem um agente IA configurado e ativo.",
+          type: "warning",
+          confirmText: "OK",
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null,
+            });
+          },
+        },
+      });
+    }
   };
 
   const handleApplyEnhancedMessage = (enhancedMessage: string) => {
@@ -1133,6 +1161,9 @@ export const BloodCenterChat: React.FC = () => {
       return;
     }
 
+    // Armazenar conteúdo antes de qualquer processamento
+    const messageContent = state.messageInput;
+    
     let conversationId = state.selectedDonor.conversationId;
 
     // Verificar se é a primeira mensagem de um novo contato
@@ -1159,7 +1190,10 @@ export const BloodCenterChat: React.FC = () => {
           conversationId: newConversation.id,
           hasActiveConversation: true,
           lastMessage: messageContent.trim() || "Anexo enviado", // Usar messageContent armazenado
-          timestamp: getCurrentTimestamp(),
+          timestamp: new Date().toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
         };
 
         // Atualizar lista de donors
@@ -1219,8 +1253,7 @@ export const BloodCenterChat: React.FC = () => {
       return;
     }
 
-    // Armazenar conteúdo antes de limpar o input
-    const messageContent = state.messageInput;
+    // Conteúdo já foi armazenado no início da função
 
     // Se há mensagem DRAFT, atualizar status para SENT
     if (currentDraftMessage) {
@@ -1238,8 +1271,10 @@ export const BloodCenterChat: React.FC = () => {
       id: `temp-${Date.now()}`,
       senderId: currentUser?.id || "user",
       content: messageContent,
-      timestamp: getCurrentTimestamp(),
-      isAI: false,
+      timestamp: new Date(),
+      isFromUser: true,
+      messageType: state.pendingMedia.length > 0 ? 'file' : 'text',
+      status: 'sending',
       attachments:
         state.attachments.length > 0 ? [...state.attachments] : undefined,
       // Converter pendingMedia para um formato de preview
@@ -1308,7 +1343,7 @@ export const BloodCenterChat: React.FC = () => {
                 ? {
                     ...msg,
                     id: zapiResult.messageId,
-                    timestamp: getCurrentTimestamp(),
+                    timestamp: new Date(),
                   }
                 : msg
             ),
@@ -1320,7 +1355,10 @@ export const BloodCenterChat: React.FC = () => {
           const updatedDonor = {
             ...state.selectedDonor,
             lastMessage: messageContent || "Anexo enviado",
-            timestamp: getCurrentTimestamp(),
+            timestamp: new Date().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
           };
 
           setDonors((prev) => {
@@ -1353,20 +1391,23 @@ export const BloodCenterChat: React.FC = () => {
           return {
             ...currentState,
             messages: [
-              ...currentState.messages,
+              ...currentState.messages.map(msg => ({
+                ...msg,
+                timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+              })),
               {
-                ...tempMessage,
                 id: sentMessage.id,
+                senderId: tempMessage.senderId,
+                content: tempMessage.content,
                 timestamp: sentMessage.createdAt
-                  ? new Date(sentMessage.createdAt).toLocaleTimeString(
-                      "pt-BR",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }
-                    )
+                  ? new Date(sentMessage.createdAt)
                   : tempMessage.timestamp,
-              },
+                isFromUser: tempMessage.isFromUser,
+                messageType: tempMessage.messageType,
+                status: 'sent',
+                attachments: tempMessage.attachments,
+                media: tempMessage.media,
+              } as Message,
             ],
           };
         }
@@ -1379,16 +1420,13 @@ export const BloodCenterChat: React.FC = () => {
                   ...msg,
                   id: sentMessage.id,
                   timestamp: sentMessage.createdAt
-                    ? new Date(sentMessage.createdAt).toLocaleTimeString(
-                        "pt-BR",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      )
-                    : msg.timestamp,
+                    ? new Date(sentMessage.createdAt)
+                    : (msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)),
                 }
-              : msg
+              : {
+                  ...msg,
+                  timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+                }
           ),
         };
       });
@@ -1612,6 +1650,7 @@ export const BloodCenterChat: React.FC = () => {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              agentAvatar={undefined} // TODO: Buscar avatar do agente IA da empresa
             />
 
             <AudioErrorBoundary>

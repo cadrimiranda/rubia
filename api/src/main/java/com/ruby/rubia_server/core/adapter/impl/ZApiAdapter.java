@@ -29,6 +29,9 @@ public class ZApiAdapter implements MessagingAdapter {
     @Value("${zapi.instance.url}")
     private String instanceUrl;
 
+    @Value("${zapi.instance.id}")
+    private String instanceId;
+
     @Value("${zapi.token}")
     private String token;
 
@@ -41,9 +44,13 @@ public class ZApiAdapter implements MessagingAdapter {
     private final RestTemplate restTemplate;
     private final PhoneService phoneService;
 
-    public ZApiAdapter(PhoneService phoneService) {
-        this.restTemplate = new RestTemplate();
+    public ZApiAdapter(RestTemplate restTemplate, PhoneService phoneService) {
+        this.restTemplate = restTemplate;
         this.phoneService = phoneService;
+    }
+
+    private String buildUrl() {
+        return instanceUrl + "/" + instanceId + "/token/" + token + "/send-text";
     }
 
     @Override
@@ -51,7 +58,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API message to: {} with message: {}", to, message.substring(0, Math.min(50, message.length())));
 
-            String url = instanceUrl + "/token/" + token + "/send-text";
+            String url = buildUrl();
             log.info("Z-API URL: {}", url);
             
             String formattedPhone = phoneService.formatForZApi(to);
@@ -95,7 +102,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API media message to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -176,6 +183,17 @@ public class ZApiAdapter implements MessagingAdapter {
                 isFromMe = "true".equals(fromMeObj);
             }
 
+            // Check if message was sent from our API
+            Object fromApiObj = payload.get("fromApi");
+            boolean isFromApi = false;
+            if (fromApiObj instanceof Boolean) {
+                isFromApi = (Boolean) fromApiObj;
+            } else if (fromApiObj instanceof String) {
+                isFromApi = "true".equals(fromApiObj);
+            }
+            
+            log.debug("Message flags - fromMe: {}, fromApi: {}", isFromMe, isFromApi);
+
             String messageBody = null;
             String mediaUrl = null;
             String mediaType = null;
@@ -244,10 +262,34 @@ public class ZApiAdapter implements MessagingAdapter {
             }
 
             
+            // Determine correct from/to based on message context
+            String fromNumber, toNumber;
+            
+            if (isFromMe && isFromApi) {
+                // When message is sent via our API, Z-API sends a webhook with incorrect phone mapping
+                // phone = connectedPhone (both are the instance number instead of customer number)
+                // This creates a self-message scenario that should be ignored
+                // The message is already processed correctly through the API response flow
+                log.debug("Ignoring Z-API webhook for API-sent message (fromMe=true, fromApi=true) - phone={}, connectedPhone={}", phone, connectedPhone);
+                return null;
+            } else if (isFromMe && !isFromApi) {
+                // Message sent from WhatsApp Web/App - this is WRONG in Z-API documentation
+                // When fromMe=true for regular messages, 'phone' is actually the sender (customer)
+                // and 'connectedPhone' is the receiver (our instance)
+                // So we should NOT swap them
+                fromNumber = phone;         // The actual sender
+                toNumber = connectedPhone;  // Our instance (receiver)
+                log.debug("WhatsApp Web/App message: from {} to {}", fromNumber, toNumber);
+            } else {
+                // Message from customer to us (fromMe=false)
+                fromNumber = phone;
+                toNumber = connectedPhone;
+            }
+            
             return IncomingMessage.builder()
                 .messageId(messageId)
-                .from(isFromMe ? connectedPhone : phone)
-                .to(isFromMe ? phone : connectedPhone)
+                .from(fromNumber)
+                .to(toNumber)
                 .connectedPhone(connectedPhone)
                 .chatLid(chatLid)
                 .body(messageBody)
@@ -290,7 +332,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API document to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -328,7 +370,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API audio to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-audio";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -360,7 +402,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API base64 file to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-base64";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -420,7 +462,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Uploading file to Z-API: {}", file.getOriginalFilename());
 
-            String url = instanceUrl + "/token/" + token + "/upload-file";
+            String url = buildUrl();
             
             HttpHeaders headers = new HttpHeaders();
             headers.set("client-token", clientToken);
@@ -458,7 +500,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API {} to: {}", mediaType, to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildUrl();
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -488,4 +530,5 @@ public class ZApiAdapter implements MessagingAdapter {
             return MessageResult.error(error, "z-api");
         }
     }
+
 }

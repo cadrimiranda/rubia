@@ -63,7 +63,7 @@ export interface PaginatedResponse<T> {
 
 class AILogApi {
   private getAuthHeaders() {
-    const token = localStorage.getItem('authToken')
+    const token = localStorage.getItem('auth_token')
     return {
       Authorization: token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'

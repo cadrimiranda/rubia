@@ -48,6 +48,26 @@ public class MessageTemplateRevision implements BaseEntity {
     @Builder.Default
     private RevisionType revisionType = RevisionType.EDIT; // Tipo da revisão (CREATE, EDIT, DELETE, RESTORE)
 
+    // Novos campos para metadados de IA
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ai_agent_id")
+    private AIAgent aiAgent; // Agente de IA usado para esta melhoria (se aplicável)
+
+    @Column(name = "ai_enhancement_type")
+    private String aiEnhancementType; // Tipo de melhoria aplicada pela IA (friendly, professional, etc.)
+
+    @Column(name = "ai_tokens_used")
+    private Integer aiTokensUsed; // Tokens consumidos pela IA
+
+    @Column(name = "ai_credits_consumed")
+    private Integer aiCreditsConsumed; // Créditos consumidos pela IA
+
+    @Column(name = "ai_model_used")
+    private String aiModelUsed; // Nome do modelo de IA usado
+
+    @Column(columnDefinition = "TEXT", name = "ai_explanation")
+    private String aiExplanation; // Explicação das melhorias aplicadas pela IA
+
     @CreationTimestamp
     @Column(name = "revision_timestamp", updatable = false)
     private LocalDateTime revisionTimestamp; // Quando esta revisão foi criada

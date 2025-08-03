@@ -1,4 +1,4 @@
-import type { ConversationDTO, CustomerDTO, MessageDTO } from '../api/types'
+import type { ConversationDTO, MessageDTO } from '../api/types'
 import type { Chat, ChatStatus } from '../types'
 
 

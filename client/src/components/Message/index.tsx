@@ -6,12 +6,13 @@ import { AudioMessage } from "../AudioMessage";
 
 interface MessageProps {
   message: MessageType;
+  agentAvatar?: string; // Base64 do avatar do agente IA
 }
 
 export const Message: React.FC<MessageProps> = ({ message }) => {
-  // isAI = true significa mensagem recebida do cliente (esquerda, azul)
-  // isAI = false significa mensagem enviada por mim/sistema (direita, branco)
-  const isFromCustomer = message.isAI;
+  // isFromUser = true significa mensagem enviada pelo usuário (direita, branco)
+  // isFromUser = false significa mensagem recebida do cliente (esquerda, azul)
+  const isFromCustomer = !message.isFromUser;
 
   return (
     <div className={`flex ${isFromCustomer ? "justify-start" : "justify-end"}`}>
@@ -80,7 +81,15 @@ export const Message: React.FC<MessageProps> = ({ message }) => {
               isFromCustomer ? "text-blue-100" : "text-gray-400"
             }`}
           >
-            {message.timestamp}
+            {message.timestamp instanceof Date
+              ? message.timestamp.toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : new Date(message.timestamp).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
           </span>
         </div>
       </div>

@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.adapter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.service.PhoneService;
@@ -11,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AudioMessageParsingTest {
+public class AudioMessageParsingTest extends AbstractIntegrationTest {
     
     private ZApiAdapter adapter;
     private ObjectMapper objectMapper;
@@ -19,7 +20,7 @@ public class AudioMessageParsingTest {
     @BeforeEach
     void setUp() {
         PhoneService phoneService = new PhoneService();
-        adapter = new ZApiAdapter(phoneService);
+        adapter = new ZApiAdapter(new org.springframework.web.client.RestTemplate(), phoneService);
         objectMapper = new ObjectMapper();
     }
     

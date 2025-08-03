@@ -1,17 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Download } from 'lucide-react';
-import type { ConversationMedia } from '../../types/types';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  SkipBack,
+  SkipForward,
+  Download,
+} from "lucide-react";
+import type { ConversationMedia } from "../../types/types";
 
 interface MediaPlayerProps {
   media: ConversationMedia;
-  variant?: 'inline' | 'modal';
+  variant?: "inline" | "modal";
   autoPlay?: boolean;
 }
 
 export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   media,
-  variant = 'inline',
-  autoPlay = false
+  variant = "inline",
+  autoPlay = false,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -24,12 +32,12 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const isAudio = media.mediaType === 'AUDIO';
-  const isVideo = media.mediaType === 'VIDEO';
+  const isAudio = media.mediaType === "AUDIO";
+  const isVideo = media.mediaType === "VIDEO";
 
   useEffect(() => {
     const mediaElement = isAudio ? audioRef.current : videoRef.current;
-    
+
     if (mediaElement) {
       const handleLoadedMetadata = () => {
         setDuration(mediaElement.duration);
@@ -46,27 +54,30 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
       };
 
       const handleError = () => {
-        setError('Erro ao carregar mídia');
+        setError("Erro ao carregar mídia");
         setIsLoaded(false);
       };
 
-      mediaElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-      mediaElement.addEventListener('timeupdate', handleTimeUpdate);
-      mediaElement.addEventListener('ended', handleEnded);
-      mediaElement.addEventListener('error', handleError);
+      mediaElement.addEventListener("loadedmetadata", handleLoadedMetadata);
+      mediaElement.addEventListener("timeupdate", handleTimeUpdate);
+      mediaElement.addEventListener("ended", handleEnded);
+      mediaElement.addEventListener("error", handleError);
 
       return () => {
-        mediaElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        mediaElement.removeEventListener('timeupdate', handleTimeUpdate);
-        mediaElement.removeEventListener('ended', handleEnded);
-        mediaElement.removeEventListener('error', handleError);
+        mediaElement.removeEventListener(
+          "loadedmetadata",
+          handleLoadedMetadata
+        );
+        mediaElement.removeEventListener("timeupdate", handleTimeUpdate);
+        mediaElement.removeEventListener("ended", handleEnded);
+        mediaElement.removeEventListener("error", handleError);
       };
     }
   }, [isAudio]);
 
   const togglePlayPause = () => {
     const mediaElement = isAudio ? audioRef.current : videoRef.current;
-    
+
     if (mediaElement) {
       if (isPlaying) {
         mediaElement.pause();
@@ -80,7 +91,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const mediaElement = isAudio ? audioRef.current : videoRef.current;
     const newTime = Number(e.target.value);
-    
+
     if (mediaElement) {
       mediaElement.currentTime = newTime;
       setCurrentTime(newTime);
@@ -90,7 +101,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const mediaElement = isAudio ? audioRef.current : videoRef.current;
     const newVolume = Number(e.target.value);
-    
+
     if (mediaElement) {
       mediaElement.volume = newVolume;
       setVolume(newVolume);
@@ -100,7 +111,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
 
   const toggleMute = () => {
     const mediaElement = isAudio ? audioRef.current : videoRef.current;
-    
+
     if (mediaElement) {
       if (isMuted) {
         mediaElement.volume = volume;
@@ -114,7 +125,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
 
   const skipSeconds = (seconds: number) => {
     const mediaElement = isAudio ? audioRef.current : videoRef.current;
-    
+
     if (mediaElement) {
       const newTime = Math.max(0, Math.min(duration, currentTime + seconds));
       mediaElement.currentTime = newTime;
@@ -125,11 +136,11 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
   const formatTime = (time: number): string => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const handleDownload = () => {
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = media.fileUrl;
     link.download = media.originalFileName;
     link.click();
@@ -145,27 +156,41 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
 
   if (isVideo) {
     return (
-      <div className={`${variant === 'modal' ? 'max-w-2xl' : 'max-w-xs'} bg-black rounded-lg overflow-hidden`}>
+      <div
+        className={`${
+          variant === "modal" ? "max-w-2xl" : "max-w-xs"
+        } bg-black rounded-lg overflow-hidden`}
+      >
         <video
           ref={videoRef}
           src={media.fileUrl}
           className="w-full"
-          controls={variant === 'modal'}
+          controls={variant === "modal"}
           autoPlay={autoPlay}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
         />
-        
-        {variant === 'inline' && (
+
+        {variant === "inline" && (
           <div className="p-2 bg-gray-800 text-white">
             <div className="flex items-center gap-2 text-xs">
-              <button onClick={togglePlayPause} className="text-white hover:text-gray-300">
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              <button
+                onClick={togglePlayPause}
+                className="text-white hover:text-gray-300"
+              >
+                {isPlaying ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
               </button>
               <span className="text-gray-300">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
-              <button onClick={handleDownload} className="ml-auto text-white hover:text-gray-300">
+              <button
+                onClick={handleDownload}
+                className="ml-auto text-white hover:text-gray-300"
+              >
                 <Download className="w-4 h-4" />
               </button>
             </div>
@@ -177,7 +202,11 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
 
   if (isAudio) {
     return (
-      <div className={`${variant === 'modal' ? 'max-w-md' : 'max-w-xs'} bg-gray-100 rounded-lg p-3`}>
+      <div
+        className={`${
+          variant === "modal" ? "max-w-md" : "max-w-xs"
+        } bg-gray-100 rounded-lg p-3`}
+      >
         <audio
           ref={audioRef}
           src={media.fileUrl}
@@ -185,16 +214,20 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
         />
-        
+
         <div className="flex items-center gap-2 mb-2">
           <button
             onClick={togglePlayPause}
             disabled={!isLoaded}
-            className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:bg-gray-300"
+            className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-gray-300"
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            {isPlaying ? (
+              <Pause className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
           </button>
-          
+
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-800 truncate">
               {media.originalFileName}
@@ -203,7 +236,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
               {formatTime(currentTime)} / {formatTime(duration)}
             </p>
           </div>
-          
+
           <button
             onClick={handleDownload}
             className="text-gray-500 hover:text-gray-700"
@@ -211,7 +244,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
             <Download className="w-4 h-4" />
           </button>
         </div>
-        
+
         <div className="mb-2">
           <input
             type="range"
@@ -223,8 +256,8 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
             className="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
           />
         </div>
-        
-        {variant === 'modal' && (
+
+        {variant === "modal" && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => skipSeconds(-10)}
@@ -232,14 +265,18 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
             >
               <SkipBack className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={toggleMute}
               className="text-gray-500 hover:text-gray-700"
             >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? (
+                <VolumeX className="w-4 h-4" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
             </button>
-            
+
             <input
               type="range"
               min="0"
@@ -249,7 +286,7 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({
               onChange={handleVolumeChange}
               className="w-16 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
             />
-            
+
             <button
               onClick={() => skipSeconds(10)}
               className="text-gray-500 hover:text-gray-700"

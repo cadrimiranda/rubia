@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Avatar Upload</title>
+</head>
+<body>
+    <h2>Test Avatar Upload</h2>
+    <input type="file" id="avatarInput" accept="image/*">
+    <br><br>
+    <img id="preview" style="max-width: 200px; max-height: 200px; display: none;">
+    <br><br>
+    <textarea id="base64Output" rows="10" cols="50" placeholder="Base64 will appear here..."></textarea>
+
+    <script>
+        document.getElementById('avatarInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            console.log('File selected:', file.name, file.size, file.type);
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const base64 = event.target.result;
+                console.log('Base64 generated:', base64.substring(0, 100) + '...');
+                
+                document.getElementById('preview').src = base64;
+                document.getElementById('preview').style.display = 'block';
+                document.getElementById('base64Output').value = base64;
+            };
+            reader.onerror = function(error) {
+                console.error('FileReader error:', error);
+            };
+            reader.readAsDataURL(file);
+        });
+    </script>
+</body>
+</html>

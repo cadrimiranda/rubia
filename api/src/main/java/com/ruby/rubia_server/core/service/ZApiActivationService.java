@@ -18,6 +18,9 @@ public class ZApiActivationService {
     @Value("${zapi.instance.url}")
     private String instanceUrl;
 
+    @Value("${zapi.instance.id}")
+    private String instanceId;
+
     @Value("${zapi.token}")
     private String token;
     
@@ -30,9 +33,13 @@ public class ZApiActivationService {
         this.restTemplate = new RestTemplate();
     }
 
+    private String buildUrl(String method) {
+        return instanceUrl + "/" + instanceId + "/token/" + token + "/" + method;
+    }
+
     public ZApiStatus getInstanceStatus() {
         try {
-            String url = instanceUrl + "/token/" + token + "/status";
+            String url = buildUrl("status");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -53,7 +60,7 @@ public class ZApiActivationService {
 
     public QrCodeResult getQrCodeBytes() {
         try {
-            String url = instanceUrl + "/token/" + token + "/qr-code";
+            String url = buildUrl("qr-code");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -74,7 +81,7 @@ public class ZApiActivationService {
 
     public QrCodeResult getQrCodeImage() {
         try {
-            String url = instanceUrl + "/token/" + token + "/qr-code/image";
+            String url = buildUrl("qr-code/image");
             log.info("Getting QR code from URL: {}", url);
             
             HttpHeaders headers = createHeaders();
@@ -109,7 +116,7 @@ public class ZApiActivationService {
 
     public PhoneCodeResult getPhoneCode(String phoneNumber) {
         try {
-            String url = instanceUrl + "/token/" + token + "/phone-code/" + phoneNumber;
+            String url = buildUrl("phone-code/" + phoneNumber);
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -131,7 +138,7 @@ public class ZApiActivationService {
 
     public boolean restartInstance() {
         try {
-            String url = instanceUrl + "/token/" + token + "/restart";
+            String url = buildUrl("restart");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -148,7 +155,7 @@ public class ZApiActivationService {
 
     public boolean disconnectInstance() {
         try {
-            String url = instanceUrl + "/token/" + token + "/disconnect";
+            String url = buildUrl("disconnect");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
