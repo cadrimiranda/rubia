@@ -2,14 +2,14 @@ package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
-import com.ruby.rubia_server.core.entity.AIAgent;
-import com.ruby.rubia_server.core.entity.AIModel;
-import com.ruby.rubia_server.core.entity.Company;
-import com.ruby.rubia_server.core.entity.CompanyGroup;
-import com.ruby.rubia_server.core.repository.AIAgentRepository;
-import com.ruby.rubia_server.core.repository.AIModelRepository;
-import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
-import com.ruby.rubia_server.core.repository.CompanyRepository;
+import com.ruby.rubia_server.core.dto.AIEnhancementResult;
+import com.ruby.rubia_server.core.entity.*;
+import com.ruby.rubia_server.core.enums.UserRole;
+import com.ruby.rubia_server.core.enums.Channel;
+import com.ruby.rubia_server.core.enums.ConversationStatus;
+import com.ruby.rubia_server.core.repository.*;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @TestPropertySource(properties = {
     "spring.jpa.hibernate.ddl-auto=validate",
@@ -32,6 +35,9 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private AIAgentService aiAgentService;
+
+    @MockBean
+    private OpenAIService openAIService;
 
     @Autowired
     private AIAgentRepository aiAgentRepository;
@@ -45,10 +51,29 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private AIModelRepository aiModelRepository;
 
+    @Autowired
+    private MessageEnhancementAuditRepository auditRepository;
+
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ConversationRepository conversationRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
     private Company testCompany;
     private UUID testCompanyId;
     private AIModel testGPT4Model;
     private AIModel testClaudeModel;
+    private Department testDepartment;
+    private User testUser;
+    private Customer testCustomer;
+    private Conversation testConversation;
 
     @BeforeEach
     void setUp() {
@@ -75,32 +100,90 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         testCompany = companyRepository.save(testCompany);
         testCompanyId = testCompany.getId();
 
-        // Create test AI models
-        testGPT4Model = AIModel.builder()
-                .name("gpt-4")
-                .displayName("GPT-4")
-                .provider("OpenAI")
-                .capabilities("Conversação avançada, análise de texto, geração de conteúdo")
-                .impactDescription("Modelo premium com alta qualidade de resposta")
-                .costPer1kTokens(30)
-                .performanceLevel("HIGH")
-                .isActive(true)
-                .sortOrder(1)
-                .build();
-        testGPT4Model = aiModelRepository.save(testGPT4Model);
+        // Create test AI models - use existing or create new
+        testGPT4Model = aiModelRepository.findByName("gpt-4o-mini")
+                .orElseGet(() -> {
+                    AIModel model = AIModel.builder()
+                            .name("gpt-4o-mini")
+                            .displayName("GPT-4o Mini")
+                            .provider("OpenAI")
+                            .capabilities("Conversação avançada, análise de texto, geração de conteúdo")
+                            .impactDescription("Modelo padrão com boa qualidade e custo eficiente")
+                            .costPer1kTokens(1)
+                            .performanceLevel("HIGH")
+                            .isActive(true)
+                            .sortOrder(1)
+                            .build();
+                    return aiModelRepository.save(model);
+                });
 
-        testClaudeModel = AIModel.builder()
-                .name("claude-3.5-sonnet")
-                .displayName("Claude 3.5 Sonnet")
-                .provider("Anthropic")
-                .capabilities("Conversação natural, análise detalhada, raciocínio lógico")
-                .impactDescription("Modelo equilibrado entre qualidade e custo")
-                .costPer1kTokens(15)
-                .performanceLevel("MEDIUM")
-                .isActive(true)
-                .sortOrder(2)
+        testClaudeModel = aiModelRepository.findByName("claude-3.5-sonnet")
+                .orElseGet(() -> {
+                    AIModel model = AIModel.builder()
+                            .name("claude-3.5-sonnet")
+                            .displayName("Claude 3.5 Sonnet")
+                            .provider("Anthropic")
+                            .capabilities("Conversação natural, análise detalhada, raciocínio lógico")
+                            .impactDescription("Modelo equilibrado entre qualidade e custo")
+                            .costPer1kTokens(15)
+                            .performanceLevel("MEDIUM")
+                            .isActive(true)
+                            .sortOrder(2)
+                            .build();
+                    return aiModelRepository.save(model);
+                });
+
+        // Create test department
+        testDepartment = Department.builder()
+                .name("Test Department")
+                .company(testCompany)
                 .build();
-        testClaudeModel = aiModelRepository.save(testClaudeModel);
+        testDepartment = departmentRepository.save(testDepartment);
+
+        // Create test user
+        testUser = User.builder()
+                .name("Test User")
+                .email("test@test.com")
+                .company(testCompany)
+                .department(testDepartment)
+                .role(UserRole.ADMIN)
+                .passwordHash("hash")
+                .build();
+        testUser = userRepository.save(testUser);
+
+        // Create test customer and conversation for enhancement tests
+        testCustomer = Customer.builder()
+                .name("Test Customer")
+                .phone("5511999887766")
+                .company(testCompany)
+                .build();
+        testCustomer = customerRepository.save(testCustomer);
+
+        testConversation = Conversation.builder()
+                .company(testCompany)
+                .channel(Channel.WHATSAPP)
+                .status(ConversationStatus.ENTRADA)
+                .priority(1)
+                .build();
+        testConversation = conversationRepository.save(testConversation);
+
+        // Setup OpenAI mocks
+        setupOpenAIMocks();
+    }
+
+    private void setupOpenAIMocks() {
+        // Mock successful OpenAI enhancement
+        when(openAIService.enhanceTemplateWithPayload(anyString(), anyString(), anyDouble(), anyInt()))
+                .thenReturn(AIEnhancementResult.builder()
+                        .enhancedMessage("Olá! 😊 Como posso ajudar você hoje?")
+                        .systemMessage("Você é um especialista em captação de doadores...")
+                        .userMessage("Melhore esta mensagem: Olá")
+                        .fullPayloadJson("{\"model\":\"gpt-4o-mini\",\"temperature\":0.7}")
+                        .modelUsed("gpt-4o-mini")
+                        .temperatureUsed(0.7)
+                        .maxTokensUsed(150)
+                        .tokensUsed(45)
+                        .build());
     }
 
     @Test
@@ -385,5 +468,176 @@ public class AIAgentServiceIntegrationTest extends AbstractIntegrationTest {
         // Verify both exist in database
         List<AIAgent> allAgents = aiAgentService.getAIAgentsByCompanyId(testCompanyId);
         assertEquals(2, allAgents.size());
+    }
+
+    @Test
+    void enhanceMessage_ShouldCreateCompleteAuditTrail() {
+        // Given
+        CreateAIAgentDTO agentDTO = CreateAIAgentDTO.builder()
+                .companyId(testCompanyId)
+                .name("Enhancement Agent")
+                .aiModelId(testGPT4Model.getId())
+                .temperament("AMIGAVEL")
+                .maxResponseLength(500)
+                .temperature(BigDecimal.valueOf(0.7))
+                .isActive(true)
+                .build();
+
+        AIAgent agent = aiAgentService.createAIAgent(agentDTO);
+        String originalMessage = "Olá";
+        String userAgent = "Mozilla/5.0 Test Browser";
+        String ipAddress = "192.168.1.100";
+
+        // When
+        String enhancedMessage = aiAgentService.enhanceMessage(
+                testCompanyId,
+                originalMessage,
+                testUser.getId(),
+                testConversation.getId(),
+                userAgent,
+                ipAddress
+        );
+
+        // Then
+        assertThat(enhancedMessage).isEqualTo("Olá! 😊 Como posso ajudar você hoje?");
+
+        // Verify OpenAI service was called
+        verify(openAIService).enhanceTemplateWithPayload(
+                contains("Use um tom caloroso, acolhedor e amigável"),
+                eq("gpt-4o-mini"),
+                eq(0.7),
+                eq(500)
+        );
+
+        // Verify audit was created
+        List<MessageEnhancementAudit> audits = auditRepository.findByCompanyId(testCompanyId, Pageable.unpaged()).getContent();
+        assertThat(audits).hasSize(1);
+        
+        MessageEnhancementAudit audit = audits.get(0);
+        assertThat(audit.getOriginalMessage()).isEqualTo(originalMessage);
+        assertThat(audit.getEnhancedMessage()).isEqualTo("Olá! 😊 Como posso ajudar você hoje?");
+        assertThat(audit.getTemperamentUsed()).isEqualTo("AMIGAVEL");
+        assertThat(audit.getAiModelUsed()).isEqualTo("gpt-4o-mini");
+        assertThat(audit.getTemperatureUsed()).isEqualTo(0.7);
+        assertThat(audit.getTokensConsumed()).isEqualTo(45);
+        assertThat(audit.getSuccess()).isTrue();
+        assertThat(audit.getUserAgent()).isEqualTo(userAgent);
+        assertThat(audit.getIpAddress()).isEqualTo(ipAddress);
+        assertThat(audit.getOpenaiSystemMessage()).contains("especialista em captação");
+        assertThat(audit.getOpenaiUserMessage()).isEqualTo("Melhore esta mensagem: Olá");
+        assertThat(audit.getOpenaiFullPayload()).contains("gpt-4o-mini");
+        assertThat(audit.getUser().getId()).isEqualTo(testUser.getId());
+        assertThat(audit.getAiAgent().getId()).isEqualTo(agent.getId());
+        assertThat(audit.getConversationId()).isEqualTo(testConversation.getId());
+    }
+
+    @Test
+    void enhanceMessage_ShouldHandleOpenAIFailuresWithErrorAudit() {
+        // Given
+        CreateAIAgentDTO agentDTO = CreateAIAgentDTO.builder()
+                .companyId(testCompanyId)
+                .name("Failing Agent")
+                .aiModelId(testGPT4Model.getId())
+                .temperament("AMIGAVEL")
+                .isActive(true)
+                .build();
+
+        AIAgent agent = aiAgentService.createAIAgent(agentDTO);
+        String originalMessage = "Test message";
+        
+        // Mock OpenAI failure
+        when(openAIService.enhanceTemplateWithPayload(anyString(), anyString(), anyDouble(), anyInt()))
+                .thenThrow(new RuntimeException("OpenAI API Error"));
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> {
+            aiAgentService.enhanceMessage(
+                    testCompanyId,
+                    originalMessage,
+                    testUser.getId(),
+                    testConversation.getId(),
+                    "Test Browser",
+                    "192.168.1.1"
+            );
+        });
+
+        // Verify error audit was created
+        List<MessageEnhancementAudit> audits = auditRepository.findByCompanyId(testCompanyId, Pageable.unpaged()).getContent();
+        assertThat(audits).hasSize(1);
+        
+        MessageEnhancementAudit audit = audits.get(0);
+        assertThat(audit.getSuccess()).isFalse();
+        assertThat(audit.getErrorMessage()).contains("OpenAI API Error");
+        assertThat(audit.getOriginalMessage()).isEqualTo(originalMessage);
+        assertThat(audit.getEnhancedMessage()).isNull();
+    }
+
+    @Test
+    void enhanceMessage_ShouldThrowExceptionWhenNoActiveAgents() {
+        // Given - Create only inactive agent
+        CreateAIAgentDTO agentDTO = CreateAIAgentDTO.builder()
+                .companyId(testCompanyId)
+                .name("Inactive Agent")
+                .aiModelId(testGPT4Model.getId())
+                .temperament("AMIGAVEL")
+                .isActive(false)
+                .build();
+
+        aiAgentService.createAIAgent(agentDTO);
+
+        // When & Then
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            aiAgentService.enhanceMessage(
+                    testCompanyId,
+                    "Test message",
+                    testUser.getId(),
+                    testConversation.getId(),
+                    "Test Browser",
+                    "192.168.1.1"
+            );
+        });
+
+        assertThat(exception.getMessage()).contains("Nenhum agente IA ativo encontrado");
+    }
+
+    @Test
+    void enhanceMessage_ShouldIsolateByCompany() {
+        // Given
+        CreateAIAgentDTO agentDTO = CreateAIAgentDTO.builder()
+                .companyId(testCompanyId)
+                .name("Test Agent")
+                .aiModelId(testGPT4Model.getId())
+                .temperament("AMIGAVEL")
+                .isActive(true)
+                .build();
+
+        aiAgentService.createAIAgent(agentDTO);
+
+        // Create another company
+        CompanyGroup anotherGroup = CompanyGroup.builder()
+                .name("Another Company Group")
+                .build();
+        anotherGroup = companyGroupRepository.save(anotherGroup);
+
+        Company anotherCompany = Company.builder()
+                .name("Another Company")
+                .slug("another-company")
+                .companyGroup(anotherGroup)
+                .build();
+        anotherCompany = companyRepository.save(anotherCompany);
+
+        final UUID finalAnotherCompanyId = anotherCompany.getId();
+
+        // When & Then - Try to enhance with different company ID should fail
+        assertThrows(RuntimeException.class, () -> {
+            aiAgentService.enhanceMessage(
+                    finalAnotherCompanyId, // Different company
+                    "Test message",
+                    testUser.getId(), // User from testCompany
+                    testConversation.getId(),
+                    "Test Browser",
+                    "192.168.1.1"
+            );
+        });
     }
 }
