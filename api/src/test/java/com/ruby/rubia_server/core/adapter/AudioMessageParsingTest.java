@@ -6,13 +6,11 @@ import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.service.PhoneService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
 public class AudioMessageParsingTest {
     
     private ZApiAdapter adapter;
