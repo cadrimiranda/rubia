@@ -526,9 +526,9 @@ class ZApiActivationServiceTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenNoConfiguredInstanceFound() {
+    void shouldReturnErrorStatusWhenNoConfiguredInstanceFound() {
         // Arrange - Reset mocks and configure no instances with proper configuration
-        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator, urlFactory);
         Company testCompany = new Company();
         
         WhatsAppInstance notConfiguredInstance = WhatsAppInstance.builder()
@@ -546,13 +546,14 @@ class ZApiActivationServiceTest {
         when(whatsAppInstanceService.findByCompany(testCompany))
             .thenReturn(allInstances);
 
-        // Act & Assert
-        IllegalStateException exception = assertThrows(
-            IllegalStateException.class,
-            () -> zapiActivationService.getInstanceStatus()
-        );
+        // Act
+        ZApiStatus result = zapiActivationService.getInstanceStatus();
 
-        assertEquals("No configured WhatsApp instance found for activation", exception.getMessage());
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isConnected());
+        assertNotNull(result.getError());
+        assertTrue(result.getError().contains("Cannot determine active WhatsApp instance"));
         
         // Verify no REST call was made
         verify(restTemplate, never()).exchange(
@@ -564,19 +565,20 @@ class ZApiActivationServiceTest {
     }
 
     @Test
-    void shouldHandleCompanyContextError() {
+    void shouldReturnErrorStatusWhenCompanyContextError() {
         // Arrange - Reset mocks and configure company context error
-        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator, urlFactory);
         when(companyContextUtil.getCurrentCompany())
             .thenThrow(new IllegalStateException("No company context"));
 
-        // Act & Assert
-        IllegalStateException exception = assertThrows(
-            IllegalStateException.class,
-            () -> zapiActivationService.getInstanceStatus()
-        );
+        // Act
+        ZApiStatus result = zapiActivationService.getInstanceStatus();
 
-        assertEquals("Cannot determine active WhatsApp instance", exception.getMessage());
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isConnected());
+        assertNotNull(result.getError());
+        assertTrue(result.getError().contains("Cannot determine active WhatsApp instance"));
         
         // Verify no service calls were made
         verify(whatsAppInstanceService, never()).findActiveConnectedInstance(any());
