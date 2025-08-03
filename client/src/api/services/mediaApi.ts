@@ -251,20 +251,8 @@ export const mediaApi = {
       formData.append("file", file);
       if (caption) formData.append("caption", caption);
 
-      const response = await fetch("/api/messaging/upload-and-send", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Erro no upload Z-API: ${error}`);
-      }
-
-      return response.json();
+      const response = await apiClient.post<{ success: boolean; messageId?: string; error?: string }>("/api/messaging/upload-and-send", formData);
+      return response;
     } catch (error) {
       console.error("Erro no upload Z-API:", error);
       throw error;

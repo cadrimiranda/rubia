@@ -12,7 +12,8 @@ import { getCurrentTimestamp } from "../utils";
 import { DonorSidebar } from "./DonorSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { MessageList } from "./MessageList";
-import { MessageInput } from "./MessageInput";
+import { MessageInput } from "./MessageInput/index";
+import { AudioErrorBoundary } from "./AudioErrorBoundary";
 import { ContextMenu as ContextMenuComponent } from "./ContextMenu";
 import { NewChatModal } from "./NewChatModal";
 import { DonorInfoModal } from "./DonorInfoModal";
@@ -72,6 +73,7 @@ export const BloodCenterChat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [isAudioSending, setIsAudioSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<ChatStatus>("ativos");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -114,6 +116,11 @@ export const BloodCenterChat: React.FC = () => {
     webSocketMessages.forEach((wsMsg) => {
       if (!allMessages.some((localMsg) => localMsg.id === wsMsg.id)) {
         allMessages.push(wsMsg);
+        
+        // Se recebeu uma mensagem de áudio do usuário via WebSocket, desabilitar loading
+        if (wsMsg.messageType === 'audio' && wsMsg.isFromUser && isAudioSending) {
+          setIsAudioSending(false);
+        }
       }
     });
 
@@ -1048,6 +1055,110 @@ export const BloodCenterChat: React.FC = () => {
     });
   };
 
+  const handleAudioRecorded = async (audioBlob: Blob) => {
+    if (!state.selectedDonor) {
+      handleMediaError("Selecione um doador para enviar áudio");
+      return;
+    }
+
+    if (isCreatingConversation) {
+      handleMediaError("Aguarde a criação da conversa");
+      return;
+    }
+
+    if (isAudioSending) {
+      handleMediaError("Aguarde o envio do áudio anterior");
+      return;
+    }
+
+    setIsAudioSending(true);
+    let conversationId = state.selectedDonor.conversationId;
+
+    // Verificar se é a primeira mensagem de um novo contato
+    const isFirstMessage =
+      !state.selectedDonor.hasActiveConversation &&
+      !state.selectedDonor.lastMessage;
+
+    if (isFirstMessage) {
+      setIsCreatingConversation(true);
+
+      try {
+        // Criar conversa para este cliente usando o adapter
+        const createRequest = conversationAdapter.toCreateRequest(
+          state.selectedDonor.id,
+          "WHATSAPP"
+        );
+
+        const newConversation = await conversationApi.create(createRequest);
+        conversationId = newConversation.id;
+
+        // Atualizar o donor para marcar que agora tem conversa ativa
+        const updatedDonor = {
+          ...state.selectedDonor,
+          conversationId: newConversation.id,
+          hasActiveConversation: true,
+        };
+
+        // Atualizar lista de donors
+        setDonors((prev) => {
+          const existingDonorIndex = prev.findIndex(
+            (d) => d.id === state.selectedDonor?.id
+          );
+
+          if (existingDonorIndex >= 0) {
+            return prev.map((d) =>
+              d.id === state.selectedDonor?.id ? updatedDonor : d
+            );
+          } else {
+            return [...prev, updatedDonor];
+          }
+        });
+
+        // Atualizar selectedDonor
+        updateState({ selectedDonor: updatedDonor });
+      } catch (error) {
+        console.error("❌ Erro ao criar conversa:", error);
+        handleMediaError("Não foi possível criar a conversa. Tente novamente.");
+        setIsCreatingConversation(false);
+        setIsAudioSending(false);
+        return;
+      } finally {
+        setIsCreatingConversation(false);
+      }
+    }
+
+    if (!conversationId) {
+      handleMediaError("ID da conversa não encontrado");
+      setIsAudioSending(false);
+      return;
+    }
+
+    try {
+      // Criar arquivo a partir do blob
+      const audioFile = new File([audioBlob], `audio-${Date.now()}.wav`, {
+        type: audioBlob.type,
+      });
+
+      const donorPhone = state.selectedDonor.phone;
+      if (!donorPhone) {
+        throw new Error("Número de telefone do doador não encontrado");
+      }
+
+      // Enviar áudio via Z-API e aguardar WebSocket
+      await mediaApi.uploadForZApi(
+        audioFile,
+        donorPhone,
+        undefined // sem texto para áudio
+      );
+
+      // Não fazer nada aqui - aguardar mensagem chegar via WebSocket
+    } catch (error) {
+      console.error("❌ Erro ao enviar áudio:", error);
+      handleMediaError("Não foi possível enviar o áudio. Tente novamente.");
+      setIsAudioSending(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (
       !state.messageInput.trim() &&
@@ -1557,26 +1668,32 @@ export const BloodCenterChat: React.FC = () => {
               agentAvatar={undefined} // TODO: Buscar avatar do agente IA da empresa
             />
 
-            <MessageInput
-              messageInput={state.messageInput}
-              attachments={state.attachments}
-              pendingMedia={state.pendingMedia}
-              conversationId={state.selectedDonor?.conversationId}
-              draftMessage={currentDraftMessage}
-              onMessageChange={(value) => updateState({ messageInput: value })}
-              onSendMessage={handleSendMessage}
-              onFileUpload={handleFileUpload}
-              onRemoveAttachment={(id) =>
-                updateState({
-                  attachments: state.attachments.filter((att) => att.id !== id),
-                })
-              }
-              onMediaSelected={handleMediaSelected}
-              onRemovePendingMedia={handleRemovePendingMedia}
-              onKeyPress={handleKeyPress}
-              onEnhanceMessage={handleEnhanceMessage}
-              onError={handleMediaError}
-            />
+            <AudioErrorBoundary>
+              <MessageInput
+                messageInput={state.messageInput}
+                attachments={state.attachments}
+                pendingMedia={state.pendingMedia}
+                conversationId={state.selectedDonor?.conversationId}
+                draftMessage={currentDraftMessage}
+                onMessageChange={(value) => updateState({ messageInput: value })}
+                onSendMessage={handleSendMessage}
+                onFileUpload={handleFileUpload}
+                onRemoveAttachment={(id) =>
+                  updateState({
+                    attachments: state.attachments.filter((att) => att.id !== id),
+                  })
+                }
+                onMediaSelected={handleMediaSelected}
+                onRemovePendingMedia={handleRemovePendingMedia}
+                onKeyPress={handleKeyPress}
+                onEnhanceMessage={handleEnhanceMessage}
+                onError={handleMediaError}
+                onAudioRecorded={handleAudioRecorded}
+                isAudioSending={isAudioSending}
+                maxRecordingTimeMs={300000}
+                maxFileSizeMB={16}
+              />
+            </AudioErrorBoundary>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
