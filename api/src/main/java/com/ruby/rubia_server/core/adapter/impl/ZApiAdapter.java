@@ -3,7 +3,10 @@ package com.ruby.rubia_server.core.adapter.impl;
 import com.ruby.rubia_server.core.adapter.MessagingAdapter;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,12 +29,6 @@ import java.util.HashMap;
 @Slf4j
 public class ZApiAdapter implements MessagingAdapter {
 
-    @Value("${zapi.instance.url}")
-    private String instanceUrl;
-
-    @Value("${zapi.token}")
-    private String token;
-
     @Value("${zapi.clientToken}")
     private String clientToken;
 
@@ -40,10 +37,41 @@ public class ZApiAdapter implements MessagingAdapter {
 
     private final RestTemplate restTemplate;
     private final PhoneService phoneService;
+    private final WhatsAppInstanceService whatsAppInstanceService;
+    private final CompanyContextUtil companyContextUtil;
 
-    public ZApiAdapter(PhoneService phoneService) {
+    public ZApiAdapter(PhoneService phoneService, 
+                      WhatsAppInstanceService whatsAppInstanceService,
+                      CompanyContextUtil companyContextUtil) {
         this.restTemplate = new RestTemplate();
         this.phoneService = phoneService;
+        this.whatsAppInstanceService = whatsAppInstanceService;
+        this.companyContextUtil = companyContextUtil;
+    }
+
+    /**
+     * Gets the active WhatsApp instance for the current company context
+     */
+    private WhatsAppInstance getActiveInstance() {
+        try {
+            return whatsAppInstanceService.findActiveConnectedInstance(companyContextUtil.getCurrentCompany())
+                .orElseThrow(() -> new IllegalStateException("No connected WhatsApp instance found for company"));
+        } catch (Exception e) {
+            log.error("Error getting active instance: {}", e.getMessage());
+            throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
+        }
+    }
+
+    /**
+     * Builds the Z-API URL for the given endpoint using active instance data
+     */
+    private String buildZApiUrl(String endpoint) {
+        WhatsAppInstance instance = getActiveInstance();
+        if (instance.getInstanceId() == null || instance.getAccessToken() == null) {
+            throw new IllegalStateException("WhatsApp instance is not properly configured (missing instanceId or accessToken)");
+        }
+        return String.format("https://api.z-api.io/instances/%s/token/%s/%s", 
+                           instance.getInstanceId(), instance.getAccessToken(), endpoint);
     }
 
     @Override
@@ -51,7 +79,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API message to: {} with message: {}", to, message.substring(0, Math.min(50, message.length())));
 
-            String url = instanceUrl + "/token/" + token + "/send-text";
+            String url = buildZApiUrl("send-text");
             log.info("Z-API URL: {}", url);
             
             String formattedPhone = phoneService.formatForZApi(to);
@@ -95,7 +123,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API media message to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildZApiUrl("send-file-url");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -290,7 +318,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API document to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildZApiUrl("send-file-url");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -328,7 +356,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API audio to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-audio";
+            String url = buildZApiUrl("send-audio");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -360,7 +388,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API base64 file to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-base64";
+            String url = buildZApiUrl("send-file-base64");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -420,7 +448,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Uploading file to Z-API: {}", file.getOriginalFilename());
 
-            String url = instanceUrl + "/token/" + token + "/upload-file";
+            String url = buildZApiUrl("upload-file");
             
             HttpHeaders headers = new HttpHeaders();
             headers.set("client-token", clientToken);
@@ -458,7 +486,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API {} to: {}", mediaType, to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildZApiUrl("send-file-url");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));

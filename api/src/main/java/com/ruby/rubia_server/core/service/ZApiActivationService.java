@@ -3,6 +3,8 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.entity.ZApiStatus;
 import com.ruby.rubia_server.core.entity.QrCodeResult;
 import com.ruby.rubia_server.core.entity.PhoneCodeResult;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -14,25 +16,61 @@ import java.util.Map;
 @Service
 @Slf4j
 public class ZApiActivationService {
-
-    @Value("${zapi.instance.url}")
-    private String instanceUrl;
-
-    @Value("${zapi.token}")
-    private String token;
     
     @Value("${zapi.clientToken}")
     private String clientToken;
 
     private final RestTemplate restTemplate;
+    private final WhatsAppInstanceService whatsAppInstanceService;
+    private final CompanyContextUtil companyContextUtil;
 
-    public ZApiActivationService() {
+    public ZApiActivationService(WhatsAppInstanceService whatsAppInstanceService, 
+                                CompanyContextUtil companyContextUtil) {
         this.restTemplate = new RestTemplate();
+        this.whatsAppInstanceService = whatsAppInstanceService;
+        this.companyContextUtil = companyContextUtil;
+    }
+
+    /**
+     * Gets the active WhatsApp instance for the current company context.
+     * During activation, looks for instances in configuration state.
+     */
+    private WhatsAppInstance getActiveInstance() {
+        try {
+            // First try to find a connected instance
+            var connectedInstance = whatsAppInstanceService.findActiveConnectedInstance(companyContextUtil.getCurrentCompany());
+            if (connectedInstance.isPresent()) {
+                return connectedInstance.get();
+            }
+            
+            // If no connected instance, look for instances in configuration/activation state
+            var instances = whatsAppInstanceService.findByCompany(companyContextUtil.getCurrentCompany());
+            return instances.stream()
+                .filter(instance -> instance.getInstanceId() != null && instance.getAccessToken() != null)
+                .filter(instance -> instance.getStatus().name().matches("CONFIGURING|AWAITING_QR_SCAN|CONNECTING"))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No configured WhatsApp instance found for activation"));
+        } catch (Exception e) {
+            log.error("Error getting active instance: {}", e.getMessage());
+            throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
+        }
+    }
+
+    /**
+     * Builds the Z-API URL for the given endpoint using active instance data
+     */
+    private String buildZApiUrl(String endpoint) {
+        WhatsAppInstance instance = getActiveInstance();
+        if (instance.getInstanceId() == null || instance.getAccessToken() == null) {
+            throw new IllegalStateException("WhatsApp instance is not properly configured (missing instanceId or accessToken)");
+        }
+        return String.format("https://api.z-api.io/instances/%s/token/%s/%s", 
+                           instance.getInstanceId(), instance.getAccessToken(), endpoint);
     }
 
     public ZApiStatus getInstanceStatus() {
         try {
-            String url = instanceUrl + "/token/" + token + "/status";
+            String url = buildZApiUrl("status");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -53,7 +91,7 @@ public class ZApiActivationService {
 
     public QrCodeResult getQrCodeBytes() {
         try {
-            String url = instanceUrl + "/token/" + token + "/qr-code";
+            String url = buildZApiUrl("qr-code");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -74,7 +112,7 @@ public class ZApiActivationService {
 
     public QrCodeResult getQrCodeImage() {
         try {
-            String url = instanceUrl + "/token/" + token + "/qr-code/image";
+            String url = buildZApiUrl("qr-code/image");
             log.info("Getting QR code from URL: {}", url);
             
             HttpHeaders headers = createHeaders();
@@ -109,7 +147,7 @@ public class ZApiActivationService {
 
     public PhoneCodeResult getPhoneCode(String phoneNumber) {
         try {
-            String url = instanceUrl + "/token/" + token + "/phone-code/" + phoneNumber;
+            String url = buildZApiUrl("phone-code/" + phoneNumber);
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -131,7 +169,7 @@ public class ZApiActivationService {
 
     public boolean restartInstance() {
         try {
-            String url = instanceUrl + "/token/" + token + "/restart";
+            String url = buildZApiUrl("restart");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -148,7 +186,7 @@ public class ZApiActivationService {
 
     public boolean disconnectInstance() {
         try {
-            String url = instanceUrl + "/token/" + token + "/disconnect";
+            String url = buildZApiUrl("disconnect");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -165,7 +203,6 @@ public class ZApiActivationService {
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + token);
         headers.set("client-token", clientToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;

@@ -175,4 +175,45 @@ public class WhatsAppInstanceService {
     public Optional<WhatsAppInstance> findByInstanceId(String instanceId) {
         return whatsappInstanceRepository.findByInstanceIdAndIsActiveTrue(instanceId);
     }
+
+    /**
+     * Finds the active connected WhatsApp instance for a company.
+     * Returns the primary instance if connected, otherwise the first connected instance.
+     */
+    public Optional<WhatsAppInstance> findActiveConnectedInstance(Company company) {
+        List<WhatsAppInstance> connectedInstances = whatsappInstanceRepository
+            .findByCompanyAndStatusAndIsActiveTrue(company, WhatsAppInstanceStatus.CONNECTED);
+        
+        if (connectedInstances.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        // Return primary instance if connected
+        Optional<WhatsAppInstance> primaryInstance = connectedInstances.stream()
+            .filter(WhatsAppInstance::getIsPrimary)
+            .findFirst();
+            
+        if (primaryInstance.isPresent()) {
+            return primaryInstance;
+        }
+        
+        // Return first connected instance if no primary
+        return connectedInstances.stream().findFirst();
+    }
+
+    /**
+     * Finds the active WhatsApp instance to use for messaging for a specific phone number.
+     * This method helps determine which instance should handle outgoing messages.
+     */
+    public Optional<WhatsAppInstance> findInstanceForMessaging(String phoneNumber) {
+        // First try to find instance by phone number
+        Optional<WhatsAppInstance> instanceByPhone = findByPhoneNumber(phoneNumber);
+        if (instanceByPhone.isPresent() && instanceByPhone.get().isConnected()) {
+            return instanceByPhone;
+        }
+        
+        // If not found or not connected, return any connected instance for the company
+        // This requires company context, which should be available from security context
+        return Optional.empty(); // Implementation depends on how company context is resolved
+    }
 }

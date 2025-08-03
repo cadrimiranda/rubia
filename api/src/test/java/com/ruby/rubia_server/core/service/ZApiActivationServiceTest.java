@@ -3,11 +3,14 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.entity.PhoneCodeResult;
 import com.ruby.rubia_server.core.entity.QrCodeResult;
 import com.ruby.rubia_server.core.entity.ZApiStatus;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
+import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
@@ -23,6 +26,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ZApiActivationServiceTest {
@@ -30,16 +34,34 @@ class ZApiActivationServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @InjectMocks
+    @Mock
+    private WhatsAppInstanceService whatsAppInstanceService;
+
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+
     private ZApiActivationService zapiActivationService;
 
-    private static final String TEST_INSTANCE_URL = "https://api.z-api.io/instances/TEST123";
+    private static final String TEST_INSTANCE_ID = "TEST123";
     private static final String TEST_TOKEN = "test-token-123";
+    private static final String CLIENT_TOKEN = "client-token-123";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(zapiActivationService, "instanceUrl", TEST_INSTANCE_URL);
-        ReflectionTestUtils.setField(zapiActivationService, "token", TEST_TOKEN);
+        zapiActivationService = new ZApiActivationService(whatsAppInstanceService, companyContextUtil);
+        
+        // Mock company and instance setup
+        Company mockCompany = new Company();
+        WhatsAppInstance mockInstance = WhatsAppInstance.builder()
+            .instanceId(TEST_INSTANCE_ID)
+            .accessToken(TEST_TOKEN)
+            .build();
+            
+        lenient().when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
+        lenient().when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
+            .thenReturn(java.util.Optional.of(mockInstance));
+        
+        ReflectionTestUtils.setField(zapiActivationService, "clientToken", CLIENT_TOKEN);
         ReflectionTestUtils.setField(zapiActivationService, "restTemplate", restTemplate);
     }
 
@@ -327,7 +349,7 @@ class ZApiActivationServiceTest {
     }
 
     @Test
-    void createHeaders_ShouldIncludeAuthorizationAndContentType() {
+    void createHeaders_ShouldIncludeClientTokenAndContentType() {
         // This is a private method, so we test it indirectly through other methods
         
         // Arrange
@@ -346,8 +368,8 @@ class ZApiActivationServiceTest {
         
         HttpEntity<?> capturedEntity = entityCaptor.getValue();
         assertNotNull(capturedEntity.getHeaders());
-        assertTrue(capturedEntity.getHeaders().containsKey("Authorization"));
-        assertEquals("Bearer " + TEST_TOKEN, capturedEntity.getHeaders().getFirst("Authorization"));
+        assertTrue(capturedEntity.getHeaders().containsKey("client-token"));
+        assertEquals(CLIENT_TOKEN, capturedEntity.getHeaders().getFirst("client-token"));
         assertEquals("application/json", capturedEntity.getHeaders().getFirst("Content-Type"));
     }
 }

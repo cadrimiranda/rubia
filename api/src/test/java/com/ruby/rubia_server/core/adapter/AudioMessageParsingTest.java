@@ -4,13 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 public class AudioMessageParsingTest {
@@ -18,10 +23,17 @@ public class AudioMessageParsingTest {
     private ZApiAdapter adapter;
     private ObjectMapper objectMapper;
     
+    @Mock
+    private WhatsAppInstanceService whatsAppInstanceService;
+    
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+    
     @BeforeEach
     void setUp() {
+        MockitoAnnotations.openMocks(this);
         PhoneService phoneService = new PhoneService();
-        adapter = new ZApiAdapter(phoneService);
+        adapter = new ZApiAdapter(phoneService, whatsAppInstanceService, companyContextUtil);
         objectMapper = new ObjectMapper();
     }
     

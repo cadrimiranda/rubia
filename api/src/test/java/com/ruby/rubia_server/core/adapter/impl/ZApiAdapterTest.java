@@ -2,10 +2,13 @@ package com.ruby.rubia_server.core.adapter.impl;
 
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
+import com.ruby.rubia_server.core.entity.Company;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,11 +42,19 @@ class ZApiAdapterTest {
     @Mock
     private PhoneService phoneService;
 
-    @InjectMocks
+    @Mock
+    private WhatsAppInstanceService whatsAppInstanceService;
+
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+
     private ZApiAdapter zApiAdapter;
 
     @BeforeEach
     void setUp() {
+        // Create ZApiAdapter instance with mocked dependencies
+        zApiAdapter = new ZApiAdapter(phoneService, whatsAppInstanceService, companyContextUtil);
+        
         // Configurar mock do PhoneService
         lenient().when(phoneService.formatForZApi(anyString())).thenAnswer(invocation -> {
             String phone = invocation.getArgument(0);
@@ -56,8 +67,18 @@ class ZApiAdapterTest {
             return cleaned;
         });
         
-        ReflectionTestUtils.setField(zApiAdapter, "instanceUrl", "https://api.z-api.io/instances/test");
-        ReflectionTestUtils.setField(zApiAdapter, "token", "test-token");
+        // Mock company and instance setup
+        Company mockCompany = new Company();
+        WhatsAppInstance mockInstance = WhatsAppInstance.builder()
+            .instanceId("test-instance")
+            .accessToken("test-token")
+            .build();
+            
+        lenient().when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
+        lenient().when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
+            .thenReturn(java.util.Optional.of(mockInstance));
+        
+        ReflectionTestUtils.setField(zApiAdapter, "clientToken", "client-token");
         ReflectionTestUtils.setField(zApiAdapter, "webhookToken", "webhook-token");
         ReflectionTestUtils.setField(zApiAdapter, "restTemplate", restTemplate);
     }
