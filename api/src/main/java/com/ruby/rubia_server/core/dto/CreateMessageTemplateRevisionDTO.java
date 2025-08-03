@@ -30,4 +30,12 @@ public class CreateMessageTemplateRevisionDTO {
     private String content;
 
     private UUID editedByUserId;
+    
+    // Campos para metadados de IA
+    private UUID aiAgentId;
+    private String aiEnhancementType;
+    private Integer aiTokensUsed;
+    private Integer aiCreditsConsumed;
+    private String aiModelUsed;
+    private String aiExplanation;
 }

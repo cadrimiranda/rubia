@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { Search, X, User, Circle, Plus, UserPlus, Loader, AlertCircle } from "lucide-react";
+import {
+  Search,
+  X,
+  User,
+  Circle,
+  Plus,
+  UserPlus,
+  Loader,
+  AlertCircle,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import type { Donor } from "../../types/types";
 import { getStatusColor } from "../../utils";
@@ -59,7 +68,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     register,
     handleSubmit,
     formState: { errors, isValid },
-    reset
+    reset,
   } = useForm<FormData>({
     mode: "onChange",
     defaultValues: {
@@ -78,7 +87,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
       addressPostalCode: "",
       addressCity: "",
       addressState: "",
-    }
+    },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -89,7 +98,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
       // Verificar se já existe um cliente com este telefone
       const normalizedPhone = customerAdapter.normalizePhone(data.phone);
       const existingCustomer = await customerApi.findByPhone(normalizedPhone);
-      
+
       if (existingCustomer) {
         // Se já existe, usar o cliente existente
         const user = customerAdapter.toUser(existingCustomer);
@@ -110,13 +119,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           height: 0,
           hasActiveConversation: true,
         };
-        
+
         onNewContactCreate({
           name: data.name,
           phone: data.phone,
-          donor: donor
+          donor: donor,
         });
-        
+
         onDonorSelect(donor);
       } else {
         // Criar novo cliente
@@ -137,9 +146,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           addressCity: data.addressCity,
           addressState: data.addressState,
         };
-        
+
         const newCustomer = await customerApi.create(createRequest);
-        
+
         const user = customerAdapter.toUser(newCustomer);
         const donor: Donor = {
           ...user,
@@ -158,13 +167,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           height: 0,
           hasActiveConversation: true,
         };
-        
+
         onNewContactCreate({
           name: data.name,
           phone: data.phone,
-          donor: donor
+          donor: donor,
         });
-        
+
         onDonorSelect(donor);
       }
 
@@ -172,10 +181,11 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
       reset();
       setActiveTab("existing");
       onClose();
-
     } catch (error) {
       console.error("Erro ao criar contato:", error);
-      setError(error instanceof Error ? error.message : "Erro ao criar contato");
+      setError(
+        error instanceof Error ? error.message : "Erro ao criar contato"
+      );
     } finally {
       setIsCreating(false);
     }
@@ -202,7 +212,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           <h2 className="text-xl font-semibold text-gray-900">Nova Conversa</h2>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-xl hover:bg-gray-100"
           >
             <X className="w-5 h-5" />
           </button>
@@ -254,16 +264,17 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
               {isLoadingContacts ? (
                 <div className="flex flex-col items-center justify-center h-40 text-gray-500">
                   <Loader className="w-8 h-8 animate-spin mb-3 text-blue-500" />
-                  <span className="text-sm font-medium">Carregando contatos...</span>
+                  <span className="text-sm font-medium">
+                    Carregando contatos...
+                  </span>
                 </div>
               ) : availableDonors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 text-gray-500">
                   <User className="w-8 h-8 mb-3" />
                   <span className="text-sm font-medium">
-                    {searchTerm 
-                      ? "Nenhum contato encontrado para sua busca" 
-                      : "Nenhum contato disponível"
-                    }
+                    {searchTerm
+                      ? "Nenhum contato encontrado para sua busca"
+                      : "Nenhum contato disponível"}
                   </span>
                 </div>
               ) : (
@@ -275,13 +286,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                   >
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                           <User className="w-5 h-5 text-white" />
                         </div>
                         <Circle
                           className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${getStatusColor(
                             donor.status
-                          )} bg-white rounded-full border-2 border-white`}
+                          )} bg-white rounded-xl border-2 border-white`}
                           fill="currentColor"
                         />
                       </div>
@@ -292,7 +303,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {donor.phone && `${donor.phone} • `}
-                          {donor.bloodType} • Última doação: {donor.lastDonation}
+                          {donor.bloodType} • Última doação:{" "}
+                          {donor.lastDonation}
                         </div>
                       </div>
                     </div>
@@ -306,8 +318,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Informações Básicas */}
               <div className="bg-gray-50 rounded-xl p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Informações Básicas
+                </h3>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -316,22 +330,32 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     <input
                       {...register("name", {
                         required: "Nome é obrigatório",
-                        minLength: { value: 2, message: "Nome deve ter pelo menos 2 caracteres" },
-                        maxLength: { value: 255, message: "Nome não pode exceder 255 caracteres" },
-                        pattern: { 
-                          value: /^[a-zA-ZÀ-ÿ\s]+$/, 
-                          message: "Nome deve conter apenas letras e espaços" 
-                        }
+                        minLength: {
+                          value: 2,
+                          message: "Nome deve ter pelo menos 2 caracteres",
+                        },
+                        maxLength: {
+                          value: 255,
+                          message: "Nome não pode exceder 255 caracteres",
+                        },
+                        pattern: {
+                          value: /^[a-zA-ZÀ-ÿ\s]+$/,
+                          message: "Nome deve conter apenas letras e espaços",
+                        },
                       })}
                       placeholder="Digite o nome completo"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.name
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.name && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.name.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.name.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -348,18 +372,22 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                             return "Formato inválido. Use: (11) 99999-9999";
                           }
                           return true;
-                        }
+                        },
                       })}
                       type="tel"
                       placeholder="(11) 99999-9999"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.phone
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.phone && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.phone.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.phone.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -373,19 +401,23 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     {...register("profileUrl", {
                       pattern: {
                         value: /^https?:\/\/.+\..+/,
-                        message: "URL inválida"
-                      }
+                        message: "URL inválida",
+                      },
                     })}
                     type="url"
                     placeholder="https://exemplo.com/foto.jpg"
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                      errors.profileUrl ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      errors.profileUrl
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 bg-white focus:border-blue-500"
                     }`}
                   />
                   {errors.profileUrl && (
                     <div className="flex items-center gap-1 mt-1">
                       <AlertCircle className="w-4 h-4 text-red-500" />
-                      <span className="text-sm text-red-600">{errors.profileUrl.message}</span>
+                      <span className="text-sm text-red-600">
+                        {errors.profileUrl.message}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -393,8 +425,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
               {/* Informações Médicas */}
               <div className="bg-red-50 rounded-xl p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Médicas</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Informações Médicas
+                </h3>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -406,37 +440,47 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                           if (value) {
                             const birthDate = new Date(value);
                             const today = new Date();
-                            let age = today.getFullYear() - birthDate.getFullYear();
-                            const monthDiff = today.getMonth() - birthDate.getMonth();
-                            const dayDiff = today.getDate() - birthDate.getDate();
-                            
+                            let age =
+                              today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff =
+                              today.getMonth() - birthDate.getMonth();
+                            const dayDiff =
+                              today.getDate() - birthDate.getDate();
+
                             // Ajuste para idade exata
-                            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                            if (
+                              monthDiff < 0 ||
+                              (monthDiff === 0 && dayDiff < 0)
+                            ) {
                               age--;
                             }
-                            
+
                             if (age < 16) {
                               return "Idade deve ser maior de 16 anos";
                             }
                           }
                           return true;
-                        }
+                        },
                       })}
                       type="date"
                       min={(() => {
                         const date = new Date();
                         date.setFullYear(date.getFullYear() - 16);
-                        return date.toISOString().split('T')[0];
+                        return date.toISOString().split("T")[0];
                       })()}
-                      max={new Date().toISOString().split('T')[0]}
+                      max={new Date().toISOString().split("T")[0]}
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.birthDate ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.birthDate
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.birthDate && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.birthDate.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.birthDate.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -468,7 +512,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     <input
                       {...register("lastDonationDate")}
                       type="date"
-                      max={new Date().toISOString().split('T')[0]}
+                      max={new Date().toISOString().split("T")[0]}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
                     />
                   </div>
@@ -482,7 +526,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     <input
                       {...register("nextEligibleDonationDate")}
                       type="date"
-                      min={new Date().toISOString().split('T')[0]}
+                      min={new Date().toISOString().split("T")[0]}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
                     />
                   </div>
@@ -494,20 +538,24 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     <input
                       {...register("height", {
                         min: { value: 100, message: "Altura mínima: 100cm" },
-                        max: { value: 250, message: "Altura máxima: 250cm" }
+                        max: { value: 250, message: "Altura máxima: 250cm" },
                       })}
                       type="number"
                       min="100"
                       max="250"
                       placeholder="170"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.height ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.height
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.height && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.height.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.height.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -519,7 +567,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     <input
                       {...register("weight", {
                         min: { value: 30, message: "Peso mínimo: 30kg" },
-                        max: { value: 200, message: "Peso máximo: 200kg" }
+                        max: { value: 200, message: "Peso máximo: 200kg" },
                       })}
                       type="number"
                       min="30"
@@ -527,13 +575,17 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                       step="0.1"
                       placeholder="70.5"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.weight ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.weight
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.weight && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.weight.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.weight.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -542,8 +594,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
               {/* Endereço */}
               <div className="bg-green-50 rounded-xl p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Endereço</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Endereço
+                </h3>
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="md:col-span-3">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -551,18 +605,25 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     </label>
                     <input
                       {...register("addressStreet", {
-                        maxLength: { value: 255, message: "Máximo 255 caracteres" }
+                        maxLength: {
+                          value: 255,
+                          message: "Máximo 255 caracteres",
+                        },
                       })}
                       type="text"
                       placeholder="Rua das Flores"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.addressStreet ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.addressStreet
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.addressStreet && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.addressStreet.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.addressStreet.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -573,18 +634,25 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     </label>
                     <input
                       {...register("addressNumber", {
-                        maxLength: { value: 20, message: "Máximo 20 caracteres" }
+                        maxLength: {
+                          value: 20,
+                          message: "Máximo 20 caracteres",
+                        },
                       })}
                       type="text"
                       placeholder="123"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.addressNumber ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.addressNumber
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.addressNumber && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.addressNumber.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.addressNumber.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -596,18 +664,25 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                   </label>
                   <input
                     {...register("addressComplement", {
-                      maxLength: { value: 255, message: "Máximo 255 caracteres" }
+                      maxLength: {
+                        value: 255,
+                        message: "Máximo 255 caracteres",
+                      },
                     })}
                     type="text"
                     placeholder="Apartamento 45, Bloco B"
                     className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                      errors.addressComplement ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                      errors.addressComplement
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 bg-white focus:border-blue-500"
                     }`}
                   />
                   {errors.addressComplement && (
                     <div className="flex items-center gap-1 mt-1">
                       <AlertCircle className="w-4 h-4 text-red-500" />
-                      <span className="text-sm text-red-600">{errors.addressComplement.message}</span>
+                      <span className="text-sm text-red-600">
+                        {errors.addressComplement.message}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -621,19 +696,23 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                       {...register("addressPostalCode", {
                         pattern: {
                           value: /^\d{5}-?\d{3}$/,
-                          message: "Formato: 12345-678"
-                        }
+                          message: "Formato: 12345-678",
+                        },
                       })}
                       type="text"
                       placeholder="01234-567"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.addressPostalCode ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.addressPostalCode
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.addressPostalCode && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.addressPostalCode.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.addressPostalCode.message}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -644,22 +723,29 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     </label>
                     <input
                       {...register("addressCity", {
-                        maxLength: { value: 100, message: "Máximo 100 caracteres" },
+                        maxLength: {
+                          value: 100,
+                          message: "Máximo 100 caracteres",
+                        },
                         pattern: {
                           value: /^[a-zA-ZÀ-ÿ\s]+$/,
-                          message: "Apenas letras e espaços"
-                        }
+                          message: "Apenas letras e espaços",
+                        },
                       })}
                       type="text"
                       placeholder="São Paulo"
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        errors.addressCity ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white focus:border-blue-500'
+                        errors.addressCity
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-white focus:border-blue-500"
                       }`}
                     />
                     {errors.addressCity && (
                       <div className="flex items-center gap-1 mt-1">
                         <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600">{errors.addressCity.message}</span>
+                        <span className="text-sm text-red-600">
+                          {errors.addressCity.message}
+                        </span>
                       </div>
                     )}
                   </div>

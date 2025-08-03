@@ -3,9 +3,11 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
 import com.ruby.rubia_server.core.dto.UpdateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
+import com.ruby.rubia_server.core.entity.AIModel;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.CompanyGroup;
 import com.ruby.rubia_server.core.repository.AIAgentRepository;
+import com.ruby.rubia_server.core.repository.AIModelRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
 
 @ExtendWith(MockitoExtension.class)
 class AIAgentServiceMockTest {
@@ -37,12 +40,17 @@ class AIAgentServiceMockTest {
     @Mock
     private CompanyRepository companyRepository;
 
+    @Mock
+    private AIModelRepository aiModelRepository;
+
     @InjectMocks
     private AIAgentService aiAgentService;
 
     private Company company;
     private CompanyGroup companyGroup;
     private AIAgent aiAgent;
+    private AIModel testGPT4Model;
+    private AIModel testClaudeModel;
     private CreateAIAgentDTO createDTO;
     private UpdateAIAgentDTO updateDTO;
     private UUID companyId;
@@ -55,6 +63,21 @@ class AIAgentServiceMockTest {
         companyGroupId = UUID.randomUUID();
         aiAgentId = UUID.randomUUID();
 
+        // Create test AI models
+        testGPT4Model = AIModel.builder()
+                .id(UUID.randomUUID())
+                .name("gpt-4")
+                .displayName("GPT-4")
+                .provider("OpenAI")
+                .build();
+
+        testClaudeModel = AIModel.builder()
+                .id(UUID.randomUUID())
+                .name("claude-3.5-sonnet")
+                .displayName("Claude 3.5 Sonnet")
+                .provider("Anthropic")
+                .build();
+
         companyGroup = CompanyGroup.builder()
                 .id(companyGroupId)
                 .name("Test Company Group")
@@ -65,14 +88,15 @@ class AIAgentServiceMockTest {
                 .name("Test Company")
                 .slug("test-company")
                 .companyGroup(companyGroup)
+                .maxAiAgents(5) // Permitir múltiplos agentes para teste
                 .build();
 
         createDTO = CreateAIAgentDTO.builder()
                 .companyId(companyId)
                 .name("Test AI Agent")
                 .description("Test Description")
-                .avatarUrl("https://example.com/avatar.jpg")
-                .aiModelType("GPT-4")
+                .avatarBase64("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD")
+                .aiModelId(testGPT4Model.getId())
                 .temperament("NORMAL")
                 .maxResponseLength(500)
                 .temperature(BigDecimal.valueOf(0.7))
@@ -82,7 +106,7 @@ class AIAgentServiceMockTest {
         updateDTO = UpdateAIAgentDTO.builder()
                 .name("Updated AI Agent")
                 .description("Updated Description")
-                .aiModelType("Claude-3.5")
+                .aiModelId(testClaudeModel.getId()) // Usar um modelo válido
                 .temperament("EMPATICO")
                 .maxResponseLength(800)
                 .temperature(BigDecimal.valueOf(0.5))
@@ -94,8 +118,8 @@ class AIAgentServiceMockTest {
                 .company(company)
                 .name(createDTO.getName())
                 .description(createDTO.getDescription())
-                .avatarUrl(createDTO.getAvatarUrl())
-                .aiModelType(createDTO.getAiModelType())
+                .avatarBase64(createDTO.getAvatarBase64())
+                .aiModel(testGPT4Model)
                 .temperament(createDTO.getTemperament())
                 .maxResponseLength(createDTO.getMaxResponseLength())
                 .temperature(createDTO.getTemperature())
@@ -107,7 +131,11 @@ class AIAgentServiceMockTest {
     void createAIAgent_ShouldCreateAndReturnAIAgent_WhenValidData() {
         // Given
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(aiModelRepository.findById(testGPT4Model.getId())).thenReturn(Optional.of(testGPT4Model));
+        when(aiAgentRepository.countByCompanyId(companyId)).thenReturn(0L); // Nenhum agente existente
         when(aiAgentRepository.save(any(AIAgent.class))).thenReturn(aiAgent);
+        when(aiAgentRepository.findById(aiAgent.getId())).thenReturn(Optional.of(aiAgent));
+        doNothing().when(aiAgentRepository).flush();
 
         // When
         AIAgent result = aiAgentService.createAIAgent(createDTO);
@@ -117,12 +145,16 @@ class AIAgentServiceMockTest {
         assertEquals(aiAgent.getId(), result.getId());
         assertEquals(createDTO.getName(), result.getName());
         assertEquals(createDTO.getDescription(), result.getDescription());
-        assertEquals(createDTO.getAiModelType(), result.getAiModelType());
+        assertEquals(testGPT4Model.getId(), result.getAiModel().getId());
         assertEquals(createDTO.getTemperament(), result.getTemperament());
         assertEquals(company.getId(), result.getCompany().getId());
 
         verify(companyRepository).findById(companyId);
+        verify(aiModelRepository).findById(testGPT4Model.getId());
+        verify(aiAgentRepository).countByCompanyId(companyId);
         verify(aiAgentRepository).save(any(AIAgent.class));
+        verify(aiAgentRepository).flush();
+        verify(aiAgentRepository).findById(aiAgent.getId());
     }
 
     @Test
@@ -228,6 +260,7 @@ class AIAgentServiceMockTest {
     void updateAIAgent_ShouldUpdateAndReturnAIAgent_WhenValidData() {
         // Given
         when(aiAgentRepository.findById(aiAgentId)).thenReturn(Optional.of(aiAgent));
+        when(aiModelRepository.findById(testClaudeModel.getId())).thenReturn(Optional.of(testClaudeModel));
         when(aiAgentRepository.save(any(AIAgent.class))).thenReturn(aiAgent);
 
         // When
@@ -239,6 +272,7 @@ class AIAgentServiceMockTest {
         assertEquals(aiAgent.getId(), updated.getId());
         
         verify(aiAgentRepository).findById(aiAgentId);
+        verify(aiModelRepository).findById(testClaudeModel.getId());
         verify(aiAgentRepository).save(any(AIAgent.class));
     }
 
@@ -331,18 +365,18 @@ class AIAgentServiceMockTest {
     @Test
     void getAIAgentsByModelType_ShouldReturnCorrectAgents() {
         // Given
-        String modelType = "GPT-4";
+        UUID modelId = testGPT4Model.getId();
         List<AIAgent> agents = List.of(aiAgent);
-        when(aiAgentRepository.findByAiModelType(modelType)).thenReturn(agents);
+        when(aiAgentRepository.findByAiModelId(modelId)).thenReturn(agents);
 
         // When
-        List<AIAgent> result = aiAgentService.getAIAgentsByModelType(modelType);
+        List<AIAgent> result = aiAgentService.getAIAgentsByModelId(modelId);
 
         // Then
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(aiAgent.getId(), result.get(0).getId());
-        verify(aiAgentRepository).findByAiModelType(modelType);
+        verify(aiAgentRepository).findByAiModelId(modelId);
     }
 
     @Test

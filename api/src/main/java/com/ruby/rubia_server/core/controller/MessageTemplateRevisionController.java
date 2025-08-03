@@ -47,6 +47,14 @@ public class MessageTemplateRevisionController extends BaseCompanyEntityControll
                 .revisionTimestamp(revision.getRevisionTimestamp())
                 .createdAt(revision.getCreatedAt())
                 .updatedAt(revision.getUpdatedAt())
+                // AI metadata
+                .aiAgentId(revision.getAiAgent() != null ? revision.getAiAgent().getId() : null)
+                .aiAgentName(revision.getAiAgent() != null ? revision.getAiAgent().getName() : null)
+                .aiEnhancementType(revision.getAiEnhancementType())
+                .aiTokensUsed(revision.getAiTokensUsed())
+                .aiCreditsConsumed(revision.getAiCreditsConsumed())
+                .aiModelUsed(revision.getAiModelUsed())
+                .aiExplanation(revision.getAiExplanation())
                 .build();
     }
 

@@ -70,24 +70,9 @@ public class CompanyContextResolver {
             host = host.substring(0, host.indexOf(":"));
         }
 
-        // Handle different patterns:
-        // company.rubia.com -> company
-        // localhost -> null (development)
-        // rubia.com -> null (main domain)
-        
-//        if (host.equals("localhost") || host.startsWith("localhost:") || host.equals("rubia.com") || host.equals("www.rubia.com")) {
-//            return null;
-//        }
-//
-//        // Handle rubia.localhost pattern
-//        if (host.equals("rubia.localhost") || host.startsWith("rubia.localhost:")) {
-//            return "rubia";
-//        }
-
-        // Extract subdomain
+        // Extract first part before dot as company slug
         String[] parts = host.split("\\.");
         if (parts.length >= 1) {
-            // company.rubia.com
             return parts[0];
         }
 

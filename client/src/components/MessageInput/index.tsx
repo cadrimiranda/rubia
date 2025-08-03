@@ -1,9 +1,10 @@
 import React, { useRef } from "react";
 import { Paperclip, Send, Sparkles, Loader2 } from "lucide-react";
-import type { FileAttachment as FileAttachmentType, ConversationMedia, PendingMedia } from "../../types/types";
+import type {
+  FileAttachment as FileAttachmentType,
+  PendingMedia,
+} from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
-import { MediaUpload } from "../MediaUpload";
-import { MediaPreview } from "../MediaPreview";
 
 interface MessageInputProps {
   messageInput: string;
@@ -26,7 +27,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   messageInput,
   attachments,
   pendingMedia = [],
-  conversationId,
   onMessageChange,
   onSendMessage,
   onFileUpload,
@@ -35,7 +35,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onRemovePendingMedia,
   onKeyPress,
   onEnhanceMessage,
-  onError,
   isLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +54,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onFileUpload(files);
           }
           // Limpar o input para permitir re-seleção do mesmo arquivo
-          e.target.value = '';
+          e.target.value = "";
         }}
         accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
         className="hidden"
@@ -75,16 +74,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             ))}
             {pendingMedia.map((mediaItem) => (
               <div key={mediaItem.id} className="relative">
-                {mediaItem.mediaType === 'IMAGE' && mediaItem.previewUrl ? (
+                {mediaItem.mediaType === "IMAGE" && mediaItem.previewUrl ? (
                   <div className="relative">
-                    <img 
-                      src={mediaItem.previewUrl} 
+                    <img
+                      src={mediaItem.previewUrl}
                       alt={mediaItem.originalFileName}
                       className="w-20 h-20 object-cover rounded-lg border"
                     />
                     <button
                       onClick={() => onRemovePendingMedia?.(mediaItem.id)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-xl w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
                     >
                       ×
                     </button>
@@ -92,8 +91,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 ) : (
                   <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg border">
                     <div className="text-sm">
-                      <div className="font-medium">{mediaItem.originalFileName}</div>
-                      <div className="text-gray-500">{(mediaItem.fileSizeBytes / 1024).toFixed(1)} KB</div>
+                      <div className="font-medium">
+                        {mediaItem.originalFileName}
+                      </div>
+                      <div className="text-gray-500">
+                        {(mediaItem.fileSizeBytes / 1024).toFixed(1)} KB
+                      </div>
                     </div>
                     <button
                       onClick={() => onRemovePendingMedia?.(mediaItem.id)}
@@ -136,7 +139,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             style={{ minHeight: "40px", maxHeight: "120px" }}
           />
-          
+
           {onEnhanceMessage && messageInput.trim() && (
             <button
               onClick={onEnhanceMessage}
@@ -150,7 +153,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
         <button
           onClick={onSendMessage}
-          disabled={(!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0) || isLoading}
+          disabled={
+            (!messageInput.trim() &&
+              attachments.length === 0 &&
+              pendingMedia.length === 0) ||
+            isLoading
+          }
           className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors self-end"
         >
           {isLoading ? (
