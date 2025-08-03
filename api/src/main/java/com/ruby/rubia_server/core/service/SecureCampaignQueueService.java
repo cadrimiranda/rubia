@@ -2,6 +2,7 @@ package com.ruby.rubia_server.core.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
@@ -17,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Versão segura do serviço de filas usando Redis
@@ -34,17 +37,13 @@ public class SecureCampaignQueueService {
     private final CampaignService campaignService;
     private final CampaignContactService campaignContactService;
     private final CampaignMessagingService campaignMessagingService;
+    private final CampaignMessagingProperties properties;
 
     // Chaves Redis com namespace seguro
     private static final String QUEUE_KEY = "rubia:campaign:queue";
     private static final String STATE_KEY_PREFIX = "rubia:campaign:state:";
     private static final String PROCESSING_LOCK_KEY = "rubia:campaign:processing:lock";
     
-    // Configurações WHAPI
-    private static final int BATCH_SIZE = 20;
-    private static final int BATCH_PAUSE_MINUTES = 60;
-    private static final int CONSERVATIVE_MIN_DELAY = 30000;
-    private static final int CONSERVATIVE_MAX_DELAY = 60000;
 
     /**
      * Item da fila seguro
@@ -247,19 +246,34 @@ public class SecureCampaignQueueService {
                 return false;
             }
 
-            // Enviar mensagem
-            boolean success = campaignMessagingService.sendSingleMessage(contact);
+            // Enviar mensagem de forma assíncrona
+            CompletableFuture<Boolean> sendFuture = campaignMessagingService.sendSingleMessageAsync(contact);
             
-            // Atualizar status
-            updateContactStatus(contact, success);
-            
-            // Atualizar estado no Redis
-            updateCampaignStateInRedis(item.getCampaignId(), success);
-            
-            log.debug("✅ Mensagem processada: campanha={}, contato={}, sucesso={}", 
-                    item.getCampaignId(), item.getCampaignContactId(), success);
-            
-            return true;
+            // Para manter compatibilidade, aguarda com timeout
+            try {
+                boolean success = sendFuture.get(properties.getMessageTimeout().toSeconds(), TimeUnit.SECONDS);
+                
+                // Atualizar status
+                updateContactStatus(contact, success);
+                
+                // Atualizar estado no Redis
+                updateCampaignStateInRedis(item.getCampaignId(), success);
+                
+                log.debug("✅ Mensagem processada: campanha={}, contato={}, sucesso={}", 
+                        item.getCampaignId(), item.getCampaignContactId(), success);
+                
+                return true;
+                
+            } catch (TimeoutException e) {
+                log.warn("⏰ Timeout no envio da mensagem para contato {}: {}", 
+                        contact.getId(), e.getMessage());
+                
+                // Atualizar status como falha por timeout
+                updateContactStatus(contact, false);
+                updateCampaignStateInRedis(item.getCampaignId(), false);
+                
+                return false;
+            }
             
         } catch (Exception e) {
             log.error("❌ Erro ao processar item seguro: {}", e.getMessage(), e);
@@ -320,9 +334,9 @@ public class SecureCampaignQueueService {
                 redisTemplate.opsForZSet().add(QUEUE_KEY, itemJson, score);
                 
                 // Verificar mudança de lote
-                if ((i + 1) % BATCH_SIZE == 0) {
+                if ((i + 1) % properties.getBatchSize() == 0) {
                     currentBatch++;
-                    currentTime = scheduledTime.plusMinutes(BATCH_PAUSE_MINUTES);
+                    currentTime = scheduledTime.plusMinutes(properties.getBatchPauseMinutes());
                 }
             }
             
@@ -335,13 +349,13 @@ public class SecureCampaignQueueService {
      * Calcula tempo agendado (mesmo algoritmo do serviço original)
      */
     private LocalDateTime calculateScheduledTime(LocalDateTime baseTime, int messageIndex, int batchNumber) {
-        int indexInBatch = messageIndex % BATCH_SIZE;
-        LocalDateTime batchStartTime = baseTime.plusMinutes((long) (batchNumber - 1) * BATCH_PAUSE_MINUTES);
+        int indexInBatch = messageIndex % properties.getBatchSize();
+        LocalDateTime batchStartTime = baseTime.plusMinutes((long) (batchNumber - 1) * properties.getBatchPauseMinutes());
         
         int totalDelaySeconds = 0;
         for (int i = 0; i < indexInBatch; i++) {
-            int randomDelay = CONSERVATIVE_MIN_DELAY + 
-                (int)(Math.random() * (CONSERVATIVE_MAX_DELAY - CONSERVATIVE_MIN_DELAY));
+            int randomDelay = properties.getMinDelayMs() + 
+                (int)(Math.random() * (properties.getMaxDelayMs() - properties.getMinDelayMs()));
             totalDelaySeconds += randomDelay / 1000;
         }
         

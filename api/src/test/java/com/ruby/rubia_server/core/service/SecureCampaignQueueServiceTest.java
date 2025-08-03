@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -195,7 +196,8 @@ class SecureCampaignQueueServiceTest {
         when(campaignService.findById(any())).thenReturn(Optional.of(campaign));
         when(valueOperations.get(contains("state"))).thenReturn(createTestCampaignState());
         when(campaignContactService.findById(any())).thenReturn(Optional.of(pendingContacts.get(0)));
-        when(campaignMessagingService.sendSingleMessage(any())).thenReturn(true);
+        when(campaignMessagingService.sendSingleMessageAsync(any()))
+                .thenReturn(CompletableFuture.completedFuture(true));
         when(campaignContactService.update(any(), any())).thenReturn(Optional.of(pendingContacts.get(0)));
 
         // Act
@@ -203,7 +205,7 @@ class SecureCampaignQueueServiceTest {
 
         // Assert
         verify(zSetOperations).rangeByScore(anyString(), anyDouble(), anyDouble());
-        verify(campaignMessagingService).sendSingleMessage(any());
+        verify(campaignMessagingService).sendSingleMessageAsync(any());
         verify(zSetOperations).remove(anyString(), any());
     }
 
@@ -233,7 +235,7 @@ class SecureCampaignQueueServiceTest {
         secureCampaignQueueService.processMessageQueue();
 
         // Assert
-        verify(campaignMessagingService, never()).sendSingleMessage(any());
+        verify(campaignMessagingService, never()).sendSingleMessageAsync(any());
     }
 
     @Test
@@ -244,7 +246,8 @@ class SecureCampaignQueueServiceTest {
         when(campaignService.findById(campaignId)).thenReturn(Optional.of(campaign));
         when(valueOperations.get(contains("state"))).thenReturn(createTestCampaignState());
         when(campaignContactService.findById(any())).thenReturn(Optional.of(pendingContacts.get(0)));
-        when(campaignMessagingService.sendSingleMessage(any())).thenReturn(true);
+        when(campaignMessagingService.sendSingleMessageAsync(any()))
+                .thenReturn(CompletableFuture.completedFuture(true));
         when(campaignContactService.update(any(), any())).thenReturn(Optional.of(pendingContacts.get(0)));
 
         // Use reflection to call private method for testing
@@ -257,7 +260,7 @@ class SecureCampaignQueueServiceTest {
 
         // Assert
         assertTrue(result);
-        verify(campaignMessagingService).sendSingleMessage(any());
+        verify(campaignMessagingService).sendSingleMessageAsync(any());
         verify(campaignContactService).update(any(), any());
     }
 

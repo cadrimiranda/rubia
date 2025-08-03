@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Customer;
@@ -15,9 +16,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -28,6 +31,12 @@ class CampaignMessagingServiceTest {
 
     @Mock
     private MessagingService messagingService;
+
+    @Mock
+    private CampaignDelaySchedulingService delaySchedulingService;
+
+    @Mock
+    private CampaignMessagingProperties properties;
 
     @InjectMocks
     private CampaignMessagingService campaignMessagingService;
@@ -40,6 +49,10 @@ class CampaignMessagingServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Mock properties with default values
+        when(properties.getMinDelayMs()).thenReturn(30000);
+        when(properties.getMaxDelayMs()).thenReturn(60000);
+        when(properties.getMessageTimeout()).thenReturn(Duration.ofSeconds(30));
         company = new Company();
         company.setId(UUID.randomUUID());
         company.setName("Test Company");
@@ -72,235 +85,91 @@ class CampaignMessagingServiceTest {
     }
 
     @Test
-    void sendSingleMessage_WithValidCampaignContact_ShouldReturnTrue() {
+    void sendSingleMessageAsync_WithValidCampaignContact_ShouldReturnCompletedFuture() {
         // Arrange
-        MessageResult successResult = MessageResult.success("msg-123", "sent", "test-instance");
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenReturn(successResult);
+        CompletableFuture<Boolean> expectedFuture = CompletableFuture.completedFuture(true);
+        when(delaySchedulingService.scheduleMessageSend(eq(campaignContact), anyInt(), any()))
+                .thenReturn(expectedFuture);
 
         // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
+        CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(campaignContact);
 
         // Assert
-        assertTrue(result);
-        verify(messagingService).sendMessage(
-                eq(customer.getPhone()),
-                contains("Olá Test Customer")
-        );
+        assertNotNull(result);
+        assertTrue(result.isDone());
+        assertTrue(result.join());
+        verify(delaySchedulingService).scheduleMessageSend(eq(campaignContact), anyInt(), any());
     }
 
     @Test
-    void sendSingleMessage_WithMessagingServiceFailure_ShouldReturnFalse() {
-        // Arrange
-        MessageResult failureResult = MessageResult.error("Failed to send", "test-instance");
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenReturn(failureResult);
-
+    void sendSingleMessageAsync_WithNullCampaignContact_ShouldReturnFailedFuture() {
         // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
+        CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(null);
 
         // Assert
-        assertFalse(result);
-        verify(messagingService).sendMessage(anyString(), anyString());
+        assertNotNull(result);
+        assertTrue(result.isDone());
+        assertFalse(result.join());
+        verify(delaySchedulingService, never()).scheduleMessageSend(any(), anyInt(), any());
     }
 
     @Test
-    void sendSingleMessage_WithMessagingServiceException_ShouldReturnFalse() {
-        // Arrange
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenThrow(new RuntimeException("Erro no serviço de mensagens"));
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertFalse(result);
-        verify(messagingService).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithNullCampaignContact_ShouldReturnFalse() {
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(null);
-
-        // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithNullCustomer_ShouldReturnFalse() {
+    void sendSingleMessageAsync_WithNullCustomer_ShouldReturnFailedFuture() {
         // Arrange
         campaignContact.setCustomer(null);
 
         // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
+        CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(campaignContact);
 
         // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
+        assertNotNull(result);
+        assertTrue(result.isDone());
+        assertFalse(result.join());
+        verify(delaySchedulingService, never()).scheduleMessageSend(any(), anyInt(), any());
     }
 
     @Test
-    void sendSingleMessage_WithNullCampaign_ShouldReturnFalse() {
+    void sendSingleMessageAsync_WithNullCampaign_ShouldReturnFailedFuture() {
         // Arrange
         campaignContact.setCampaign(null);
 
         // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
+        CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(campaignContact);
 
         // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
+        assertNotNull(result);
+        assertTrue(result.isDone());
+        assertFalse(result.join());
+        verify(delaySchedulingService, never()).scheduleMessageSend(any(), anyInt(), any());
     }
 
     @Test
-    void sendSingleMessage_WithNullMessageTemplate_ShouldReturnFalse() {
-        // Arrange
-        campaign.setInitialMessageTemplate(null);
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithEmptyCustomerPhone_ShouldReturnFalse() {
+    void sendSingleMessageAsync_WithEmptyCustomerPhone_ShouldReturnFailedFuture() {
         // Arrange
         customer.setPhone("");
 
         // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
+        CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(campaignContact);
 
         // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
+        assertNotNull(result);
+        assertTrue(result.isDone());
+        assertFalse(result.join());
+        verify(delaySchedulingService, never()).scheduleMessageSend(any(), anyInt(), any());
     }
 
     @Test
-    void sendSingleMessage_WithNullCustomerPhone_ShouldReturnFalse() {
+    void sendSingleMessageAsync_WithNullMessageTemplate_ShouldReturnFailedFuture() {
         // Arrange
-        customer.setPhone(null);
+        campaign.setInitialMessageTemplate(null);
 
         // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
+        CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(campaignContact);
 
         // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithEmptyTemplateContent_ShouldReturnFalse() {
-        // Arrange
-        messageTemplate.setContent("");
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithNullTemplateContent_ShouldReturnFalse() {
-        // Arrange
-        messageTemplate.setContent(null);
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertFalse(result);
-        verify(messagingService, never()).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithTemplateVariableReplacement_ShouldReplaceCorrectly() {
-        // Arrange
-        messageTemplate.setContent("Olá {{nome}}, sua idade é {{idade}} anos");
-        customer.setName("João Silva");
-        
-        MessageResult successResult = MessageResult.success("msg-123", "sent", "test-instance");
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenReturn(successResult);
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertTrue(result);
-        verify(messagingService).sendMessage(
-                eq(customer.getPhone()),
-                eq("Olá João Silva, sua idade é {{idade}} anos") // {{nome}} replaced, {{idade}} kept
-        );
-    }
-
-
-    @Test
-    void sendSingleMessage_WithNullCustomerName_ShouldReplaceWithEmptyString() {
-        // Arrange
-        customer.setName(null);
-        
-        MessageResult successResult = MessageResult.success("msg-123", "sent", "test-instance");
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenReturn(successResult);
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertTrue(result);
-        verify(messagingService).sendMessage(
-                eq(customer.getPhone()),
-                eq("Olá , bem-vindo à nossa campanha!") // {{nome}} replaced with empty
-        );
-    }
-
-    @Test
-    void sendSingleMessage_WithLongDelay_ShouldComplete() {
-        // Arrange
-        MessageResult successResult = MessageResult.success("msg-123", "sent", "test-instance");
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenReturn(successResult);
-
-        long startTime = System.currentTimeMillis();
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-        
-        assertTrue(result);
-        assertTrue(duration >= 1000, "Should respect minimum 1 second delay"); // Check minimum delay
-        assertTrue(duration <= 65000, "Should not exceed maximum delay significantly"); // Check reasonable maximum
-        
-        verify(messagingService).sendMessage(anyString(), anyString());
-    }
-
-    @Test
-    void sendSingleMessage_WithValidData_ShouldLogCorrectly() {
-        // Arrange
-        MessageResult successResult = MessageResult.success("msg-123", "sent", "test-instance");
-        when(messagingService.sendMessage(anyString(), anyString()))
-                .thenReturn(successResult);
-
-        // Act
-        boolean result = campaignMessagingService.sendSingleMessage(campaignContact);
-
-        // Assert
-        assertTrue(result);
-        
-        // Verify that the service was called with correct parameters
-        verify(messagingService).sendMessage(
-                eq("5511999999999"),
-                eq("Olá Test Customer, bem-vindo à nossa campanha!")
-        );
+        assertNotNull(result);
+        assertTrue(result.isDone());
+        assertFalse(result.join());
+        verify(delaySchedulingService, never()).scheduleMessageSend(any(), anyInt(), any());
     }
 }

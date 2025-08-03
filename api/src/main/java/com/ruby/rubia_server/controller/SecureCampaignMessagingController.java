@@ -1,8 +1,13 @@
 package com.ruby.rubia_server.controller;
 
 import com.ruby.rubia_server.core.service.SecureCampaignQueueService;
+import com.ruby.rubia_server.core.service.CampaignService;
+import com.ruby.rubia_server.core.util.CampaignAuthenticationExtractor;
+import com.ruby.rubia_server.core.entity.Campaign;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,6 +29,8 @@ import java.util.UUID;
 public class SecureCampaignMessagingController {
 
     private final SecureCampaignQueueService secureCampaignQueueService;
+    private final CampaignAuthenticationExtractor authExtractor;
+    private final CampaignService campaignService;
 
     /**
      * Adiciona campanha à fila segura (apenas usuários autenticados da empresa)
@@ -226,18 +233,14 @@ public class SecureCampaignMessagingController {
      * Extrai ID do usuário do token JWT
      */
     private String extractUserId(Authentication authentication) {
-        // TODO: Implementar extração do JWT
-        // Assumindo que o principal contém as informações do usuário
-        return authentication.getName(); // Temporário
+        return authExtractor.extractFromAuthentication(authentication).getUserId();
     }
 
     /**
      * Extrai ID da empresa do token JWT
      */
     private String extractCompanyId(Authentication authentication) {
-        // TODO: Implementar extração da empresa do JWT
-        // Deve extrair do token ou buscar no banco baseado no usuário
-        return "temp-company-id"; // Temporário
+        return authExtractor.extractFromAuthentication(authentication).getCompanyId();
     }
 
     /**
@@ -245,18 +248,35 @@ public class SecureCampaignMessagingController {
      */
     private boolean hasAccessToCampaign(UUID campaignId, String companyId, String userId) {
         try {
-            // TODO: Implementar validação real
-            // 1. Verificar se campanha pertence à empresa do usuário
-            // 2. Verificar se usuário tem permissão na campanha
-            // 3. Verificar se campanha não está bloqueada/arquivada
-            
             log.debug("Validando acesso: campanha={}, empresa={}, usuário={}", 
                     campaignId, companyId, userId);
             
-            return true; // Temporário - implementar validação real
+            // Buscar campanha no banco
+            Optional<Campaign> campaignOpt = campaignService.findById(campaignId);
+            if (campaignOpt.isEmpty()) {
+                log.warn("Campanha {} não encontrada", campaignId);
+                return false;
+            }
+            
+            Campaign campaign = campaignOpt.get();
+            
+            // Validar se a campanha pertence à empresa do usuário
+            UUID campaignCompanyId = campaign.getCompany().getId();
+            boolean companyMatch = campaignCompanyId.toString().equals(companyId);
+            
+            if (!companyMatch) {
+                log.warn("Tentativa de acesso cross-company: usuário empresa={}, campanha empresa={}", 
+                        companyId, campaignCompanyId);
+                return false;
+            }
+            
+            log.debug("Acesso autorizado para campanha {} por usuário {} da empresa {}", 
+                    campaignId, userId, companyId);
+            
+            return true;
             
         } catch (Exception e) {
-            log.error("Erro na validação de acesso: {}", e.getMessage());
+            log.error("Erro na validação de acesso para campanha {}: {}", campaignId, e.getMessage(), e);
             return false;
         }
     }
