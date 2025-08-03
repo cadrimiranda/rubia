@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Spin, Card } from "antd";
+import { Modal, Button, Spin, Card, message } from "antd";
 import { Sparkles, Copy, Check, RefreshCw } from "lucide-react";
+import { templateEnhancementService } from "../../services/templateEnhancementService";
+import { useAuthStore } from "../../store/useAuthStore";
 
 interface MessageEnhancerModalProps {
   show: boolean;
   originalMessage: string;
+  templateCategory?: string;
+  templateTitle?: string;
+  templateId?: string; // ID do template se estiver editando um template existente
   onClose: () => void;
   onApply: (enhancedMessage: string) => void;
+  onApplyWithHistory?: (enhancedMessage: string, aiMetadata: any) => void; // Callback para aplicar com histórico
 }
 
 const messageSuggestions = [
@@ -65,62 +71,95 @@ const messageSuggestions = [
 export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
   show,
   originalMessage,
+  templateCategory = 'primeira-doacao',
+  templateTitle,
+  templateId,
   onClose,
   onApply,
+  onApplyWithHistory,
 }) => {
+  const { user } = useAuthStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{
     id: string;
     name: string;
     description: string;
     enhancedMessage: string;
+    aiModelUsed?: string;
+    tokensUsed?: number;
+    creditsConsumed?: number;
+    explanation?: string;
   }>>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Simular geração de sugestões baseadas na mensagem
+  // Gerar sugestões usando IA real do banco de dados
   const generateSuggestions = React.useCallback(async () => {
-    if (!originalMessage.trim()) return;
+    if (!originalMessage.trim() || !user?.companyId) return;
 
     setIsGenerating(true);
     
-    // Simular delay da IA
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const enhancementPromises = messageSuggestions.map(async (suggestion) => {
+        try {
+          const response = await templateEnhancementService.enhanceTemplate({
+            companyId: user.companyId,
+            originalContent: originalMessage,
+            enhancementType: suggestion.id as any,
+            category: templateCategory,
+            title: templateTitle,
+          });
 
-    const enhancedSuggestions = messageSuggestions.map(suggestion => {
-      let enhancedMessage = originalMessage;
+          return {
+            id: suggestion.id,
+            name: suggestion.name,
+            description: suggestion.description,
+            enhancedMessage: response.enhancedContent,
+            explanation: response.explanation,
+          };
+        } catch (error) {
+          console.error(`Error enhancing with ${suggestion.id}:`, error);
+          // Fallback para simulação em caso de erro
+          return {
+            id: suggestion.id,
+            name: suggestion.name,
+            description: suggestion.description,
+            enhancedMessage: simulateFallback(originalMessage, suggestion.id),
+            aiModelUsed: 'Simulação (erro na IA)',
+            tokensUsed: 0,
+            creditsConsumed: 0,
+            explanation: 'Falhou ao conectar com IA, usando simulação',
+          };
+        }
+      });
+
+      const enhancedSuggestions = await Promise.all(enhancementPromises);
+      setSuggestions(enhancedSuggestions);
       
-      // Simulação simples de melhoramento baseado no tipo
-      switch (suggestion.id) {
-        case 'friendly':
-          enhancedMessage = addFriendlyTouch(originalMessage);
-          break;
-        case 'professional':
-          enhancedMessage = makeProfessional(originalMessage);
-          break;
-        case 'empathetic':
-          enhancedMessage = addEmpathy(originalMessage);
-          break;
-        case 'urgent':
-          enhancedMessage = addUrgency(originalMessage);
-          break;
-        case 'motivational':
-          enhancedMessage = addMotivation(originalMessage);
-          break;
-        default:
-          enhancedMessage = originalMessage;
-      }
+    } catch (error) {
+      console.error('Error generating suggestions:', error);
+      message.error('Erro ao gerar sugestões com IA. Tente novamente.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [originalMessage, user?.companyId, templateCategory, templateTitle]);
 
-      return {
-        id: suggestion.id,
-        name: suggestion.name,
-        description: suggestion.description,
-        enhancedMessage
-      };
-    });
-
-    setSuggestions(enhancedSuggestions);
-    setIsGenerating(false);
-  }, [originalMessage]);
+  // Função de fallback para simulação em caso de erro
+  const simulateFallback = (message: string, enhancementType: string): string => {
+    switch (enhancementType) {
+      case 'friendly':
+        return addFriendlyTouch(message);
+      case 'professional':
+        return makeProfessional(message);
+      case 'empathetic':
+        return addEmpathy(message);
+      case 'urgent':
+        return addUrgency(message);
+      case 'motivational':
+        return addMotivation(message);
+      default:
+        return message + ' (melhorado)';
+    }
+  };
 
   // Funções de melhoramento de mensagem (simulação simples)
   const addFriendlyTouch = (message: string): string => {
@@ -197,6 +236,34 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
     }
   };
 
+  const handleApplySuggestion = async (suggestion: any) => {
+    // Se for um template existente e tiver callback para histórico, usar o novo endpoint
+    if (templateId && onApplyWithHistory && user?.id) {
+      try {
+        const aiMetadata = {
+          templateId,
+          content: suggestion.enhancedMessage,
+          userId: user.id,
+          aiAgentId: suggestion.aiAgentId,
+          aiEnhancementType: suggestion.id,
+          aiTokensUsed: suggestion.tokensUsed,
+          aiCreditsConsumed: suggestion.creditsConsumed,
+          aiModelUsed: suggestion.aiModelUsed,
+          aiExplanation: suggestion.explanation
+        };
+        
+        onApplyWithHistory(suggestion.enhancedMessage, aiMetadata);
+      } catch (error) {
+        console.error('Error applying suggestion with history:', error);
+        // Fallback para aplicação normal
+        onApply(suggestion.enhancedMessage);
+      }
+    } else {
+      // Aplicação normal (para templates novos ou sem histórico)
+      onApply(suggestion.enhancedMessage);
+    }
+  };
+
   useEffect(() => {
     if (show && originalMessage.trim()) {
       generateSuggestions();
@@ -233,6 +300,7 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
+            
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium text-gray-700">Sugestões de Melhoria:</h4>
               <Button 
@@ -247,11 +315,13 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
             {suggestions.map((suggestion) => (
               <Card key={suggestion.id} className="hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h5 className="font-medium text-gray-900 m-0">{suggestion.name}</h5>
-                    <p className="text-xs text-gray-500 m-0">{suggestion.description}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h5 className="font-medium text-gray-900 m-0">{suggestion.name}</h5>
+                    </div>
+                    <p className="text-xs text-gray-500 m-0 mb-1">{suggestion.description}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 ml-2">
                     <Button
                       size="small"
                       icon={copiedId === suggestion.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -263,15 +333,20 @@ export const MessageEnhancerModal: React.FC<MessageEnhancerModalProps> = ({
                     <Button
                       type="primary"
                       size="small"
-                      onClick={() => onApply(suggestion.enhancedMessage)}
+                      onClick={() => handleApplySuggestion(suggestion)}
                     >
                       Usar Esta
                     </Button>
                   </div>
                 </div>
-                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                <div className="bg-blue-50 p-3 rounded border border-blue-200 mb-2">
                   <p className="text-gray-900 m-0">"{suggestion.enhancedMessage}"</p>
                 </div>
+                {suggestion.explanation && (
+                  <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                    <strong>Melhorias aplicadas:</strong> {suggestion.explanation}
+                  </div>
+                )}
               </Card>
             ))}
           </div>

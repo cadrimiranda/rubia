@@ -28,8 +28,8 @@ export const WhatsAppSetupGuard: React.FC<WhatsAppSetupGuardProps> = ({ children
       // Forçar verificação de status para instâncias que podem estar obsoletas
       let needsRecheck = false;
       for (const instance of status.instances) {
-        if (instance.status === 'CONNECTED' && instance.lastStatusCheck) {
-          const lastCheck = new Date(instance.lastStatusCheck);
+        if (instance.status === 'CONNECTED' && (instance as any).lastStatusCheck) {
+          const lastCheck = new Date((instance as any).lastStatusCheck);
           const now = new Date();
           const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60);
           

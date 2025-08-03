@@ -52,7 +52,7 @@ const ZApiActivation: React.FC = () => {
       setLoading(true);
       const data: QrCodeResult = await apiClient.get('/api/zapi/activation/qr-code/image');
       
-      if (data.success) {
+      if ((data as any).success) {
         setQrCodeImage(data.data);
       } else {
         console.error('Error loading QR code:', data.error);
@@ -83,7 +83,7 @@ const ZApiActivation: React.FC = () => {
       setLoading(true);
       const data = await apiClient.post('/api/zapi/activation/restart');
       
-      if (data.success) {
+      if ((data as any).success) {
         await checkStatus();
       }
     } catch (error) {
@@ -98,7 +98,7 @@ const ZApiActivation: React.FC = () => {
       setLoading(true);
       const data = await apiClient.post('/api/zapi/activation/disconnect');
       
-      if (data.success) {
+      if ((data as any).success) {
         await checkStatus();
         setQrCodeImage('');
         setPhoneCode(null);

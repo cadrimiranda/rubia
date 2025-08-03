@@ -103,14 +103,42 @@ class WebSocketEventHandlers {
     }
   }
 
-  private handleNewMessage = (data: WebSocketEventData['NEW_MESSAGE']) => {
-    const { message, conversationId } = data
+  private handleNewMessage = (data: WebSocketEventData['NEW_MESSAGE'] | any) => {
+    // O payload do backend pode vir estruturado de forma diferente
+    // Verificar estrutura e extrair dados necessários
+    let message: Message
+    let conversationId: string
+    
+    if (data.message && data.conversationId) {
+      // Formato esperado: { message, conversationId }
+      message = data.message
+      conversationId = data.conversationId
+    } else if (data.message && data.conversation) {
+      // Formato do payload fornecido: { message, conversation }
+      message = data.message
+      conversationId = data.conversation.id
+    } else {
+      console.error('Formato de mensagem WebSocket não reconhecido:', data)
+      return
+    }
+    
+    const state = useChatStore.getState()
+    
+    // Verificar se a conversa existe na lista atual
+    const conversationExists = state.chats.some(chat => chat.id === conversationId)
     
     // Adicionar mensagem à conversa
     this.store.addMessage(conversationId, message)
     
-    // Atualizar última mensagem da conversa
-    this.store.updateConversationLastMessage(conversationId, message)
+    // Atualizar última mensagem da conversa se ela existir na lista
+    if (conversationExists) {
+      this.store.updateConversationLastMessage(conversationId, message)
+    } else {
+      // Se a conversa não existe na lista atual, recarregar conversas
+      // para garantir que ela apareça em tempo real
+      console.log('Conversa não encontrada na lista atual, recarregando conversas...', conversationId)
+      this.store.refreshConversations()
+    }
     
     // Se a conversa não estiver ativa, mostrar notificação
     const { activeConversationId } = useChatStore.getState()

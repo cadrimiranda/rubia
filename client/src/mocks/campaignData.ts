@@ -10,7 +10,11 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-06-30",
     status: "active",
     color: "#3b82f6",
-    templatesUsed: [] // Templates serão carregados da API
+    templatesUsed: 0, // Templates serão carregados da API
+    totalContacts: 0,
+    contactsReached: 0,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2025-06-01T00:00:00Z"
   },
   {
     id: "camp_2", 
@@ -20,7 +24,11 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-06-25",
     status: "active",
     color: "#dc2626",
-    templatesUsed: [] // Templates serão carregados da API
+    templatesUsed: 0, // Templates serão carregados da API
+    totalContacts: 0,
+    contactsReached: 0,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2025-06-01T00:00:00Z"
   },
   {
     id: "camp_3",
@@ -30,7 +38,11 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-07-31",
     status: "active", 
     color: "#059669",
-    templatesUsed: [] // Templates serão carregados da API
+    templatesUsed: 0, // Templates serão carregados da API
+    totalContacts: 0,
+    contactsReached: 0,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2025-06-01T00:00:00Z"
   },
   {
     id: "camp_4",
@@ -40,7 +52,11 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-08-31",
     status: "active",
     color: "#7c3aed",
-    templatesUsed: [] // Templates serão carregados da API
+    templatesUsed: 0, // Templates serão carregados da API
+    totalContacts: 0,
+    contactsReached: 0,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2025-06-01T00:00:00Z"
   },
   {
     id: "camp_5",
@@ -50,7 +66,11 @@ export const mockCampaigns: Campaign[] = [
     endDate: "2025-05-31",
     status: "completed",
     color: "#6b7280",
-    templatesUsed: [] // Templates serão carregados da API
+    templatesUsed: 0, // Templates serão carregados da API
+    totalContacts: 0,
+    contactsReached: 0,
+    createdAt: "2025-06-01T00:00:00Z",
+    updatedAt: "2025-06-01T00:00:00Z"
   }
 ];
 

@@ -16,8 +16,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +32,33 @@ public class AIAgentController {
 
     private final AIAgentService aiAgentService;
     private final CompanyContextUtil companyContextUtil;
+
+    @GetMapping("/debug/context")
+    public ResponseEntity<Object> debugContext(HttpServletRequest request) {
+        log.info("🔍 [DEBUG] AI Agent Context Debug");
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            UUID currentCompanyGroupId = companyContextUtil.getCurrentCompanyGroupId();
+            UUID authUserCompanyId = companyContextUtil.getAuthenticatedUserCompanyId();
+            
+            Object debug = Map.of(
+                "currentCompanyId", currentCompanyId,
+                "currentCompanyGroupId", currentCompanyGroupId,
+                "authUserCompanyId", authUserCompanyId,
+                "requestURI", request.getRequestURI(),
+                "hasAuthHeader", request.getHeader("Authorization") != null,
+                "hasCompanySlugHeader", request.getHeader("X-Company-Slug") != null
+            );
+            
+            log.info("🔍 [DEBUG] Context data: {}", debug);
+            return ResponseEntity.ok(debug);
+            
+        } catch (Exception e) {
+            log.error("❌ [DEBUG] Error getting context: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @PostMapping
     public ResponseEntity<AIAgentDTO> createAIAgent(@Valid @RequestBody CreateAIAgentDTO createDTO) {
@@ -191,11 +222,23 @@ public class AIAgentController {
         return ResponseEntity.ok(exists);
     }
 
-    @GetMapping("/model-type/{modelType}")
-    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelType(@PathVariable String modelType) {
-        log.debug("Fetching AI agents by model type: {}", modelType);
+    @GetMapping("/model/{modelName}")
+    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelName(@PathVariable String modelName) {
+        log.debug("Fetching AI agents by model name: {}", modelName);
 
-        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelType(modelType);
+        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelName(modelName);
+        List<AIAgentDTO> responseDTOs = aiAgents.stream()
+                .map(this::convertToDTO)
+                .toList();
+
+        return ResponseEntity.ok(responseDTOs);
+    }
+
+    @GetMapping("/model-id/{modelId}")
+    public ResponseEntity<List<AIAgentDTO>> getAIAgentsByModelId(@PathVariable UUID modelId) {
+        log.debug("Fetching AI agents by model id: {}", modelId);
+
+        List<AIAgent> aiAgents = aiAgentService.getAIAgentsByModelId(modelId);
         List<AIAgentDTO> responseDTOs = aiAgents.stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -215,6 +258,94 @@ public class AIAgentController {
         return ResponseEntity.ok(responseDTOs);
     }
 
+    @GetMapping("/company/{companyId}/can-create")
+    public ResponseEntity<Boolean> canCreateAgent(@PathVariable UUID companyId) {
+        log.debug("Checking if company can create more AI agents: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        boolean canCreate = aiAgentService.canCreateAgent(companyId);
+        return ResponseEntity.ok(canCreate);
+    }
+
+    @GetMapping("/company/{companyId}/remaining-slots")
+    public ResponseEntity<Integer> getRemainingAgentSlots(@PathVariable UUID companyId) {
+        log.debug("Fetching remaining agent slots for company: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        int remainingSlots = aiAgentService.getRemainingAgentSlots(companyId);
+        return ResponseEntity.ok(remainingSlots);
+    }
+
+    @PostMapping("/company/{companyId}/enhance-message")
+    public ResponseEntity<Map<String, String>> enhanceMessage(
+            @PathVariable UUID companyId,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        
+        log.debug("Enhancing message for company: {}", companyId);
+
+        // Validate company context
+        companyContextUtil.ensureCompanyAccess(companyId);
+
+        String originalMessage = request.get("message");
+        if (originalMessage == null || originalMessage.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Message is required"));
+        }
+
+        try {
+            // Get current user from security context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UUID userId = authentication != null && authentication.getPrincipal() instanceof UUID 
+                ? (UUID) authentication.getPrincipal() 
+                : null;
+
+            // Extract conversation ID if provided
+            String conversationIdStr = request.get("conversationId");
+            UUID conversationId = conversationIdStr != null ? UUID.fromString(conversationIdStr) : null;
+
+            // Extract request metadata
+            String userAgent = httpRequest.getHeader("User-Agent");
+            String ipAddress = getClientIpAddress(httpRequest);
+
+            String enhancedMessage = aiAgentService.enhanceMessage(
+                companyId, 
+                originalMessage, 
+                userId, 
+                conversationId, 
+                userAgent, 
+                ipAddress
+            );
+            
+            return ResponseEntity.ok(Map.of("enhancedMessage", enhancedMessage));
+        } catch (Exception e) {
+            log.error("Error enhancing message for company {}: {}", companyId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to enhance message: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Extrai o endereço IP real do cliente considerando proxies
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader != null && !xForwardedForHeader.isEmpty()) {
+            return xForwardedForHeader.split(",")[0].trim();
+        }
+        
+        String xRealIpHeader = request.getHeader("X-Real-IP");
+        if (xRealIpHeader != null && !xRealIpHeader.isEmpty()) {
+            return xRealIpHeader;
+        }
+        
+        return request.getRemoteAddr();
+    }
+
     private AIAgentDTO convertToDTO(AIAgent aiAgent) {
         return AIAgentDTO.builder()
                 .id(aiAgent.getId())
@@ -222,8 +353,10 @@ public class AIAgentController {
                 .companyName(aiAgent.getCompany().getName())
                 .name(aiAgent.getName())
                 .description(aiAgent.getDescription())
-                .avatarUrl(aiAgent.getAvatarUrl())
-                .aiModelType(aiAgent.getAiModelType())
+                .avatarBase64(aiAgent.getAvatarBase64())
+                .aiModelId(aiAgent.getAiModel().getId())
+                .aiModelName(aiAgent.getAiModel().getName())
+                .aiModelDisplayName(aiAgent.getAiModel().getDisplayName())
                 .temperament(aiAgent.getTemperament())
                 .maxResponseLength(aiAgent.getMaxResponseLength())
                 .temperature(aiAgent.getTemperature())

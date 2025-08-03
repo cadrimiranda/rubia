@@ -42,7 +42,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
     onSchedule(scheduleData);
     onClose();
-    
+
     // Reset form
     setScheduleData({
       date: "",
@@ -64,14 +64,27 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   };
 
   const availableTimeSlots = [
-    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
-    "11:00", "11:30", "14:00", "14:30", "15:00", "15:30",
-    "16:00", "16:30", "17:00", "17:30"
+    "08:00",
+    "08:30",
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
   ];
 
   const disabledDate = (current: dayjs.Dayjs) => {
     // Desabilitar datas passadas e domingos
-    const today = dayjs().startOf('day');
+    const today = dayjs().startOf("day");
     const isWeekend = current.day() === 0; // 0 = domingo
     return current < today || isWeekend;
   };
@@ -80,7 +93,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     <Modal
       title={
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-red-500 rounded-xl flex items-center justify-center">
             <Heart className="w-4 h-4 text-white" fill="currentColor" />
           </div>
           <div>
@@ -103,7 +116,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
               <User className="w-5 h-5 text-blue-600" />
-              <h4 className="font-medium text-blue-800 m-0">Informações do Doador</h4>
+              <h4 className="font-medium text-blue-800 m-0">
+                Informações do Doador
+              </h4>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -133,10 +148,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </label>
           <DatePicker
             value={scheduleData.date ? dayjs(scheduleData.date) : null}
-            onChange={(date) => 
-              setScheduleData(prev => ({ 
-                ...prev, 
-                date: date ? date.format('YYYY-MM-DD') : '' 
+            onChange={(date) =>
+              setScheduleData((prev) => ({
+                ...prev,
+                date: date ? date.format("YYYY-MM-DD") : "",
               }))
             }
             disabledDate={disabledDate}
@@ -156,13 +171,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </label>
           <Select
             value={scheduleData.time}
-            onChange={(time) => 
-              setScheduleData(prev => ({ ...prev, time }))
-            }
+            onChange={(time) => setScheduleData((prev) => ({ ...prev, time }))}
             className="w-full"
             placeholder="Selecione o horário"
           >
-            {availableTimeSlots.map(time => (
+            {availableTimeSlots.map((time) => (
               <Option key={time} value={time}>
                 {time}
               </Option>
@@ -176,9 +189,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </label>
           <Select
             value={scheduleData.type}
-            onChange={(type) => 
-              setScheduleData(prev => ({ ...prev, type }))
-            }
+            onChange={(type) => setScheduleData((prev) => ({ ...prev, type }))}
             className="w-full"
           >
             <Option value="doacao">Doação de Sangue</Option>
@@ -194,8 +205,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </label>
           <TextArea
             value={scheduleData.notes}
-            onChange={(e) => 
-              setScheduleData(prev => ({ ...prev, notes: e.target.value }))
+            onChange={(e) =>
+              setScheduleData((prev) => ({ ...prev, notes: e.target.value }))
             }
             rows={3}
             placeholder="Informações adicionais sobre o agendamento..."
@@ -212,10 +223,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           >
             Confirmar Agendamento
           </Button>
-          <Button
-            size="large"
-            onClick={handleCancel}
-          >
+          <Button size="large" onClick={handleCancel}>
             Cancelar
           </Button>
         </div>
