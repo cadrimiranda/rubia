@@ -7,6 +7,8 @@ import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.service.PhoneService;
 import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -39,23 +41,35 @@ public class ZApiAdapter implements MessagingAdapter {
     private final PhoneService phoneService;
     private final WhatsAppInstanceService whatsAppInstanceService;
     private final CompanyContextUtil companyContextUtil;
+    private final WhatsAppInstanceValidator instanceValidator;
+    private final ZApiUrlFactory urlFactory;
 
     public ZApiAdapter(PhoneService phoneService, 
                       WhatsAppInstanceService whatsAppInstanceService,
-                      CompanyContextUtil companyContextUtil) {
+                      CompanyContextUtil companyContextUtil,
+                      WhatsAppInstanceValidator instanceValidator,
+                      ZApiUrlFactory urlFactory) {
         this.restTemplate = new RestTemplate();
         this.phoneService = phoneService;
         this.whatsAppInstanceService = whatsAppInstanceService;
         this.companyContextUtil = companyContextUtil;
+        this.instanceValidator = instanceValidator;
+        this.urlFactory = urlFactory;
     }
 
     /**
      * Gets the active WhatsApp instance for the current company context
+     * and validates it's ready for messaging operations
      */
     private WhatsAppInstance getActiveInstance() {
         try {
-            return whatsAppInstanceService.findActiveConnectedInstance(companyContextUtil.getCurrentCompany())
+            WhatsAppInstance instance = whatsAppInstanceService.findActiveConnectedInstance(companyContextUtil.getCurrentCompany())
                 .orElseThrow(() -> new IllegalStateException("No connected WhatsApp instance found for company"));
+            
+            // Validate instance is ready for messaging
+            instanceValidator.validateInstanceReadyForMessaging(instance);
+            
+            return instance;
         } catch (Exception e) {
             log.error("Error getting active instance: {}", e.getMessage());
             throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
@@ -67,17 +81,17 @@ public class ZApiAdapter implements MessagingAdapter {
      */
     private String buildZApiUrl(String endpoint) {
         WhatsAppInstance instance = getActiveInstance();
-        if (instance.getInstanceId() == null || instance.getAccessToken() == null) {
-            throw new IllegalStateException("WhatsApp instance is not properly configured (missing instanceId or accessToken)");
-        }
-        return String.format("https://api.z-api.io/instances/%s/token/%s/%s", 
-                           instance.getInstanceId(), instance.getAccessToken(), endpoint);
+        return urlFactory.buildUrl(instance, endpoint);
     }
 
     @Override
     public MessageResult sendMessage(String to, String message) {
         try {
             log.info("Sending Z-API message to: {} with message: {}", to, message.substring(0, Math.min(50, message.length())));
+            
+            // Validate input parameters
+            instanceValidator.validatePhoneNumber(to);
+            instanceValidator.validateMessageContent(message);
 
             String url = buildZApiUrl("send-text");
             log.info("Z-API URL: {}", url);

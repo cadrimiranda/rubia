@@ -5,6 +5,8 @@ import com.ruby.rubia_server.core.entity.QrCodeResult;
 import com.ruby.rubia_server.core.entity.PhoneCodeResult;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -23,12 +25,18 @@ public class ZApiActivationService {
     private final RestTemplate restTemplate;
     private final WhatsAppInstanceService whatsAppInstanceService;
     private final CompanyContextUtil companyContextUtil;
+    private final WhatsAppInstanceValidator instanceValidator;
+    private final ZApiUrlFactory urlFactory;
 
     public ZApiActivationService(WhatsAppInstanceService whatsAppInstanceService, 
-                                CompanyContextUtil companyContextUtil) {
+                                CompanyContextUtil companyContextUtil,
+                                WhatsAppInstanceValidator instanceValidator,
+                                ZApiUrlFactory urlFactory) {
         this.restTemplate = new RestTemplate();
         this.whatsAppInstanceService = whatsAppInstanceService;
         this.companyContextUtil = companyContextUtil;
+        this.instanceValidator = instanceValidator;
+        this.urlFactory = urlFactory;
     }
 
     /**
@@ -61,11 +69,9 @@ public class ZApiActivationService {
      */
     private String buildZApiUrl(String endpoint) {
         WhatsAppInstance instance = getActiveInstance();
-        if (instance.getInstanceId() == null || instance.getAccessToken() == null) {
-            throw new IllegalStateException("WhatsApp instance is not properly configured (missing instanceId or accessToken)");
-        }
-        return String.format("https://api.z-api.io/instances/%s/token/%s/%s", 
-                           instance.getInstanceId(), instance.getAccessToken(), endpoint);
+        // Validate basic configuration for activation endpoints
+        instanceValidator.validateInstanceConfiguration(instance);
+        return urlFactory.buildUrl(instance, endpoint);
     }
 
     public ZApiStatus getInstanceStatus() {

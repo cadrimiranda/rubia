@@ -7,6 +7,8 @@ import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,12 @@ class ZApiActivationServiceTest {
     @Mock
     private CompanyContextUtil companyContextUtil;
 
+    @Mock
+    private WhatsAppInstanceValidator instanceValidator;
+
+    @Mock
+    private ZApiUrlFactory urlFactory;
+
     private ZApiActivationService zapiActivationService;
 
     private static final String TEST_INSTANCE_ID = "TEST123";
@@ -51,7 +59,7 @@ class ZApiActivationServiceTest {
 
     @BeforeEach
     void setUp() {
-        zapiActivationService = new ZApiActivationService(whatsAppInstanceService, companyContextUtil);
+        zapiActivationService = new ZApiActivationService(whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
         
         // Mock company and instance setup
         Company mockCompany = new Company();
@@ -63,6 +71,18 @@ class ZApiActivationServiceTest {
         lenient().when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
         lenient().when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
             .thenReturn(java.util.Optional.of(mockInstance));
+        
+        // Setup default URL factory behavior
+        lenient().when(urlFactory.buildUrl(any(WhatsAppInstance.class), anyString()))
+            .thenAnswer(invocation -> {
+                WhatsAppInstance instance = invocation.getArgument(0);
+                String endpoint = invocation.getArgument(1);
+                return String.format("https://api.z-api.io/instances/%s/token/%s/%s", 
+                                   instance.getInstanceId(), instance.getAccessToken(), endpoint);
+            });
+        
+        // Setup default validator behavior
+        lenient().doNothing().when(instanceValidator).validateInstanceConfiguration(any());
         
         ReflectionTestUtils.setField(zapiActivationService, "clientToken", CLIENT_TOKEN);
         ReflectionTestUtils.setField(zapiActivationService, "restTemplate", restTemplate);
@@ -508,7 +528,7 @@ class ZApiActivationServiceTest {
     @Test
     void shouldThrowExceptionWhenNoConfiguredInstanceFound() {
         // Arrange - Reset mocks and configure no instances with proper configuration
-        reset(companyContextUtil, whatsAppInstanceService);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
         Company testCompany = new Company();
         
         WhatsAppInstance notConfiguredInstance = WhatsAppInstance.builder()
@@ -546,7 +566,7 @@ class ZApiActivationServiceTest {
     @Test
     void shouldHandleCompanyContextError() {
         // Arrange - Reset mocks and configure company context error
-        reset(companyContextUtil, whatsAppInstanceService);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
         when(companyContextUtil.getCurrentCompany())
             .thenThrow(new IllegalStateException("No company context"));
 

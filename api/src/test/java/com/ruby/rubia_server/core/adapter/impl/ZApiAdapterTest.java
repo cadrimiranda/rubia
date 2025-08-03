@@ -6,6 +6,8 @@ import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.entity.Company;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,12 +53,18 @@ class ZApiAdapterTest {
     @Mock
     private CompanyContextUtil companyContextUtil;
 
+    @Mock
+    private WhatsAppInstanceValidator instanceValidator;
+
+    @Mock
+    private ZApiUrlFactory urlFactory;
+
     private ZApiAdapter zApiAdapter;
 
     @BeforeEach
     void setUp() {
         // Create ZApiAdapter instance with mocked dependencies
-        zApiAdapter = new ZApiAdapter(phoneService, whatsAppInstanceService, companyContextUtil);
+        zApiAdapter = new ZApiAdapter(phoneService, whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
         
         // Configurar mock do PhoneService
         lenient().when(phoneService.formatForZApi(anyString())).thenAnswer(invocation -> {
@@ -81,6 +89,20 @@ class ZApiAdapterTest {
         lenient().when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
         lenient().when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
             .thenReturn(java.util.Optional.of(mockInstance));
+        
+        // Setup default URL factory behavior
+        lenient().when(urlFactory.buildUrl(any(WhatsAppInstance.class), anyString()))
+            .thenAnswer(invocation -> {
+                WhatsAppInstance instance = invocation.getArgument(0);
+                String endpoint = invocation.getArgument(1);
+                return String.format("https://api.z-api.io/instances/%s/token/%s/%s", 
+                                   instance.getInstanceId(), instance.getAccessToken(), endpoint);
+            });
+        
+        // Setup default validator behavior (do nothing for valid instances)
+        lenient().doNothing().when(instanceValidator).validateInstanceReadyForMessaging(any());
+        lenient().doNothing().when(instanceValidator).validatePhoneNumber(anyString());
+        lenient().doNothing().when(instanceValidator).validateMessageContent(anyString());
         
         ReflectionTestUtils.setField(zApiAdapter, "clientToken", "client-token");
         ReflectionTestUtils.setField(zApiAdapter, "webhookToken", "webhook-token");
@@ -688,11 +710,15 @@ class ZApiAdapterTest {
     @Test
     void shouldThrowExceptionWhenNoActiveInstanceFound() {
         // Given - Reset mocks and configure no active instance available
-        reset(companyContextUtil, whatsAppInstanceService);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
         Company mockCompany = new Company();
         when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
         when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
             .thenReturn(Optional.empty());
+        
+        // Allow validation to pass so we can test the instance lookup failure
+        doNothing().when(instanceValidator).validatePhoneNumber(anyString());
+        doNothing().when(instanceValidator).validateMessageContent(anyString());
 
         String phoneNumber = "+5511999999999";
         String message = "Test message";
@@ -717,7 +743,7 @@ class ZApiAdapterTest {
     @Test
     void shouldThrowExceptionWhenInstanceConfigurationIncomplete() {
         // Given - Reset mocks and configure instance with missing configuration
-        reset(companyContextUtil, whatsAppInstanceService);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
         Company mockCompany = new Company();
         WhatsAppInstance incompleteInstance = WhatsAppInstance.builder()
             .instanceId(null) // Missing instance ID
@@ -727,6 +753,12 @@ class ZApiAdapterTest {
         when(companyContextUtil.getCurrentCompany()).thenReturn(mockCompany);
         when(whatsAppInstanceService.findActiveConnectedInstance(mockCompany))
             .thenReturn(Optional.of(incompleteInstance));
+        
+        // Allow validation to pass so we can test the instance configuration failure
+        doNothing().when(instanceValidator).validatePhoneNumber(anyString());
+        doNothing().when(instanceValidator).validateMessageContent(anyString());
+        doThrow(new IllegalStateException("WhatsApp instance is not properly configured (missing instanceId or accessToken)"))
+            .when(instanceValidator).validateInstanceReadyForMessaging(incompleteInstance);
 
         String phoneNumber = "+5511999999999";
         String message = "Test message";
@@ -752,9 +784,13 @@ class ZApiAdapterTest {
     @Test
     void shouldHandleCompanyContextResolutionError() {
         // Given - Reset mocks and configure error resolving company context
-        reset(companyContextUtil, whatsAppInstanceService);
+        reset(companyContextUtil, whatsAppInstanceService, instanceValidator);
         when(companyContextUtil.getCurrentCompany())
             .thenThrow(new IllegalStateException("No company context found"));
+        
+        // Allow validation to pass so we can test the context resolution failure
+        doNothing().when(instanceValidator).validatePhoneNumber(anyString());
+        doNothing().when(instanceValidator).validateMessageContent(anyString());
 
         String phoneNumber = "+5511999999999";
         String message = "Test message";
