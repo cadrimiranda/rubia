@@ -10,6 +10,7 @@ interface MessageInputProps {
   attachments: FileAttachmentType[];
   pendingMedia?: PendingMedia[];
   conversationId?: string;
+  draftMessage?: any;
   onMessageChange: (value: string) => void;
   onSendMessage: () => void;
   onFileUpload: (files: FileList | null) => void;
@@ -21,6 +22,9 @@ interface MessageInputProps {
   onError?: (error: string) => void;
   onAudioRecorded?: (audioBlob: Blob) => void;
   isLoading?: boolean;
+  recordingCooldownMs?: number;
+  maxRecordingTimeMs?: number;
+  maxFileSizeMB?: number;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -28,6 +32,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   attachments,
   pendingMedia = [],
   conversationId,
+  draftMessage,
   onMessageChange,
   onSendMessage,
   onFileUpload,
@@ -39,11 +44,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onError,
   onAudioRecorded,
   isLoading = false,
+  recordingCooldownMs = 2000,
+  maxRecordingTimeMs = 300000, // 5 minutos
+  maxFileSizeMB = 16,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
@@ -51,24 +60,49 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [lastRecordingTime, setLastRecordingTime] = useState(0);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const recordingIntervalRef = useRef<number | null>(null);
+  const recordingTimeoutRef = useRef<number | null>(null);
 
   // Validação de MIME types para áudio
   const ALLOWED_AUDIO_MIME_TYPES = ['audio/wav', 'audio/mp3', 'audio/ogg', 'audio/webm'];
+  const MAX_RECORDING_TIME_SECONDS = Math.floor(maxRecordingTimeMs / 1000);
 
-  // Rate limiting para gravações
-  const RECORDING_COOLDOWN_MS = 2000; // 2 segundos entre gravações
+  const showAudioError = useCallback((error: string) => {
+    setAudioError(error);
+    onError?.(error);
+    setTimeout(() => setAudioError(null), 4000);
+  }, [onError]);
+
+  const cleanupRecording = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current = null;
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    if (recordingTimeoutRef.current) {
+      window.clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+  }, []);
 
   const startRecording = useCallback(async () => {
     // Rate limiting
     const now = Date.now();
-    if (now - lastRecordingTime < RECORDING_COOLDOWN_MS) {
-      onError?.(`Aguarde ${Math.ceil((RECORDING_COOLDOWN_MS - (now - lastRecordingTime)) / 1000)} segundos antes de gravar novamente`);
+    if (now - lastRecordingTime < recordingCooldownMs) {
+      showAudioError(`Aguarde ${Math.ceil((recordingCooldownMs - (now - lastRecordingTime)) / 1000)} segundos antes de gravar novamente`);
       return;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -84,8 +118,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         
         // Validação de MIME type
         if (!ALLOWED_AUDIO_MIME_TYPES.includes(audioBlob.type)) {
-          onError?.('Formato de áudio não suportado');
-          stream.getTracks().forEach(track => track.stop());
+          showAudioError('Formato de áudio não suportado');
+          cleanupRecording();
+          return;
+        }
+        
+        // Validação de tamanho do arquivo
+        const fileSizeMB = audioBlob.size / (1024 * 1024);
+        if (fileSizeMB > maxFileSizeMB) {
+          showAudioError(`Arquivo muito grande. Tamanho máximo: ${maxFileSizeMB}MB`);
+          cleanupRecording();
           return;
         }
         
@@ -93,7 +135,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
         setLastRecordingTime(Date.now());
-        stream.getTracks().forEach(track => track.stop());
+        cleanupRecording();
       };
       
       mediaRecorder.start();
@@ -101,22 +143,35 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       setRecordingTime(0);
       
       recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        setRecordingTime(prev => {
+          const newTime = prev + 1;
+          // Auto-stop quando atinge o tempo máximo
+          if (newTime >= MAX_RECORDING_TIME_SECONDS) {
+            stopRecording();
+          }
+          return newTime;
+        });
       }, 1000);
+      
+      // Timeout de segurança
+      recordingTimeoutRef.current = window.setTimeout(() => {
+        if (isRecording) {
+          showAudioError(`Gravação limitada a ${MAX_RECORDING_TIME_SECONDS / 60} minutos`);
+          stopRecording();
+        }
+      }, maxRecordingTimeMs);
     } catch (error) {
-      onError?.('Erro ao acessar o microfone');
+      showAudioError('Erro ao acessar o microfone');
+      cleanupRecording();
     }
-  }, [onError, lastRecordingTime]);
+  }, [showAudioError, lastRecordingTime, recordingCooldownMs, cleanupRecording]);
   
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-        recordingIntervalRef.current = null;
-      }
     }
+    // Cleanup será feito pelo cleanupRecording no onstop
   }, [isRecording]);
   
   const playAudio = useCallback(() => {
@@ -168,12 +223,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       }
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current = null;
       }
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
+      cleanupRecording();
     };
-  }, [audioUrl]);
+  }, [audioUrl, cleanupRecording]);
   
   const sendAudio = useCallback(() => {
     if (recordedAudio && onAudioRecorded) {
@@ -190,6 +244,24 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   return (
     <div className="border-t border-gray-200 bg-white p-4">
+      {/* Indicador de mensagem DRAFT */}
+      {draftMessage && (
+        <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex items-center gap-2 text-sm text-yellow-800">
+            <Sparkles className="w-4 h-4" />
+            <span>Mensagem da campanha carregada - pronta para envio</span>
+          </div>
+        </div>
+      )}
+
+      {audioError && (
+        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <span className="text-sm text-red-700">{audioError}</span>
+          </div>
+        </div>
+      )}
 
       {recordedAudio && (
         <div className="mb-3 p-3 bg-gray-50 rounded-lg border">
@@ -298,7 +370,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             value={messageInput}
             onChange={(e) => onMessageChange(e.target.value)}
             onKeyPress={onKeyPress}
-            placeholder="Digite sua mensagem..."
+            placeholder={
+              draftMessage 
+                ? "Edite a mensagem da campanha se necessário..."
+                : "Digite sua mensagem..."
+            }
             rows={1}
             className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             style={{ minHeight: "40px", maxHeight: "120px" }}
@@ -318,7 +394,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         <button
           onClick={onSendMessage}
           disabled={(!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0 && !recordedAudio) || isLoading || isRecording}
-          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors self-end"
+          className={`p-2 rounded-lg transition-colors self-end ${
+            ((!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0 && !recordedAudio) || isLoading || isRecording)
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : draftMessage
+              ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+              : "bg-blue-500 hover:bg-blue-600 text-white"
+          }`}
+          title={draftMessage ? "Enviar mensagem da campanha" : "Enviar mensagem"}
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />

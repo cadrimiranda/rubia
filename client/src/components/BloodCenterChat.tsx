@@ -12,7 +12,8 @@ import { getCurrentTimestamp } from "../utils";
 import { DonorSidebar } from "./DonorSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { MessageList } from "./MessageList";
-import { MessageInput } from "./MessageInput";
+import { MessageInput } from "./MessageInput/index";
+import { AudioErrorBoundary } from "./AudioErrorBoundary";
 import { ContextMenu as ContextMenuComponent } from "./ContextMenu";
 import { NewChatModal } from "./NewChatModal";
 import { DonorInfoModal } from "./DonorInfoModal";
@@ -1613,27 +1614,31 @@ export const BloodCenterChat: React.FC = () => {
               onDrop={handleDrop}
             />
 
-            <MessageInput
-              messageInput={state.messageInput}
-              attachments={state.attachments}
-              pendingMedia={state.pendingMedia}
-              conversationId={state.selectedDonor?.conversationId}
-              draftMessage={currentDraftMessage}
-              onMessageChange={(value) => updateState({ messageInput: value })}
-              onSendMessage={handleSendMessage}
-              onFileUpload={handleFileUpload}
-              onRemoveAttachment={(id) =>
-                updateState({
-                  attachments: state.attachments.filter((att) => att.id !== id),
-                })
-              }
-              onMediaSelected={handleMediaSelected}
-              onRemovePendingMedia={handleRemovePendingMedia}
-              onKeyPress={handleKeyPress}
-              onEnhanceMessage={handleEnhanceMessage}
-              onError={handleMediaError}
-              onAudioRecorded={handleAudioRecorded}
-            />
+            <AudioErrorBoundary>
+              <MessageInput
+                messageInput={state.messageInput}
+                attachments={state.attachments}
+                pendingMedia={state.pendingMedia}
+                conversationId={state.selectedDonor?.conversationId}
+                draftMessage={currentDraftMessage}
+                onMessageChange={(value) => updateState({ messageInput: value })}
+                onSendMessage={handleSendMessage}
+                onFileUpload={handleFileUpload}
+                onRemoveAttachment={(id) =>
+                  updateState({
+                    attachments: state.attachments.filter((att) => att.id !== id),
+                  })
+                }
+                onMediaSelected={handleMediaSelected}
+                onRemovePendingMedia={handleRemovePendingMedia}
+                onKeyPress={handleKeyPress}
+                onEnhanceMessage={handleEnhanceMessage}
+                onError={handleMediaError}
+                onAudioRecorded={handleAudioRecorded}
+                maxRecordingTimeMs={300000}
+                maxFileSizeMB={16}
+              />
+            </AudioErrorBoundary>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
