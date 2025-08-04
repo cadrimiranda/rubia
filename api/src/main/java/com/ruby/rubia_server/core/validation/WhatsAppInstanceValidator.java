@@ -1,7 +1,6 @@
 package com.ruby.rubia_server.core.validation;
 
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -36,8 +35,8 @@ public class WhatsAppInstanceValidator {
 
         validateInstanceId(instance.getInstanceId());
         validateAccessToken(instance.getAccessToken());
-        validateInstanceStatus(instance);
         validateCompanyAssociation(instance);
+        validateInstanceActive(instance);
 
         log.debug("WhatsApp instance validation successful for instance: {}", 
                  instance.getInstanceId());
@@ -52,12 +51,6 @@ public class WhatsAppInstanceValidator {
      */
     public void validateInstanceReadyForMessaging(WhatsAppInstance instance) {
         validateInstanceConfiguration(instance);
-        
-        if (!instance.isConnected()) {
-            throw new IllegalStateException(
-                String.format("WhatsApp instance '%s' is not connected (status: %s)", 
-                             instance.getInstanceId(), instance.getStatus()));
-        }
 
         if (!instance.getIsActive()) {
             throw new IllegalStateException(
@@ -104,18 +97,6 @@ public class WhatsAppInstanceValidator {
         }
     }
 
-    /**
-     * Validates the instance status for basic configuration requirements.
-     */
-    private void validateInstanceStatus(WhatsAppInstance instance) {
-        Assert.notNull(instance.getStatus(), "Instance status cannot be null");
-        
-        // For basic validation, we allow instances in various states
-        // The readiness validation will check for CONNECTED status specifically
-        if (instance.getStatus() == WhatsAppInstanceStatus.SUSPENDED) {
-            throw new IllegalArgumentException("Cannot use suspended WhatsApp instance");
-        }
-    }
 
     /**
      * Validates that the instance has proper company association.
@@ -123,6 +104,15 @@ public class WhatsAppInstanceValidator {
     private void validateCompanyAssociation(WhatsAppInstance instance) {
         Assert.notNull(instance.getCompany(), "WhatsApp instance must be associated with a company");
         Assert.notNull(instance.getCompany().getId(), "Associated company must have a valid ID");
+    }
+
+    /**
+     * Validates that the instance is active.
+     */
+    private void validateInstanceActive(WhatsAppInstance instance) {
+        if (!instance.getIsActive()) {
+            throw new IllegalArgumentException("Cannot use inactive WhatsApp instance");
+        }
     }
 
     /**

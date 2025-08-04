@@ -2,7 +2,6 @@ package com.ruby.rubia_server.core.validation;
 
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -104,17 +103,17 @@ class WhatsAppInstanceValidatorTest {
     }
 
     @Test
-    void validateInstanceConfiguration_WithSuspendedStatus_ShouldThrowException() {
+    void validateInstanceConfiguration_WithInactiveInstance_ShouldThrowException() {
         // Arrange
         WhatsAppInstance instance = createValidInstance();
-        instance.setStatus(WhatsAppInstanceStatus.SUSPENDED);
+        instance.setIsActive(false);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> validator.validateInstanceConfiguration(instance)
         );
-        assertEquals("Cannot use suspended WhatsApp instance", exception.getMessage());
+        assertEquals("Cannot use inactive WhatsApp instance", exception.getMessage());
     }
 
     @Test
@@ -132,43 +131,28 @@ class WhatsAppInstanceValidatorTest {
     }
 
     @Test
-    void validateInstanceReadyForMessaging_WithConnectedInstance_ShouldPass() {
+    void validateInstanceReadyForMessaging_WithActiveInstance_ShouldPass() {
         // Arrange
         WhatsAppInstance instance = createValidInstance();
-        instance.setStatus(WhatsAppInstanceStatus.CONNECTED);
         instance.setIsActive(true);
 
         // Act & Assert
         assertDoesNotThrow(() -> validator.validateInstanceReadyForMessaging(instance));
     }
 
-    @Test
-    void validateInstanceReadyForMessaging_WithDisconnectedInstance_ShouldThrowException() {
-        // Arrange
-        WhatsAppInstance instance = createValidInstance();
-        instance.setStatus(WhatsAppInstanceStatus.DISCONNECTED);
-
-        // Act & Assert
-        IllegalStateException exception = assertThrows(
-            IllegalStateException.class,
-            () -> validator.validateInstanceReadyForMessaging(instance)
-        );
-        assertTrue(exception.getMessage().contains("is not connected"));
-    }
 
     @Test
     void validateInstanceReadyForMessaging_WithInactiveInstance_ShouldThrowException() {
         // Arrange
         WhatsAppInstance instance = createValidInstance();
-        instance.setStatus(WhatsAppInstanceStatus.CONNECTED);
         instance.setIsActive(false);
 
         // Act & Assert
-        IllegalStateException exception = assertThrows(
-            IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
             () -> validator.validateInstanceReadyForMessaging(instance)
         );
-        assertTrue(exception.getMessage().contains("is not active"));
+        assertTrue(exception.getMessage().contains("inactive"));
     }
 
     @Test
@@ -276,7 +260,6 @@ class WhatsAppInstanceValidatorTest {
         return WhatsAppInstance.builder()
             .instanceId("valid-instance-123")
             .accessToken("valid-access-token-123")
-            .status(WhatsAppInstanceStatus.CONNECTED)
             .isActive(true)
             .company(mockCompany)
             .build();

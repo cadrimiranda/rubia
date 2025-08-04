@@ -74,4 +74,30 @@ public class ZApiWebhookController {
             return ResponseEntity.ok(Map.of("success", true)); // Always return success to Z-API
         }
     }
+
+    @PostMapping("/callback/{instanceId}")
+    public ResponseEntity<Map<String, Object>> handleGenericCallback(
+            @PathVariable String instanceId,
+            @RequestBody Map<String, Object> webhookData) {
+        
+        try {
+            log.info("Received generic callback for instance: {} with data: {}", instanceId, webhookData);
+            
+            String type = (String) webhookData.get("type");
+            Boolean disconnected = (Boolean) webhookData.get("disconnected");
+            
+            if ("DisconnectedCallback".equals(type) && Boolean.TRUE.equals(disconnected)) {
+                log.info("Processing DisconnectedCallback for instance: {}", instanceId);
+                connectionMonitorService.handleWebhookDisconnection(instanceId, webhookData);
+            } else {
+                log.info("Unhandled callback type '{}' for instance: {}", type, instanceId);
+            }
+            
+            return ResponseEntity.ok(Map.of("success", true));
+            
+        } catch (Exception e) {
+            log.error("Error processing generic callback for instance {}: {}", instanceId, e.getMessage(), e);
+            return ResponseEntity.ok(Map.of("success", true)); // Always return success to Z-API
+        }
+    }
 }

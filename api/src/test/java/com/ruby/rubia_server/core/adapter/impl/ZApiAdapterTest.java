@@ -64,7 +64,7 @@ class ZApiAdapterTest {
     @BeforeEach
     void setUp() {
         // Create ZApiAdapter instance with mocked dependencies
-        zApiAdapter = new ZApiAdapter(phoneService, whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
+        zApiAdapter = new ZApiAdapter(restTemplate, phoneService, whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
         
         // Configurar mock do PhoneService
         lenient().when(phoneService.formatForZApi(anyString())).thenAnswer(invocation -> {

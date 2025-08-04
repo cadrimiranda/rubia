@@ -51,11 +51,11 @@ public class ZApiActivationService {
                 return connectedInstance.get();
             }
             
-            // If no connected instance, look for instances in configuration/activation state
+            // If no connected instance, look for instances that are configured
             var instances = whatsAppInstanceService.findByCompany(companyContextUtil.getCurrentCompany());
             return instances.stream()
                 .filter(instance -> instance.getInstanceId() != null && instance.getAccessToken() != null)
-                .filter(instance -> instance.getStatus().name().matches("CONFIGURING|AWAITING_QR_SCAN|CONNECTING"))
+                .filter(WhatsAppInstance::isConfigured)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No configured WhatsApp instance found for activation"));
         } catch (Exception e) {

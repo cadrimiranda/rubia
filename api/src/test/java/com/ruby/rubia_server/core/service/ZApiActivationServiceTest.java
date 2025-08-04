@@ -9,7 +9,6 @@ import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
 import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -443,7 +442,6 @@ class ZApiActivationServiceTest {
         WhatsAppInstance configuringInstance = WhatsAppInstance.builder()
             .instanceId("configuring-instance")
             .accessToken("configuring-token")
-            .status(WhatsAppInstanceStatus.CONFIGURING)
             .isActive(true)
             .build();
 
@@ -489,7 +487,6 @@ class ZApiActivationServiceTest {
         WhatsAppInstance qrScanInstance = WhatsAppInstance.builder()
             .instanceId("qr-scan-instance")
             .accessToken("qr-scan-token")
-            .status(WhatsAppInstanceStatus.AWAITING_QR_SCAN)
             .isActive(true)
             .build();
 
@@ -534,7 +531,6 @@ class ZApiActivationServiceTest {
         WhatsAppInstance notConfiguredInstance = WhatsAppInstance.builder()
             .instanceId(null) // Missing configuration
             .accessToken(null)
-            .status(WhatsAppInstanceStatus.NOT_CONFIGURED)
             .isActive(true)
             .build();
 
@@ -593,7 +589,6 @@ class ZApiActivationServiceTest {
         WhatsAppInstance connectedInstance = WhatsAppInstance.builder()
             .instanceId("connected-instance")
             .accessToken("connected-token")
-            .status(WhatsAppInstanceStatus.CONNECTED)
             .isPrimary(true)
             .isActive(true)
             .build();

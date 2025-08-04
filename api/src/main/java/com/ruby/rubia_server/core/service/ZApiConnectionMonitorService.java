@@ -2,7 +2,6 @@ package com.ruby.rubia_server.core.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import com.ruby.rubia_server.core.repository.WhatsAppInstanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,22 +48,17 @@ public class ZApiConnectionMonitorService {
 
         WhatsAppInstance instance = instanceOpt.get();
         
-        // Update instance status
-        instance.setStatus(WhatsAppInstanceStatus.DISCONNECTED);
-        instance.setLastStatusCheck(LocalDateTime.now());
-        
         // Extract error message if available
         String errorMessage = (String) webhookData.get("error");
-        if (errorMessage != null) {
-            instance.setErrorMessage(errorMessage);
-        }
+        
+        // Notify frontend via WebSocket with real-time status
+        Map<String, Object> statusData = Map.of(
+            "connected", false,
+            "error", errorMessage != null ? errorMessage : "Device has been disconnected"
+        );
+        notifyStatusChange(instance, "DISCONNECTED", statusData);
 
-        whatsAppInstanceRepository.save(instance);
-
-        // Notify frontend via WebSocket
-        notifyStatusChange(instance, "DISCONNECTED");
-
-        log.info("Instance {} marked as disconnected", instanceId);
+        log.info("Instance {} disconnection webhook processed", instanceId);
         return CompletableFuture.completedFuture(null);
     }
 
@@ -81,18 +75,14 @@ public class ZApiConnectionMonitorService {
 
         WhatsAppInstance instance = instanceOpt.get();
         
-        // Update instance status
-        instance.setStatus(WhatsAppInstanceStatus.CONNECTED);
-        instance.setLastConnectedAt(LocalDateTime.now());
-        instance.setLastStatusCheck(LocalDateTime.now());
-        instance.setErrorMessage(null); // Clear any previous error
+        // Notify frontend via WebSocket with real-time status
+        Map<String, Object> statusData = Map.of(
+            "connected", true,
+            "error", null
+        );
+        notifyStatusChange(instance, "CONNECTED", statusData);
 
-        whatsAppInstanceRepository.save(instance);
-
-        // Notify frontend via WebSocket
-        notifyStatusChange(instance, "CONNECTED");
-
-        log.info("Instance {} marked as connected", instanceId);
+        log.info("Instance {} connection webhook processed", instanceId);
         return CompletableFuture.completedFuture(null);
     }
 
@@ -108,30 +98,19 @@ public class ZApiConnectionMonitorService {
         }
 
         WhatsAppInstance instance = instanceOpt.get();
-        instance.setLastStatusCheck(LocalDateTime.now());
         
         // Process different status types from webhook
-        String status = (String) webhookData.get("status");
         Boolean connected = (Boolean) webhookData.get("connected");
+        String errorMessage = (String) webhookData.get("error");
         
-        if (connected != null) {
-            if (connected) {
-                instance.setStatus(WhatsAppInstanceStatus.CONNECTED);
-                instance.setLastConnectedAt(LocalDateTime.now());
-                instance.setErrorMessage(null);
-            } else {
-                instance.setStatus(WhatsAppInstanceStatus.DISCONNECTED);
-                String errorMessage = (String) webhookData.get("error");
-                if (errorMessage != null) {
-                    instance.setErrorMessage(errorMessage);
-                }
-            }
-        }
-
-        whatsAppInstanceRepository.save(instance);
+        // Notify frontend with real-time status
+        Map<String, Object> statusData = Map.of(
+            "connected", connected != null ? connected : false,
+            "error", errorMessage
+        );
         
-        // Notify frontend
-        notifyStatusChange(instance, connected ? "CONNECTED" : "DISCONNECTED");
+        String status = connected != null && connected ? "CONNECTED" : "DISCONNECTED";
+        notifyStatusChange(instance, status, statusData);
 
         return CompletableFuture.completedFuture(null);
     }
@@ -171,87 +150,63 @@ public class ZApiConnectionMonitorService {
         }
     }
 
-    @Async
-    public CompletableFuture<Void> updateInstanceFromStatusCheck(WhatsAppInstance instance) {
-        log.info("🔄 Updating instance {} from status check. Current status: {}", 
-            instance.getInstanceId(), instance.getStatus());
+    public Map<String, Object> getInstanceStatus(WhatsAppInstance instance) {
+        log.info("🔄 Getting real-time status for instance {}", instance.getInstanceId());
             
         Map<String, Object> statusResult = checkInstanceStatus(instance.getInstanceId(), instance.getAccessToken());
         
-        Boolean connected = (Boolean) statusResult.get("connected");
-        String error = (String) statusResult.get("error");
+        log.info("📊 Z-API status result for instance {}: {}", instance.getInstanceId(), statusResult);
         
-        log.info("📊 Z-API status result for instance {}: connected={}, error={}", 
-            instance.getInstanceId(), connected, error);
+        return statusResult;
+    }
+    
+    public Map<String, Object> getInstanceStatus(String instanceId) {
+        Optional<WhatsAppInstance> instanceOpt = whatsAppInstanceRepository.findByInstanceId(instanceId);
         
-        WhatsAppInstanceStatus oldStatus = instance.getStatus();
-        WhatsAppInstanceStatus newStatus;
-        
-        if (Boolean.TRUE.equals(connected)) {
-            newStatus = WhatsAppInstanceStatus.CONNECTED;
-            instance.setLastConnectedAt(LocalDateTime.now());
-            instance.setErrorMessage(null);
-        } else {
-            newStatus = WhatsAppInstanceStatus.DISCONNECTED;
-            instance.setErrorMessage(error);
+        if (instanceOpt.isEmpty()) {
+            return Map.of(
+                "connected", false,
+                "error", "Instance not found",
+                "smartphoneConnected", false
+            );
         }
-
-        log.info("📈 Status comparison for instance {}: {} -> {}", 
-            instance.getInstanceId(), oldStatus, newStatus);
-
-        // Only update if status changed
-        if (instance.getStatus() != newStatus) {
-            instance.setStatus(newStatus);
-            whatsAppInstanceRepository.save(instance);
-            
-            // Notify frontend of status change
-            notifyStatusChange(instance, newStatus.name());
-            
-            log.warn("⚠️  Instance {} status CHANGED: {} -> {}", 
-                instance.getInstanceId(), oldStatus, newStatus);
-        } else {
-            log.debug("✓ Instance {} status unchanged: {}", 
-                instance.getInstanceId(), newStatus);
-        }
-
-        instance.setLastStatusCheck(LocalDateTime.now());
-        whatsAppInstanceRepository.save(instance);
-
-        return CompletableFuture.completedFuture(null);
+        
+        return getInstanceStatus(instanceOpt.get());
     }
 
-    // Scheduled task to check all active instances every 2 minutes
-    @Scheduled(fixedRate = 120000) // 2 minutes
-    public void periodicStatusCheck() {
+    // Optional: Scheduled task to proactively notify frontend of status changes
+    @Scheduled(fixedRate = 300000) // 5 minutes
+    public void periodicStatusNotification() {
         List<WhatsAppInstance> activeInstances = whatsAppInstanceRepository
             .findByIsActiveTrueAndInstanceIdIsNotNullAndAccessTokenIsNotNull();
 
-        log.info("🔄 Starting periodic status check for {} active instances", activeInstances.size());
+        log.info("🔄 Starting periodic status notification for {} active instances", activeInstances.size());
         
         if (activeInstances.isEmpty()) {
-            log.info("📭 No active instances found for periodic check");
+            log.info("📭 No active instances found for periodic notification");
             return;
         }
 
         for (WhatsAppInstance instance : activeInstances) {
-            // Skip if last check was less than 1 minute ago to avoid too frequent checks
-            if (instance.getLastStatusCheck() != null && 
-                instance.getLastStatusCheck().isAfter(LocalDateTime.now().minusMinutes(1))) {
-                log.debug("⏭️  Skipping instance {} - checked {} minute(s) ago", 
-                    instance.getInstanceId(),
-                    java.time.Duration.between(instance.getLastStatusCheck(), LocalDateTime.now()).toMinutes());
-                continue;
+            try {
+                Map<String, Object> currentStatus = getInstanceStatus(instance);
+                Boolean connected = (Boolean) currentStatus.get("connected");
+                String status = connected != null && connected ? "CONNECTED" : "DISCONNECTED";
+                
+                notifyStatusChange(instance, status, currentStatus);
+                
+                log.debug("🎯 Notified status for instance: {} - {}", 
+                    instance.getInstanceId(), status);
+            } catch (Exception e) {
+                log.error("Error checking status for instance {}: {}", 
+                    instance.getInstanceId(), e.getMessage());
             }
-
-            log.info("🎯 Checking instance: {} ({})", 
-                instance.getInstanceId(), instance.getPhoneNumber());
-            updateInstanceFromStatusCheck(instance);
         }
         
-        log.info("✅ Periodic status check completed");
+        log.info("✅ Periodic status notification completed");
     }
 
-    private void notifyStatusChange(WhatsAppInstance instance, String status) {
+    private void notifyStatusChange(WhatsAppInstance instance, String status, Map<String, Object> statusData) {
         try {
             Map<String, Object> notification = Map.of(
                 "type", "INSTANCE_STATUS_CHANGE",
@@ -259,6 +214,7 @@ public class ZApiConnectionMonitorService {
                 "status", status,
                 "phoneNumber", instance.getPhoneNumber(),
                 "displayName", instance.getDisplayName() != null ? instance.getDisplayName() : "",
+                "statusData", statusData,
                 "timestamp", LocalDateTime.now().toString()
             );
 
@@ -269,6 +225,12 @@ public class ZApiConnectionMonitorService {
         } catch (Exception e) {
             log.error("Error sending WebSocket notification for instance status change: {}", e.getMessage());
         }
+    }
+    
+    // Backward compatibility method
+    private void notifyStatusChange(WhatsAppInstance instance, String status) {
+        Map<String, Object> statusData = getInstanceStatus(instance);
+        notifyStatusChange(instance, status, statusData);
     }
 
     public boolean configureDisconnectionWebhook(String instanceId, String token) {

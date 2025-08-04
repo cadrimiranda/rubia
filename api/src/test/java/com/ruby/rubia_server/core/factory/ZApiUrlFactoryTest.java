@@ -2,7 +2,6 @@ package com.ruby.rubia_server.core.factory;
 
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +31,6 @@ class ZApiUrlFactoryTest {
         mockInstance = WhatsAppInstance.builder()
             .instanceId("test-instance-123")
             .accessToken("test-token-456")
-            .status(WhatsAppInstanceStatus.CONNECTED)
             .company(mockCompany)
             .build();
     }
