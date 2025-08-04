@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { PhoneOutlined, QrcodeOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ReloadOutlined, DisconnectOutlined, SyncOutlined } from '@ant-design/icons';
 import { whatsappSetupApi } from '../api/services/whatsappSetupApi';
 import ZApiActivation from './ZApiActivation';
-import type { WhatsAppSetupStatus, WhatsAppInstance, MessagingProvider } from '../types';
+import type { WhatsAppSetupStatus, WhatsAppInstanceWithStatus, MessagingProvider } from '../types';
 import type { MessagingProviderInfo } from '../api/services/whatsappSetupApi';
 
 const { Title, Text } = Typography;
@@ -19,10 +19,10 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [setupStatus, setSetupStatus] = useState<WhatsAppSetupStatus | null>(null);
-  const [selectedInstance, setSelectedInstance] = useState<WhatsAppInstance | null>(null);
+  const [selectedInstance, setSelectedInstance] = useState<WhatsAppInstanceWithStatus | null>(null);
   const [providers, setProviders] = useState<MessagingProviderInfo[]>([]);
   const [reconnectModalVisible, setReconnectModalVisible] = useState(false);
-  const [reconnectingInstance, setReconnectingInstance] = useState<WhatsAppInstance | null>(null);
+  const [reconnectingInstance, setReconnectingInstance] = useState<WhatsAppInstanceWithStatus | null>(null);
   
   const [form] = Form.useForm();
 
@@ -36,24 +36,24 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   useEffect(() => {
     let interval: number | null = null;
     
-    if (currentStep === 2 && selectedInstance && selectedInstance.status !== 'CONNECTED') {
+    if (currentStep === 2 && selectedInstance && !selectedInstance.connected) {
       interval = setInterval(async () => {
         try {
           const status = await whatsappSetupApi.getSetupStatus();
           const updatedInstance = status.instances.find(i => i.id === selectedInstance.id);
           
-          if (updatedInstance && updatedInstance.status !== selectedInstance.status) {
+          if (updatedInstance && updatedInstance.connected !== selectedInstance.connected) {
             setSelectedInstance(updatedInstance);
             setSetupStatus(status);
             
-            if (updatedInstance.status === 'CONNECTED') {
+            if (updatedInstance.connected) {
               message.success('WhatsApp conectado com sucesso!');
             }
           }
         } catch (error) {
           console.error('Error polling status:', error);
         }
-      }, 3000); // Poll a cada 3 segundos
+      }, 5000); // Poll a cada 5 segundos
     }
     
     return () => {
@@ -66,39 +66,17 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   const loadSetupStatus = async () => {
     try {
       setLoading(true);
-      const status = await whatsappSetupApi.getSetupStatus();
-      
-      // Para cada instância, forçar verificação de status se for suspeita de estar desconectada
-      for (const instance of status.instances) {
-        if (instance.status === 'CONNECTED' && (instance as any).lastStatusCheck) {
-          const lastCheck = new Date((instance as any).lastStatusCheck);
-          const now = new Date();
-          const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60);
-          
-          // Se não foi verificado nas últimas 5 horas, forçar verificação
-          if (minutesSinceCheck > 300) {
-            try {
-              await whatsappSetupApi.forceStatusCheck(instance.id);
-            } catch (error) {
-              console.error('Error forcing status check:', error);
-            }
-          }
-        }
-      }
-      
-      // Recarregar status após verificações forçadas
-      const updatedStatus = await whatsappSetupApi.getSetupStatus();
-      setSetupStatus(updatedStatus);
+      const status = await whatsappSetupApi.getSetupStatusWithRealTimeCheck();
+      setSetupStatus(status);
       
       // Determine current step based on status - prioritize active instances that need setup
-      const instanceNeedingSetup = updatedStatus.instances.find(instance => 
+      const instanceNeedingSetup = status.instances.find(instance => 
         instance.status === 'NOT_CONFIGURED' || 
         instance.status === 'CONFIGURING' || 
         instance.status === 'AWAITING_QR_SCAN'
       );
       
-      const disconnectedInstances = updatedStatus.instances.filter(i => i.status === 'DISCONNECTED');
-      
+      const disconnectedInstances = status.instances.filter(i => !i.connected && i.isActive);
       
       if (instanceNeedingSetup) {
         // If there's an instance that needs setup, handle it first
@@ -108,10 +86,10 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
         } else if (instanceNeedingSetup.status === 'CONFIGURING' || instanceNeedingSetup.status === 'AWAITING_QR_SCAN') {
           setCurrentStep(2); // Go to activation step
         }
-      } else if (updatedStatus.hasConnectedInstance || disconnectedInstances.length > 0) {
+      } else if (status.hasConnectedInstance || disconnectedInstances.length > 0) {
         // If has connected instances OR disconnected instances, show management
         setCurrentStep(3);
-      } else if (updatedStatus.totalInstances === 0) {
+      } else if (status.totalInstances === 0) {
         // If no instances, stay at step 0 for creating new instance
         setCurrentStep(0);
       } else {
@@ -153,11 +131,16 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       });
 
       message.success('Instância criada com sucesso!');
-      setSelectedInstance(instance);
       setCurrentStep(1);
-      // Reload setup status but don't change step automatically
+      // Reload setup status to get the instance with status
       const status = await whatsappSetupApi.getSetupStatus();
       setSetupStatus(status);
+      
+      // Find the created instance in the updated status
+      const createdInstanceWithStatus = status.instances.find(i => i.id === instance.id);
+      if (createdInstanceWithStatus) {
+        setSelectedInstance(createdInstanceWithStatus);
+      }
       
     } catch (error: unknown) {
       console.error('Error creating instance:', error);
@@ -229,7 +212,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       const currentStatus = await whatsappSetupApi.getSetupStatus();
       
       // Verificar se há pelo menos uma instância conectada
-      const hasConnectedInstance = currentStatus.instances.some(instance => instance.status === 'CONNECTED');
+      const hasConnectedInstance = currentStatus.instances.some(instance => instance.connected);
       
       if (!hasConnectedInstance) {
         message.warning('Por favor, complete o scan do QR code antes de concluir a configuração.');
@@ -251,7 +234,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     }
   };
 
-  const handleReconnectInstance = async (instance: WhatsAppInstance) => {
+  const handleReconnectInstance = async (instance: WhatsAppInstanceWithStatus) => {
     try {
       setLoading(true);
       setReconnectingInstance(instance);
@@ -259,11 +242,11 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       const result = await whatsappSetupApi.reconnectInstance(instance.id);
       
       if (result.success) {
-        if (result.status === 'CONNECTED') {
+        if (result.zapiStatus?.connected) {
           message.success('Instância já está conectada!');
           // Reload status
           await loadSetupStatus();
-        } else if (result.status === 'AWAITING_QR_SCAN') {
+        } else {
           message.info('QR Code necessário para reconectar. Escaneie com seu WhatsApp.');
           setReconnectModalVisible(true);
           setSelectedInstance(instance);
@@ -282,22 +265,22 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     }
   };
 
-  const handleCheckConnectionStatus = async (instance: WhatsAppInstance) => {
+  const handleCheckConnectionStatus = async (instance: WhatsAppInstanceWithStatus) => {
     try {
       setLoading(true);
       
       const result = await whatsappSetupApi.checkConnectionStatus(instance.id);
       
       if (result.success) {
-        const { zapiStatus, currentStatus } = result;
+        const { zapiStatus } = result;
         
-        if (zapiStatus.connected && currentStatus !== 'CONNECTED') {
+        if (zapiStatus.connected && !instance.connected) {
           message.success('Instância reconectada automaticamente!');
           await loadSetupStatus();
         } else if (!zapiStatus.connected) {
           message.warning(`Instância desconectada: ${zapiStatus.error || 'Motivo desconhecido'}`);
         } else {
-          message.info(`Status atual: ${getStatusText(currentStatus)}`);
+          message.info(`Status atual: ${zapiStatus.connected ? 'Conectado' : 'Desconectado'}`);
         }
       } else {
         message.error(result.error || 'Erro ao verificar status');
@@ -312,7 +295,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     }
   };
 
-  const handleForceStatusCheck = async (instance: WhatsAppInstance) => {
+  const handleForceStatusCheck = async (instance: WhatsAppInstanceWithStatus) => {
     try {
       setLoading(true);
       
@@ -321,9 +304,9 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       const result = await whatsappSetupApi.forceStatusCheck(instance.id);
       
       if (result.success) {
-        message.success(`Status atualizado: ${getStatusText(result.currentStatus)}`);
-        if (result.errorMessage) {
-          message.warning(`Erro detectado: ${result.errorMessage}`);
+        message.success(`Status atualizado: ${result.zapiStatus?.connected ? 'Conectado' : 'Desconectado'}`);
+        if (result.zapiStatus?.error) {
+          message.warning(`Erro detectado: ${result.zapiStatus.error}`);
         }
         await loadSetupStatus();
       } else {
@@ -394,17 +377,21 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
       render: (isPrimary: boolean) => isPrimary ? <CheckCircleOutlined /> : null
     },
     {
-      title: 'Última Conexão',
-      dataIndex: 'lastConnectedAt',
-      key: 'lastConnectedAt',
-      render: (date: string) => date ? new Date(date).toLocaleString() : '-'
+      title: 'Erro',
+      dataIndex: 'error',
+      key: 'error',
+      render: (error: string) => error ? (
+        <span style={{ color: '#ff4d4f', fontSize: '12px' }}>
+          {error.length > 30 ? `${error.substring(0, 30)}...` : error}
+        </span>
+      ) : '-'
     },
     {
       title: 'Ações',
       key: 'actions',
-      render: (_: unknown, instance: WhatsAppInstance) => (
+      render: (_: unknown, instance: WhatsAppInstanceWithStatus) => (
         <Space>
-          {instance.status === 'DISCONNECTED' && (
+          {!instance.connected && instance.isActive && (
             <>
               <Button
                 type="primary"
@@ -425,7 +412,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
               </Button>
             </>
           )}
-          {instance.status === 'CONNECTED' && (
+          {instance.connected && (
             <Button
               size="small"
               icon={<ReloadOutlined />}
@@ -452,8 +439,8 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   ];
 
   // Show management interface if we have connected instances OR disconnected instances AND currentStep is 3
-  if (setupStatus && (setupStatus.hasConnectedInstance || setupStatus.instances.some(i => i.status === 'DISCONNECTED')) && currentStep === 3) {
-    const disconnectedInstances = setupStatus.instances.filter(i => i.status === 'DISCONNECTED');
+  if (setupStatus && (setupStatus.hasConnectedInstance || setupStatus.instances.some(i => !i.connected && i.isActive)) && currentStep === 3) {
+    const disconnectedInstances = setupStatus.instances.filter(i => !i.connected && i.isActive);
     
     return (
       <Card>
@@ -634,10 +621,10 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
           {/* Status da instância atual */}
           {selectedInstance && (
             <Alert
-              type={selectedInstance.status === 'CONNECTED' ? 'success' : 'info'}
+              type={selectedInstance.connected ? 'success' : 'info'}
               message={`Status: ${getStatusText(selectedInstance.status)}`}
               description={
-                selectedInstance.status === 'CONNECTED' 
+                selectedInstance.connected 
                   ? 'Instância conectada com sucesso! Você pode concluir a configuração.' 
                   : 'Escaneie o QR code abaixo para conectar a instância.'
               }
@@ -657,7 +644,7 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
                 type="default" 
                 onClick={handleSetupComplete}
                 loading={loading}
-                disabled={selectedInstance?.status !== 'CONNECTED'}
+                disabled={!selectedInstance?.connected}
               >
                 Concluir Configuração
               </Button>

@@ -82,12 +82,16 @@ export interface WhatsAppInstance {
   phoneNumber: string
   displayName?: string
   provider: MessagingProvider
-  status: WhatsAppInstanceStatus
   isPrimary: boolean
   isActive: boolean
-  lastConnectedAt?: Date
   createdAt: Date
-  errorMessage?: string
+}
+
+export interface WhatsAppInstanceWithStatus extends WhatsAppInstance {
+  status: WhatsAppInstanceStatus
+  connected: boolean
+  error?: string
+  lastConnectedAt?: Date
 }
 
 export interface WhatsAppSetupStatus {
@@ -96,7 +100,7 @@ export interface WhatsAppSetupStatus {
   hasConnectedInstance: boolean
   totalInstances: number
   maxAllowedInstances: number
-  instances: WhatsAppInstance[]
+  instances: WhatsAppInstanceWithStatus[]
 }
 
 export interface AuthUser {
