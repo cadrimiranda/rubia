@@ -5,22 +5,42 @@ import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 public class AudioMessageParsingTest extends AbstractIntegrationTest {
     
     private ZApiAdapter adapter;
     private ObjectMapper objectMapper;
     
+    @Mock
+    private WhatsAppInstanceService whatsAppInstanceService;
+    
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+    
+    @Mock
+    private WhatsAppInstanceValidator instanceValidator;
+    
+    @Mock
+    private ZApiUrlFactory urlFactory;
+    
     @BeforeEach
     void setUp() {
+        MockitoAnnotations.openMocks(this);
         PhoneService phoneService = new PhoneService();
-        adapter = new ZApiAdapter(new org.springframework.web.client.RestTemplate(), phoneService);
+        adapter = new ZApiAdapter(new org.springframework.web.client.RestTemplate(), phoneService, whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
         objectMapper = new ObjectMapper();
     }
     

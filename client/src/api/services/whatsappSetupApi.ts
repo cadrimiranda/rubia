@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import type { WhatsAppSetupStatus, WhatsAppInstance, MessagingProvider, WhatsAppInstanceStatus } from '../../types';
+import type { WhatsAppSetupStatus, WhatsAppInstance, WhatsAppInstanceWithStatus, MessagingProvider, WhatsAppInstanceStatus } from '../../types';
 
 export interface CreateInstanceRequest {
   phoneNumber: string;
@@ -71,7 +71,62 @@ export interface PhoneValidationResult {
 export const whatsappSetupApi = {
   // Get setup status for current company
   getSetupStatus: async (): Promise<WhatsAppSetupStatus> => {
-    return apiClient.get<WhatsAppSetupStatus>('/api/whatsapp-setup/status');
+    console.log("🌐 API Call: getSetupStatus");
+    const baseStatus = await apiClient.get<{
+      requiresSetup: boolean;
+      hasConfiguredInstance: boolean;  
+      hasConnectedInstance: boolean;
+      totalInstances: number;
+      maxAllowedInstances: number;
+      instances: WhatsAppInstance[];
+    }>('/api/whatsapp-setup/status');
+
+    // For now, just mark all active instances as needing configuration
+    // The real status will be checked when needed
+    const instancesWithStatus: WhatsAppInstanceWithStatus[] = baseStatus.instances.map((instance): WhatsAppInstanceWithStatus => {
+      if (!instance.isActive) {
+        return {
+          ...instance,
+          status: 'SUSPENDED',
+          connected: false,
+          error: 'Instance is inactive'
+        };
+      }
+
+      // If instance has no display name or provider, it's likely not configured
+      if (!instance.displayName) {
+        return {
+          ...instance,
+          status: 'NOT_CONFIGURED',
+          connected: false,
+          error: 'Instance not configured'
+        };
+      }
+
+      // For active instances with display name, assume they need status check
+      return {
+        ...instance,
+        status: 'DISCONNECTED', // We'll assume disconnected until verified
+        connected: false,
+        error: 'Status needs verification'
+      };
+    });
+
+    console.log("🌐 API Response: getSetupStatus", baseStatus);
+    
+    const result = {
+      ...baseStatus,
+      instances: instancesWithStatus
+    };
+    
+    console.log("🌐 Final transformed result:", result);
+    return result;
+  },
+
+  // Get setup status with real-time Z-API status check (now handled by backend)
+  getSetupStatusWithRealTimeCheck: async (): Promise<WhatsAppSetupStatus> => {
+    // Backend now automatically checks Z-API status, so we can use the basic method
+    return whatsappSetupApi.getSetupStatus();
   },
 
   // Create new WhatsApp instance

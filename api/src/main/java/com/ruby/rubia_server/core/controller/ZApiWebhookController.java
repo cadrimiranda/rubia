@@ -74,4 +74,42 @@ public class ZApiWebhookController {
             return ResponseEntity.ok(Map.of("success", true)); // Always return success to Z-API
         }
     }
+
+    @PostMapping("/callback/{instanceId}")
+    public ResponseEntity<Map<String, Object>> handleGenericCallback(
+            @PathVariable String instanceId,
+            @RequestBody Map<String, Object> webhookData) {
+        
+        try {
+            log.info("Received generic callback for instance: {} with data: {}", instanceId, webhookData);
+            
+            String type = (String) webhookData.get("type");
+            String notification = (String) webhookData.get("notification");
+            Boolean disconnected = (Boolean) webhookData.get("disconnected");
+            Boolean connected = (Boolean) webhookData.get("connected");
+            
+            // Ignore all ReceivedCallback messages
+            if ("ReceivedCallback".equals(type)) {
+                log.debug("Ignoring ReceivedCallback ({}) for instance: {}", notification, instanceId);
+                return ResponseEntity.ok(Map.of("success", true));
+            }
+            
+            if ("DisconnectedCallback".equals(type) && Boolean.TRUE.equals(disconnected)) {
+                log.info("🔌❌ Processing DisconnectedCallback for instance: {} with error: {}", 
+                    instanceId, webhookData.get("error"));
+                connectionMonitorService.handleWebhookDisconnection(instanceId, webhookData);
+            } else if ("ConnectedCallback".equals(type) && Boolean.TRUE.equals(connected)) {
+                log.info("🔌✅ Processing ConnectedCallback for instance: {}", instanceId);
+                connectionMonitorService.handleWebhookConnection(instanceId, webhookData);
+            } else {
+                log.info("Unhandled callback type '{}' for instance: {}", type, instanceId);
+            }
+            
+            return ResponseEntity.ok(Map.of("success", true));
+            
+        } catch (Exception e) {
+            log.error("Error processing generic callback for instance {}: {}", instanceId, e.getMessage(), e);
+            return ResponseEntity.ok(Map.of("success", true)); // Always return success to Z-API
+        }
+    }
 }

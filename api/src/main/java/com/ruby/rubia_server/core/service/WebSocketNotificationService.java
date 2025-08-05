@@ -107,19 +107,23 @@ public class WebSocketNotificationService {
 
     public void sendToChannel(String channel, Map<String, Object> notification) {
         try {
+            log.info("📬 sendToChannel called - channel: {}, notification: {}", channel, notification);
+            
             // For company-specific channels, extract the company ID
             if (channel.startsWith("company-")) {
                 String companyIdStr = channel.substring("company-".length());
                 UUID companyId = UUID.fromString(companyIdStr);
+                log.info("🏢 Sending to company users: companyId={}, destination=/topic/instance-status", companyId);
                 sendToCompanyUsers(companyId, "/topic/instance-status", notification);
-                log.info("Sent notification to channel {} (company {})", channel, companyId);
+                log.info("✅ Sent notification to channel {} (company {})", channel, companyId);
             } else {
                 // For other channels, send as broadcast
+                log.info("📢 Sending broadcast to /topic/{}", channel);
                 messagingTemplate.convertAndSend("/topic/" + channel, notification);
-                log.info("Sent broadcast notification to channel {}", channel);
+                log.info("✅ Sent broadcast notification to channel {}", channel);
             }
         } catch (Exception e) {
-            log.error("Error sending notification to channel {}: {}", channel, e.getMessage(), e);
+            log.error("❌ Error sending notification to channel {}: {}", channel, e.getMessage(), e);
         }
     }
 

@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.controller;
 
 import com.ruby.rubia_server.core.service.MessagingService;
+import com.ruby.rubia_server.core.service.ZApiConnectionMonitorService;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class MessagingController {
     
     @Autowired
     private MessagingService messagingService;
+    
+    @Autowired
+    private ZApiConnectionMonitorService connectionMonitorService;
     
     @PostMapping("/send")
     public ResponseEntity<MessageResult> sendMessage(@RequestBody Map<String, String> request) {
@@ -109,10 +113,33 @@ public class MessagingController {
             @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
         
         try {
-            // Ignore MessageStatusCallback webhooks to reduce noise
+            // Ignore MessageStatusCallback and ReceivedCallback webhooks to reduce noise
             String type = (String) payload.get("type");
             if ("MessageStatusCallback".equals(type)) {
                 return ResponseEntity.ok("MessageStatusCallback ignored");
+            }
+            
+            // Ignore all ReceivedCallback messages (revocations, profile updates, etc.)
+            if ("ReceivedCallback".equals(type)) {
+                String notification = (String) payload.get("notification");
+                log.debug("Ignoring ReceivedCallback ({}) for instance: {}", notification, payload.get("instanceId"));
+                return ResponseEntity.ok("ReceivedCallback ignored");
+            }
+            
+            // Handle connection/disconnection callbacks
+            String instanceId = (String) payload.get("instanceId");
+            Boolean disconnected = (Boolean) payload.get("disconnected");
+            Boolean connected = (Boolean) payload.get("connected");
+            
+            if ("DisconnectedCallback".equals(type) && Boolean.TRUE.equals(disconnected)) {
+                log.info("🔌❌ Processing DisconnectedCallback for instance: {} with error: {}", 
+                    instanceId, payload.get("error"));
+                connectionMonitorService.handleWebhookDisconnection(instanceId, payload);
+                return ResponseEntity.ok("DisconnectedCallback processed");
+            } else if ("ConnectedCallback".equals(type) && Boolean.TRUE.equals(connected)) {
+                log.info("🔌✅ Processing ConnectedCallback for instance: {}", instanceId);
+                connectionMonitorService.handleWebhookConnection(instanceId, payload);
+                return ResponseEntity.ok("ConnectedCallback processed");
             }
             
             log.debug("Z-API webhook received from: {}", payload.get("phone"));

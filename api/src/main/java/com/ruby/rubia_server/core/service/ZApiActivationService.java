@@ -3,6 +3,10 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.entity.ZApiStatus;
 import com.ruby.rubia_server.core.entity.QrCodeResult;
 import com.ruby.rubia_server.core.entity.PhoneCodeResult;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -14,32 +18,65 @@ import java.util.Map;
 @Service
 @Slf4j
 public class ZApiActivationService {
-
-    @Value("${zapi.instance.url}")
-    private String instanceUrl;
-
-    @Value("${zapi.instance.id}")
-    private String instanceId;
-
-    @Value("${zapi.token}")
-    private String token;
     
     @Value("${zapi.clientToken}")
     private String clientToken;
 
     private final RestTemplate restTemplate;
+    private final WhatsAppInstanceService whatsAppInstanceService;
+    private final CompanyContextUtil companyContextUtil;
+    private final WhatsAppInstanceValidator instanceValidator;
+    private final ZApiUrlFactory urlFactory;
 
-    public ZApiActivationService() {
+    public ZApiActivationService(WhatsAppInstanceService whatsAppInstanceService, 
+                                CompanyContextUtil companyContextUtil,
+                                WhatsAppInstanceValidator instanceValidator,
+                                ZApiUrlFactory urlFactory) {
         this.restTemplate = new RestTemplate();
+        this.whatsAppInstanceService = whatsAppInstanceService;
+        this.companyContextUtil = companyContextUtil;
+        this.instanceValidator = instanceValidator;
+        this.urlFactory = urlFactory;
     }
 
-    private String buildUrl(String method) {
-        return instanceUrl + "/" + instanceId + "/token/" + token + "/" + method;
+    /**
+     * Gets the active WhatsApp instance for the current company context.
+     * During activation, looks for instances in configuration state.
+     */
+    private WhatsAppInstance getActiveInstance() {
+        try {
+            // First try to find a connected instance
+            var connectedInstance = whatsAppInstanceService.findActiveConnectedInstance(companyContextUtil.getCurrentCompany());
+            if (connectedInstance.isPresent()) {
+                return connectedInstance.get();
+            }
+            
+            // If no connected instance, look for instances that are configured
+            var instances = whatsAppInstanceService.findByCompany(companyContextUtil.getCurrentCompany());
+            return instances.stream()
+                .filter(instance -> instance.getInstanceId() != null && instance.getAccessToken() != null)
+                .filter(WhatsAppInstance::isConfigured)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No configured WhatsApp instance found for activation"));
+        } catch (Exception e) {
+            log.error("Error getting active instance: {}", e.getMessage());
+            throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
+        }
+    }
+
+    /**
+     * Builds the Z-API URL for the given endpoint using active instance data
+     */
+    private String buildZApiUrl(String endpoint) {
+        WhatsAppInstance instance = getActiveInstance();
+        // Validate basic configuration for activation endpoints
+        instanceValidator.validateInstanceConfiguration(instance);
+        return urlFactory.buildUrl(instance, endpoint);
     }
 
     public ZApiStatus getInstanceStatus() {
         try {
-            String url = buildUrl("status");
+            String url = buildZApiUrl("status");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -60,7 +97,7 @@ public class ZApiActivationService {
 
     public QrCodeResult getQrCodeBytes() {
         try {
-            String url = buildUrl("qr-code");
+            String url = buildZApiUrl("qr-code");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -81,7 +118,7 @@ public class ZApiActivationService {
 
     public QrCodeResult getQrCodeImage() {
         try {
-            String url = buildUrl("qr-code/image");
+            String url = buildZApiUrl("qr-code/image");
             log.info("Getting QR code from URL: {}", url);
             
             HttpHeaders headers = createHeaders();
@@ -116,7 +153,7 @@ public class ZApiActivationService {
 
     public PhoneCodeResult getPhoneCode(String phoneNumber) {
         try {
-            String url = buildUrl("phone-code/" + phoneNumber);
+            String url = buildZApiUrl("phone-code/" + phoneNumber);
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -138,7 +175,7 @@ public class ZApiActivationService {
 
     public boolean restartInstance() {
         try {
-            String url = buildUrl("restart");
+            String url = buildZApiUrl("restart");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -155,7 +192,7 @@ public class ZApiActivationService {
 
     public boolean disconnectInstance() {
         try {
-            String url = buildUrl("disconnect");
+            String url = buildZApiUrl("disconnect");
             
             HttpHeaders headers = createHeaders();
             HttpEntity<String> request = new HttpEntity<>(headers);
@@ -172,7 +209,6 @@ public class ZApiActivationService {
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + token);
         headers.set("client-token", clientToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;

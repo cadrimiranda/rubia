@@ -36,6 +36,10 @@ import { authService } from "../auth/authService";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { WhatsAppConnectionMonitor } from "./WhatsAppConnectionMonitor";
+import { Modal, Alert, Button } from "antd";
+import { QrcodeOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { whatsappSetupApi } from "../api/services/whatsappSetupApi";
+import ZApiActivation from "./ZApiActivation";
 
 interface NewContactData {
   name: string;
@@ -67,6 +71,12 @@ export const BloodCenterChat: React.FC = () => {
   });
 
   const [showMessageEnhancer, setShowMessageEnhancer] = useState(false);
+  const [showDisconnectionModal, setShowDisconnectionModal] = useState(false);
+  const [disconnectedInstance, setDisconnectedInstance] = useState<{
+    instanceId: string;
+    phoneNumber: string;
+    error: string;
+  } | null>(null);
 
   const [donors, setDonors] = useState<Donor[]>([]); // Contatos com conversas ativas
   const [allContacts, setAllContacts] = useState<Donor[]>([]); // TODOS os contatos
@@ -94,6 +104,34 @@ export const BloodCenterChat: React.FC = () => {
 
   // WebSocket para atualizações em tempo real
   const webSocket = useWebSocket();
+
+  // Listener para desconexões de instância WhatsApp
+  React.useEffect(() => {
+    // Configurar callback para quando uma instância é desconectada
+    webSocket.onInstanceDisconnected((instanceId: string, phoneNumber: string, error: string) => {
+      console.log("💬 Chat component received disconnection:", { instanceId, phoneNumber, error });
+      
+      // Se modal já está aberto, não fazer nada
+      if (showDisconnectionModal) {
+        console.log("💬 Disconnection modal already open, ignoring");
+        return;
+      }
+      
+      // Abrir modal de desconexão
+      setDisconnectedInstance({ instanceId, phoneNumber, error });
+      setShowDisconnectionModal(true);
+    });
+
+    // Configurar callback para reconexão (fechar modal)
+    webSocket.onInstanceConnected((instanceId: string, phoneNumber: string) => {
+      // Fechar modal se estava aberto e instância reconectou
+      if (showDisconnectionModal && disconnectedInstance?.instanceId === instanceId) {
+        console.log("💬 Instance reconnected, closing modal");
+        setShowDisconnectionModal(false);
+        setDisconnectedInstance(null);
+      }
+    });
+  }, [webSocket.onInstanceDisconnected, webSocket.onInstanceConnected, showDisconnectionModal, disconnectedInstance?.instanceId]);
 
   // Chat store para mensagens em tempo real
   const { messagesCache } = useChatStore();
@@ -1711,6 +1749,67 @@ export const BloodCenterChat: React.FC = () => {
       </div>
       {/* Monitor de conexão WhatsApp */}
       <WhatsAppConnectionMonitor checkInterval={180000} /> {/* 3 minutos */}
+      
+      {/* Modal de desconexão WhatsApp */}
+      <Modal
+        title="WhatsApp Desconectado"
+        open={showDisconnectionModal}
+        onCancel={() => setShowDisconnectionModal(false)}
+        footer={[
+          <Button key="close" onClick={() => setShowDisconnectionModal(false)}>
+            Fechar
+          </Button>,
+          <Button
+            key="reconnect"
+            type="primary"
+            icon={<QrcodeOutlined />}
+            onClick={() => {
+              // Manter modal aberto para mostrar QR code
+            }}
+          >
+            Reconectar
+          </Button>,
+        ]}
+        width={800}
+        maskClosable={false}
+      >
+        {disconnectedInstance && (
+          <div className="space-y-4">
+            <Alert
+              type="error"
+              icon={<ExclamationCircleOutlined />}
+              message="Conexão WhatsApp Perdida"
+              description={
+                <div>
+                  <p>
+                    A instância <strong>{whatsappSetupApi.formatPhoneNumber(disconnectedInstance.phoneNumber)}</strong> foi desconectada.
+                  </p>
+                  <p className="mt-2">
+                    <strong>Motivo:</strong> {disconnectedInstance.error}
+                  </p>
+                  <p className="mt-2">
+                    Para continuar enviando e recebendo mensagens, é necessário reconectar.
+                  </p>
+                </div>
+              }
+              showIcon
+            />
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium mb-2">Para reconectar:</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
+                <li>Clique em "Reconectar" acima</li>
+                <li>Abra o WhatsApp no seu celular ({whatsappSetupApi.formatPhoneNumber(disconnectedInstance.phoneNumber)})</li>
+                <li>Vá em Configurações → Aparelhos conectados</li>
+                <li>Escaneie o QR Code que aparecerá abaixo</li>
+              </ol>
+            </div>
+
+            {/* Componente QR Code */}
+            <ZApiActivation />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

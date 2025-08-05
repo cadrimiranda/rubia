@@ -1,50 +1,59 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Alert, Button, Spin } from 'antd';
-import { QrcodeOutlined } from '@ant-design/icons';
-import { whatsappSetupApi } from '../api/services/whatsappSetupApi';
-import ZApiActivation from './ZApiActivation';
-import type { WhatsAppInstance } from '../types';
+import React, { useEffect, useState } from "react";
+import { Modal, Alert, Button, Spin } from "antd";
+import { QrcodeOutlined } from "@ant-design/icons";
+import { whatsappSetupApi } from "../api/services/whatsappSetupApi";
+import ZApiActivation from "./ZApiActivation";
+import type { WhatsAppInstance } from "../types";
 
 interface WhatsAppConnectionMonitorProps {
   checkInterval?: number; // em milissegundos, padrão 5 minutos
 }
 
-export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps> = ({ 
-  checkInterval = 300000 // 5 minutos
+export const WhatsAppConnectionMonitor: React.FC<
+  WhatsAppConnectionMonitorProps
+> = ({
+  checkInterval = 300000, // 5 minutos
 }) => {
-  const [disconnectedInstances, setDisconnectedInstances] = useState<WhatsAppInstance[]>([]);
+  const [disconnectedInstances, setDisconnectedInstances] = useState<
+    WhatsAppInstance[]
+  >([]);
   const [showReconnectModal, setShowReconnectModal] = useState(false);
-  const [currentInstance, setCurrentInstance] = useState<WhatsAppInstance | null>(null);
+  const [currentInstance, setCurrentInstance] =
+    useState<WhatsAppInstance | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
     // Verificação inicial
     checkInstancesStatus();
-    
+
     // Configurar verificação periódica
     const interval = setInterval(checkInstancesStatus, checkInterval);
-    
+
     return () => clearInterval(interval);
   }, [checkInterval]);
 
   const checkInstancesStatus = async () => {
     try {
       const status = await whatsappSetupApi.getSetupStatus();
-      const disconnected = status.instances.filter(i => i.status === 'DISCONNECTED');
-      
-      if (disconnected.length > 0 && disconnectedInstances.length === 0) {
+      const isConnected =
+        status.hasConfiguredInstance &&
+        status.hasConnectedInstance &&
+        !status.requiresSetup;
+
+      if (!isConnected) {
         // Nova desconexão detectada
-        setDisconnectedInstances(disconnected);
-        setCurrentInstance(disconnected[0]); // Mostrar a primeira
+        const [instance] = status.instances;
+        setDisconnectedInstances([instance]);
+        setCurrentInstance(instance); // Mostrar a primeira
         setShowReconnectModal(true);
-      } else if (disconnected.length === 0 && disconnectedInstances.length > 0) {
+      } else {
         // Instâncias reconectadas
         setDisconnectedInstances([]);
         setShowReconnectModal(false);
         setCurrentInstance(null);
       }
     } catch (error) {
-      console.error('Error checking instances status in monitor:', error);
+      console.error("Error checking instances status in monitor:", error);
     }
   };
 
@@ -53,11 +62,13 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
 
     try {
       setIsReconnecting(true);
-      
-      const result = await whatsappSetupApi.reconnectInstance(currentInstance.id);
-      
+
+      const result = await whatsappSetupApi.reconnectInstance(
+        currentInstance.id
+      );
+
       if (result.success) {
-        if (result.status === 'CONNECTED') {
+        if (result.status === "CONNECTED") {
           // Já conectado
           setShowReconnectModal(false);
           setDisconnectedInstances([]);
@@ -65,9 +76,8 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
         }
         // Se status for AWAITING_QR_SCAN, o modal permanece aberto mostrando o QR
       }
-      
     } catch (error) {
-      console.error('Error reconnecting instance:', error);
+      console.error("Error reconnecting instance:", error);
     } finally {
       setIsReconnecting(false);
     }
@@ -95,15 +105,15 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
         <Button key="dismiss" onClick={handleDismiss}>
           Dispensar
         </Button>,
-        <Button 
-          key="reconnect" 
-          type="primary" 
+        <Button
+          key="reconnect"
+          type="primary"
           icon={<QrcodeOutlined />}
           onClick={handleReconnect}
           loading={isReconnecting}
         >
           Reconectar Agora
-        </Button>
+        </Button>,
       ]}
       width={800}
       maskClosable={false}
@@ -112,7 +122,9 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
         <Alert
           type="warning"
           message="Conexão WhatsApp Perdida"
-          description={`A instância ${formatPhoneNumber(currentInstance.phoneNumber)} foi desconectada. Para continuar enviando e recebendo mensagens, é necessário reconectar escaneando o QR Code.`}
+          description={`A instância ${formatPhoneNumber(
+            currentInstance.phoneNumber
+          )} foi desconectada. Para continuar enviando e recebendo mensagens, é necessário reconectar escaneando o QR Code.`}
           showIcon
         />
 
@@ -129,7 +141,10 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
           <h4 className="font-medium mb-2">Para reconectar:</h4>
           <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
             <li>Clique em "Reconectar Agora"</li>
-            <li>Abra o WhatsApp no seu celular ({formatPhoneNumber(currentInstance.phoneNumber)})</li>
+            <li>
+              Abra o WhatsApp no seu celular (
+              {formatPhoneNumber(currentInstance.phoneNumber)})
+            </li>
             <li>Vá em Configurações → Aparelhos conectados</li>
             <li>Escaneie o QR Code que aparecerá abaixo</li>
           </ol>
@@ -138,7 +153,9 @@ export const WhatsAppConnectionMonitor: React.FC<WhatsAppConnectionMonitorProps>
         {isReconnecting && (
           <div className="text-center py-4">
             <Spin size="large" />
-            <p className="mt-2 text-gray-600">Verificando status da conexão...</p>
+            <p className="mt-2 text-gray-600">
+              Verificando status da conexão...
+            </p>
           </div>
         )}
 
