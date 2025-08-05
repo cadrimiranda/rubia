@@ -71,6 +71,7 @@ export interface PhoneValidationResult {
 export const whatsappSetupApi = {
   // Get setup status for current company
   getSetupStatus: async (): Promise<WhatsAppSetupStatus> => {
+    console.log("🌐 API Call: getSetupStatus");
     const baseStatus = await apiClient.get<{
       requiresSetup: boolean;
       hasConfiguredInstance: boolean;  
@@ -111,10 +112,15 @@ export const whatsappSetupApi = {
       };
     });
 
-    return {
+    console.log("🌐 API Response: getSetupStatus", baseStatus);
+    
+    const result = {
       ...baseStatus,
       instances: instancesWithStatus
     };
+    
+    console.log("🌐 Final transformed result:", result);
+    return result;
   },
 
   // Get setup status with real-time Z-API status check (now handled by backend)

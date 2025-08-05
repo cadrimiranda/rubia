@@ -146,7 +146,15 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   const loadSetupStatus = async () => {
     try {
       setLoading(true);
+      console.log("🔄 Loading setup status...");
       const status = await whatsappSetupApi.getSetupStatusWithRealTimeCheck();
+      console.log("📊 Setup status loaded:", {
+        requiresSetup: status.requiresSetup,
+        hasConfiguredInstance: status.hasConfiguredInstance,
+        hasConnectedInstance: status.hasConnectedInstance,
+        totalInstances: status.totalInstances,
+        instances: status.instances
+      });
       setSetupStatus(status);
 
       // Determine current step based on status - prioritize active instances that need setup
@@ -161,15 +169,25 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
         (i) => !i.connected && i.isActive
       );
 
+      console.log("🔍 Step determination logic:", {
+        instanceNeedingSetup: instanceNeedingSetup,
+        hasConnectedInstance: status.hasConnectedInstance,
+        disconnectedInstancesCount: disconnectedInstances.length,
+        totalInstances: status.totalInstances
+      });
+
       if (instanceNeedingSetup) {
         // If there's an instance that needs setup, handle it first
+        console.log("🔧 Instance needs setup, going to configuration:", instanceNeedingSetup);
         setSelectedInstance(instanceNeedingSetup);
         if (instanceNeedingSetup.status === "NOT_CONFIGURED") {
+          console.log("📝 Setting step to 1 (configuration)");
           setCurrentStep(1); // Go to configuration step
         } else if (
           instanceNeedingSetup.status === "CONFIGURING" ||
           instanceNeedingSetup.status === "AWAITING_QR_SCAN"
         ) {
+          console.log("📱 Setting step to 2 (activation)");
           setCurrentStep(2); // Go to activation step
         }
       } else if (
@@ -177,12 +195,15 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
         disconnectedInstances.length > 0
       ) {
         // If has connected instances OR disconnected instances, show management
+        console.log("🎛️ Setting step to 3 (management) - connected:", status.hasConnectedInstance, "disconnected:", disconnectedInstances.length);
         setCurrentStep(3);
       } else if (status.totalInstances === 0) {
         // If no instances, stay at step 0 for creating new instance
+        console.log("➕ Setting step to 0 (create instance)");
         setCurrentStep(0);
       } else {
         // Fallback: if has instances but none need setup and none connected, go to management
+        console.log("🎛️ Fallback: Setting step to 3 (management)");
         setCurrentStep(3);
       }
     } catch (error) {
@@ -571,6 +592,17 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
   ];
 
   // Show management interface if we have connected instances OR disconnected instances AND currentStep is 3
+  console.log("🎯 Render check - Management interface:", {
+    setupStatus: !!setupStatus,
+    hasConnectedInstance: setupStatus?.hasConnectedInstance,
+    hasDisconnectedInstances: setupStatus?.instances.some((i) => !i.connected && i.isActive),
+    currentStep: currentStep,
+    shouldShowManagement: setupStatus &&
+      (setupStatus.hasConnectedInstance ||
+        setupStatus.instances.some((i) => !i.connected && i.isActive)) &&
+      currentStep === 3
+  });
+
   if (
     setupStatus &&
     (setupStatus.hasConnectedInstance ||
@@ -580,6 +612,8 @@ const WhatsAppSetup: React.FC<WhatsAppSetupProps> = ({ onSetupComplete }) => {
     const disconnectedInstances = setupStatus.instances.filter(
       (i) => !i.connected && i.isActive
     );
+
+    console.log("🎛️ Showing management interface with disconnected instances:", disconnectedInstances.length);
 
     return (
       <Card>
