@@ -119,7 +119,7 @@ const ZApiActivation: React.FC = () => {
     
     if (status?.needsQrCode && activationMethod === 'qr') {
       loadQrCode();
-      interval = setInterval(checkStatus, 5000);
+      interval = setInterval(checkStatus, 5000) as unknown as number;
     }
     
     return () => {

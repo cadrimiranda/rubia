@@ -13,6 +13,17 @@ interface WebSocketMessage {
   conversationId?: string;
   userName?: string;
   isTyping?: boolean;
+  // WhatsApp instance status fields
+  instanceId?: string;
+  status?: string;
+  phoneNumber?: string;
+  displayName?: string;
+  statusData?: {
+    connected: boolean;
+    error?: string;
+    justConnected?: boolean;
+    moment?: number;
+  };
 }
 
 interface UseWebSocketReturn {
@@ -21,12 +32,14 @@ interface UseWebSocketReturn {
   disconnect: () => void;
   sendTyping: (conversationId: string) => void;
   stopTyping: (conversationId: string) => void;
+  onInstanceConnected: (callback: (instanceId: string, phoneNumber: string) => void) => void;
 }
 
 export const useWebSocket = (): UseWebSocketReturn => {
   const [isConnected, setIsConnected] = useState(false);
   const clientRef = useRef<Client | null>(null);
   const subscriptionsRef = useRef<boolean>(false);
+  const instanceConnectedCallbackRef = useRef<((instanceId: string, phoneNumber: string) => void) | null>(null);
   const { user } = useAuthStore();
   const accessToken = authService.getAccessToken();
   const {
@@ -94,6 +107,23 @@ export const useWebSocket = (): UseWebSocketReturn => {
           message.userName,
           message.isTyping || false
         );
+      }
+    },
+    []
+  );
+
+  const handleInstanceStatusChange = useCallback(
+    (message: WebSocketMessage) => {
+      if (message.type === "INSTANCE_STATUS_CHANGE") {
+        console.log("Instance status change received:", message);
+        
+        // Check if instance just connected and trigger callback
+        if (message.statusData?.justConnected && message.instanceId && message.phoneNumber) {
+          console.log("Instance just connected, triggering callback:", message.instanceId);
+          if (instanceConnectedCallbackRef.current) {
+            instanceConnectedCallbackRef.current(message.instanceId, message.phoneNumber);
+          }
+        }
       }
     },
     []
@@ -173,6 +203,15 @@ export const useWebSocket = (): UseWebSocketReturn => {
         }
       });
 
+      client.subscribe(`/user/topic/instance-status`, (message: IMessage) => {
+        try {
+          const data: WebSocketMessage = JSON.parse(message.body);
+          handleInstanceStatusChange(data);
+        } catch (error) {
+          console.error("Error parsing instance status notification:", error);
+        }
+      });
+
       // Mark subscriptions as created
       subscriptionsRef.current = true;
 
@@ -207,6 +246,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
     handleNewMessage,
     handleConversationUpdate,
     handleTypingStatus,
+    handleInstanceStatusChange,
   ]);
 
   const disconnect = useCallback(() => {
@@ -249,6 +289,10 @@ export const useWebSocket = (): UseWebSocketReturn => {
     },
     [user]
   );
+
+  const onInstanceConnected = useCallback((callback: (instanceId: string, phoneNumber: string) => void) => {
+    instanceConnectedCallbackRef.current = callback;
+  }, []);
 
   useEffect(() => {
     if (accessToken && user) {
@@ -337,5 +381,6 @@ export const useWebSocket = (): UseWebSocketReturn => {
     disconnect,
     sendTyping,
     stopTyping,
+    onInstanceConnected,
   };
 };

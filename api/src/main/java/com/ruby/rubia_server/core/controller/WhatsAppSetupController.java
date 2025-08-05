@@ -37,16 +37,68 @@ public class WhatsAppSetupController {
         Company company = getCurrentCompany();
         
         List<WhatsAppInstance> instances = whatsappInstanceService.findByCompany(company);
-        boolean hasConfiguredInstance = whatsappInstanceService.hasConfiguredInstance(company);
-        boolean hasConnectedInstance = whatsappInstanceService.hasConnectedInstance(company);
+        
+        // Check real-time status from Z-API for each configured instance
+        final boolean[] hasConfiguredInstance = {false};
+        final boolean[] hasConnectedInstance = {false};
+        
+        List<WhatsAppInstanceInfo> instanceInfos = instances.stream().map(instance -> {
+            WhatsAppInstanceInfo.WhatsAppInstanceInfoBuilder builder = WhatsAppInstanceInfo.builder()
+                .id(instance.getId())
+                .phoneNumber(instance.getPhoneNumber())
+                .displayName(instance.getDisplayName())
+                .provider(instance.getProvider())
+                .isPrimary(instance.getIsPrimary())
+                .isActive(instance.getIsActive())
+                .createdAt(instance.getCreatedAt());
+            
+            // If instance is configured, check real-time status from Z-API
+            if (instance.isConfigured()) {
+                hasConfiguredInstance[0] = true;
+                
+                try {
+                    Map<String, Object> zapiStatus = connectionMonitorService.getInstanceStatus(instance);
+                    Boolean connected = (Boolean) zapiStatus.get("connected");
+                    String error = (String) zapiStatus.get("error");
+                    
+                    if (Boolean.TRUE.equals(connected)) {
+                        hasConnectedInstance[0] = true;
+                        builder.status("CONNECTED")
+                               .connected(true)
+                               .error(null);
+                    } else {
+                        builder.status("DISCONNECTED")
+                               .connected(false)
+                               .error(error);
+                    }
+                    
+                    log.debug("Z-API status for instance {}: connected={}, error={}", 
+                        instance.getInstanceId(), connected, error);
+                        
+                } catch (Exception e) {
+                    log.warn("Failed to get Z-API status for instance {}: {}", 
+                        instance.getInstanceId(), e.getMessage());
+                    builder.status("ERROR")
+                           .connected(false)
+                           .error("Failed to check status: " + e.getMessage());
+                }
+            } else {
+                // Instance not configured yet
+                builder.status("NOT_CONFIGURED")
+                       .connected(false)
+                       .error(null);
+            }
+            
+            return builder.build();
+        }).toList();
         
         return ResponseEntity.ok(WhatsAppSetupStatusResponse.builder()
-            .requiresSetup(!hasConfiguredInstance)
-            .hasConfiguredInstance(hasConfiguredInstance)
-            .hasConnectedInstance(hasConnectedInstance)
+            .requiresSetup(!hasConfiguredInstance[0])
+            .hasConfiguredInstance(hasConfiguredInstance[0])
+            .hasConnectedInstance(hasConnectedInstance[0])
             .totalInstances(instances.size())
             .maxAllowedInstances(company.getMaxWhatsappNumbers())
-            .instances(instances.stream().map(this::mapToInstanceInfo).toList())
+            .instances(instanceInfos)
             .build());
     }
 
@@ -311,17 +363,6 @@ public class WhatsAppSetupController {
             .orElseThrow(() -> new IllegalStateException("Company not found in request context"));
     }
 
-    private WhatsAppInstanceInfo mapToInstanceInfo(WhatsAppInstance instance) {
-        return WhatsAppInstanceInfo.builder()
-            .id(instance.getId())
-            .phoneNumber(instance.getPhoneNumber())
-            .displayName(instance.getDisplayName())
-            .provider(instance.getProvider())
-            .isPrimary(instance.getIsPrimary())
-            .isActive(instance.getIsActive())
-            .createdAt(instance.getCreatedAt())
-            .build();
-    }
 
     // Request/Response DTOs
     public record CreateInstanceRequest(String phoneNumber, String displayName) {}
@@ -349,5 +390,9 @@ public class WhatsAppSetupController {
         private Boolean isPrimary;
         private Boolean isActive;
         private java.time.LocalDateTime createdAt;
+        // Real-time status fields from Z-API
+        private String status;
+        private Boolean connected;
+        private String error;
     }
 }

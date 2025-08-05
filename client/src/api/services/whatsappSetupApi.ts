@@ -117,46 +117,10 @@ export const whatsappSetupApi = {
     };
   },
 
-  // Get setup status with real-time Z-API status check
+  // Get setup status with real-time Z-API status check (now handled by backend)
   getSetupStatusWithRealTimeCheck: async (): Promise<WhatsAppSetupStatus> => {
-    const baseStatus = await whatsappSetupApi.getSetupStatus();
-    
-    // Check real status for active instances
-    const instancesWithRealStatus: WhatsAppInstanceWithStatus[] = await Promise.all(
-      baseStatus.instances.map(async (instance): Promise<WhatsAppInstanceWithStatus> => {
-        if (!instance.isActive) {
-          return instance; // Keep as is
-        }
-
-        try {
-          const connectionStatus = await whatsappSetupApi.checkConnectionStatus(instance.id);
-          return {
-            ...instance,
-            status: connectionStatus.zapiStatus.connected ? 'CONNECTED' : 'DISCONNECTED',
-            connected: connectionStatus.zapiStatus.connected,
-            error: connectionStatus.zapiStatus.error
-          };
-        } catch (error) {
-          return {
-            ...instance,
-            status: 'NOT_CONFIGURED',
-            connected: false,
-            error: 'Instance not configured'
-          };
-        }
-      })
-    );
-
-    // Update connection flags based on actual status
-    const hasConnectedInstance = instancesWithRealStatus.some(i => i.connected);
-    const hasConfiguredInstance = instancesWithRealStatus.some(i => i.status !== 'NOT_CONFIGURED' && i.status !== 'SUSPENDED');
-
-    return {
-      ...baseStatus,
-      hasConnectedInstance,
-      hasConfiguredInstance,
-      instances: instancesWithRealStatus
-    };
+    // Backend now automatically checks Z-API status, so we can use the basic method
+    return whatsappSetupApi.getSetupStatus();
   },
 
   // Create new WhatsApp instance

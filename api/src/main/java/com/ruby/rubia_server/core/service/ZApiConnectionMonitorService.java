@@ -78,7 +78,9 @@ public class ZApiConnectionMonitorService {
         // Notify frontend via WebSocket with real-time status
         Map<String, Object> statusData = Map.of(
             "connected", true,
-            "error", null
+            "error", null,
+            "justConnected", true, // Flag to trigger redirection to chat
+            "moment", webhookData.get("moment")
         );
         notifyStatusChange(instance, "CONNECTED", statusData);
 

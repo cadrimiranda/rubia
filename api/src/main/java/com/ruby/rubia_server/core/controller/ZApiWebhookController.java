@@ -85,10 +85,14 @@ public class ZApiWebhookController {
             
             String type = (String) webhookData.get("type");
             Boolean disconnected = (Boolean) webhookData.get("disconnected");
+            Boolean connected = (Boolean) webhookData.get("connected");
             
             if ("DisconnectedCallback".equals(type) && Boolean.TRUE.equals(disconnected)) {
                 log.info("Processing DisconnectedCallback for instance: {}", instanceId);
                 connectionMonitorService.handleWebhookDisconnection(instanceId, webhookData);
+            } else if ("ConnectedCallback".equals(type) && Boolean.TRUE.equals(connected)) {
+                log.info("Processing ConnectedCallback for instance: {}", instanceId);
+                connectionMonitorService.handleWebhookConnection(instanceId, webhookData);
             } else {
                 log.info("Unhandled callback type '{}' for instance: {}", type, instanceId);
             }
