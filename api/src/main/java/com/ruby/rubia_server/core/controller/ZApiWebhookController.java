@@ -84,8 +84,15 @@ public class ZApiWebhookController {
             log.info("Received generic callback for instance: {} with data: {}", instanceId, webhookData);
             
             String type = (String) webhookData.get("type");
+            String notification = (String) webhookData.get("notification");
             Boolean disconnected = (Boolean) webhookData.get("disconnected");
             Boolean connected = (Boolean) webhookData.get("connected");
+            
+            // Ignore message revocation callbacks
+            if ("ReceivedCallback".equals(type) && "REVOKE".equals(notification)) {
+                log.debug("Ignoring message revocation callback for instance: {}", instanceId);
+                return ResponseEntity.ok(Map.of("success", true));
+            }
             
             if ("DisconnectedCallback".equals(type) && Boolean.TRUE.equals(disconnected)) {
                 log.info("Processing DisconnectedCallback for instance: {}", instanceId);
