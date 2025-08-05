@@ -222,10 +222,13 @@ public class ZApiConnectionMonitorService {
 
             // Send to company-specific channel
             String channel = "company-" + instance.getCompany().getId();
+            log.info("📡 Sending WebSocket notification to channel {}: instanceId={}, status={}, statusData={}", 
+                channel, instance.getInstanceId(), status, statusData);
             webSocketNotificationService.sendToChannel(channel, notification);
+            log.info("✅ WebSocket notification sent successfully for instance {}", instance.getInstanceId());
             
         } catch (Exception e) {
-            log.error("Error sending WebSocket notification for instance status change: {}", e.getMessage());
+            log.error("❌ Error sending WebSocket notification for instance status change: {}", e.getMessage(), e);
         }
     }
     

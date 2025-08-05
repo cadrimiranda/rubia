@@ -88,17 +88,18 @@ public class ZApiWebhookController {
             Boolean disconnected = (Boolean) webhookData.get("disconnected");
             Boolean connected = (Boolean) webhookData.get("connected");
             
-            // Ignore message revocation callbacks
-            if ("ReceivedCallback".equals(type) && "REVOKE".equals(notification)) {
-                log.debug("Ignoring message revocation callback for instance: {}", instanceId);
+            // Ignore all ReceivedCallback messages
+            if ("ReceivedCallback".equals(type)) {
+                log.debug("Ignoring ReceivedCallback ({}) for instance: {}", notification, instanceId);
                 return ResponseEntity.ok(Map.of("success", true));
             }
             
             if ("DisconnectedCallback".equals(type) && Boolean.TRUE.equals(disconnected)) {
-                log.info("Processing DisconnectedCallback for instance: {}", instanceId);
+                log.info("🔌❌ Processing DisconnectedCallback for instance: {} with error: {}", 
+                    instanceId, webhookData.get("error"));
                 connectionMonitorService.handleWebhookDisconnection(instanceId, webhookData);
             } else if ("ConnectedCallback".equals(type) && Boolean.TRUE.equals(connected)) {
-                log.info("Processing ConnectedCallback for instance: {}", instanceId);
+                log.info("🔌✅ Processing ConnectedCallback for instance: {}", instanceId);
                 connectionMonitorService.handleWebhookConnection(instanceId, webhookData);
             } else {
                 log.info("Unhandled callback type '{}' for instance: {}", type, instanceId);
