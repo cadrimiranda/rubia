@@ -96,39 +96,39 @@ class CampaignService {
     const response = await apiClient.get<CampaignResponse[]>(
       `${this.baseURL}/company/${companyId}`
     );
-    return response.data;
+    return response;
   }
 
   async getActiveCampaigns(companyId: string): Promise<CampaignResponse[]> {
     const response = await apiClient.get<CampaignResponse[]>(
       `${this.baseURL}/company/${companyId}/active`
     );
-    return response.data;
+    return response;
   }
 
   async getCampaignById(id: string): Promise<CampaignResponse> {
     const response = await apiClient.get<CampaignResponse>(`${this.baseURL}/${id}`);
-    return response.data;
+    return response;
   }
 
   async pauseCampaign(id: string): Promise<CampaignResponse> {
     const response = await apiClient.put<CampaignResponse>(`${this.baseURL}/${id}/pause`);
-    return response.data;
+    return response;
   }
 
   async resumeCampaign(id: string): Promise<CampaignResponse> {
     const response = await apiClient.put<CampaignResponse>(`${this.baseURL}/${id}/resume`);
-    return response.data;
+    return response;
   }
 
   async completeCampaign(id: string): Promise<CampaignResponse> {
     const response = await apiClient.put<CampaignResponse>(`${this.baseURL}/${id}/complete`);
-    return response.data;
+    return response;
   }
 
   async getCampaignStatistics(id: string): Promise<CampaignStatistics> {
     const response = await apiClient.get<CampaignStatistics>(`${this.baseURL}/${id}/statistics`);
-    return response.data;
+    return response;
   }
 
   async deleteCampaign(id: string): Promise<void> {

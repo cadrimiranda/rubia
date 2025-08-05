@@ -26,4 +26,13 @@ public class MessageTemplateRevisionDTO {
     private LocalDateTime revisionTimestamp;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Campos para metadados de IA
+    private UUID aiAgentId;
+    private String aiAgentName;
+    private String aiEnhancementType;
+    private Integer aiTokensUsed;
+    private Integer aiCreditsConsumed;
+    private String aiModelUsed;
+    private String aiExplanation;
 }

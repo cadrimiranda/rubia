@@ -71,29 +71,33 @@ public class WebSocketNotificationService {
         var sessions = webSocketHandler.getUserSessions();
         log.info("📡 Trying to send to company {} - Total sessions: {}", companyId, sessions.size());
         
-        var filteredSessions = sessions.values().stream()
+        // Group sessions by userId to avoid sending duplicates to same user
+        var uniqueUsers = sessions.values().stream()
                 .filter(session -> session.getCompanyId().equals(companyId))
-                .toList();
+                .collect(java.util.stream.Collectors.toMap(
+                    session -> session.getUserId(),
+                    session -> session,
+                    (existing, replacement) -> existing // Keep first session for each user
+                ));
         
-        log.info("📡 Filtered sessions for company {}: {}", companyId, filteredSessions.size());
+        log.info("📡 Unique users for company {}: {}", companyId, uniqueUsers.size());
         
-        filteredSessions.forEach(session -> {
+        uniqueUsers.values().forEach(session -> {
             try {
                 // For Spring WebSocket user-based messaging, we need to use the principal name
                 // The principal name should be the user's unique identifier that was set during authentication
                 // The WebSocketUserPrincipal.getName() returns the userId as string
                 String principalName = session.getUserId().toString();
-                log.info("📡 Attempting to send message to userId: {} (user: {}, session: {}, destination: {})", 
-                        principalName, session.getUsername(), session.getSessionId(), destination);
-                log.info("📡 Full destination will be: /user/{}{}", principalName, destination);
+                log.info("📡 Sending message to userId: {} (user: {}, destination: {})", 
+                        principalName, session.getUsername(), destination);
                 
                 messagingTemplate.convertAndSendToUser(
                         principalName, 
                         destination, 
                         notification
                 );
-                log.info("✅ Message sent to principal: {} (user: {}) - Spring should route to /user/{}{}", 
-                        principalName, session.getUsername(), principalName, destination);
+                log.info("✅ Message sent to principal: {} (user: {})", 
+                        principalName, session.getUsername());
             } catch (Exception e) {
                 log.error("❌ Failed to send notification to user {}: {}", 
                         session.getUsername(), e.getMessage(), e);
@@ -103,19 +107,23 @@ public class WebSocketNotificationService {
 
     public void sendToChannel(String channel, Map<String, Object> notification) {
         try {
+            log.info("📬 sendToChannel called - channel: {}, notification: {}", channel, notification);
+            
             // For company-specific channels, extract the company ID
             if (channel.startsWith("company-")) {
                 String companyIdStr = channel.substring("company-".length());
                 UUID companyId = UUID.fromString(companyIdStr);
+                log.info("🏢 Sending to company users: companyId={}, destination=/topic/instance-status", companyId);
                 sendToCompanyUsers(companyId, "/topic/instance-status", notification);
-                log.info("Sent notification to channel {} (company {})", channel, companyId);
+                log.info("✅ Sent notification to channel {} (company {})", channel, companyId);
             } else {
                 // For other channels, send as broadcast
+                log.info("📢 Sending broadcast to /topic/{}", channel);
                 messagingTemplate.convertAndSend("/topic/" + channel, notification);
-                log.info("Sent broadcast notification to channel {}", channel);
+                log.info("✅ Sent broadcast notification to channel {}", channel);
             }
         } catch (Exception e) {
-            log.error("Error sending notification to channel {}: {}", channel, e.getMessage(), e);
+            log.error("❌ Error sending notification to channel {}: {}", channel, e.getMessage(), e);
         }
     }
 

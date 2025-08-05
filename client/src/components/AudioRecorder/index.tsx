@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Play, Pause, Trash2, Send } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { Mic, Square, Play, Pause, Trash2, Send } from "lucide-react";
 
 interface AudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
@@ -8,7 +8,7 @@ interface AudioRecorderProps {
 
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   onRecordingComplete,
-  onCancel
+  onCancel,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -47,29 +47,28 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
-        
+
         // Criar URL para preview
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
-        
+
         // Parar todas as tracks para liberar microfone
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorder.start();
       setIsRecording(true);
       setError(null);
-      
+
       // Iniciar timer
       timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        setRecordingTime((prev) => prev + 1);
       }, 1000);
-
     } catch (err) {
-      console.error('Erro ao acessar microfone:', err);
-      setError('Erro ao acessar microfone. Verifique as permissões.');
+      console.error("Erro ao acessar microfone:", err);
+      setError("Erro ao acessar microfone. Verifique as permissões.");
     }
   };
 
@@ -77,7 +76,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      
+
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -102,12 +101,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     setAudioBlob(null);
     setRecordingTime(0);
     setIsPlaying(false);
-    
+
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
       setAudioUrl(null);
     }
-    
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -122,14 +121,20 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   return (
     <div className="bg-white rounded-lg shadow-lg border p-4 min-w-[300px]">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-800">
-          {isRecording ? 'Gravando...' : audioBlob ? 'Áudio Gravado' : 'Gravar Áudio'}
+          {isRecording
+            ? "Gravando..."
+            : audioBlob
+            ? "Áudio Gravado"
+            : "Gravar Áudio"}
         </h3>
         <button
           onClick={onCancel}
@@ -149,10 +154,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         <div className="text-2xl font-mono text-gray-700 mb-2">
           {formatTime(recordingTime)}
         </div>
-        
+
         {isRecording && (
           <div className="flex justify-center">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 bg-red-500 rounded-xl animate-pulse"></div>
           </div>
         )}
       </div>
@@ -193,8 +198,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               onClick={isPlaying ? pauseAudio : playAudio}
               className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isPlaying ? 'Pausar' : 'Reproduzir'}
+              {isPlaying ? (
+                <Pause className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              {isPlaying ? "Pausar" : "Reproduzir"}
             </button>
 
             <button
@@ -216,9 +225,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       </div>
 
       <div className="text-xs text-gray-500 text-center">
-        {isRecording ? 'Clique em "Parar" para finalizar' : 
-         audioBlob ? 'Reproduza para ouvir ou envie o áudio' : 
-         'Clique em "Gravar" para iniciar'}
+        {isRecording
+          ? 'Clique em "Parar" para finalizar'
+          : audioBlob
+          ? "Reproduza para ouvir ou envie o áudio"
+          : 'Clique em "Gravar" para iniciar'}
       </div>
     </div>
   );

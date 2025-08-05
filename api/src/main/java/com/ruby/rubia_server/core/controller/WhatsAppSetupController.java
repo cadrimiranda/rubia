@@ -3,7 +3,6 @@ package com.ruby.rubia_server.core.controller;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.enums.MessagingProvider;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import com.ruby.rubia_server.config.CompanyContextResolver;
 import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
 import com.ruby.rubia_server.core.service.ZApiActivationService;
@@ -38,16 +37,68 @@ public class WhatsAppSetupController {
         Company company = getCurrentCompany();
         
         List<WhatsAppInstance> instances = whatsappInstanceService.findByCompany(company);
-        boolean hasConfiguredInstance = whatsappInstanceService.hasConfiguredInstance(company);
-        boolean hasConnectedInstance = whatsappInstanceService.hasConnectedInstance(company);
+        
+        // Check real-time status from Z-API for each configured instance
+        final boolean[] hasConfiguredInstance = {false};
+        final boolean[] hasConnectedInstance = {false};
+        
+        List<WhatsAppInstanceInfo> instanceInfos = instances.stream().map(instance -> {
+            WhatsAppInstanceInfo.WhatsAppInstanceInfoBuilder builder = WhatsAppInstanceInfo.builder()
+                .id(instance.getId())
+                .phoneNumber(instance.getPhoneNumber())
+                .displayName(instance.getDisplayName())
+                .provider(instance.getProvider())
+                .isPrimary(instance.getIsPrimary())
+                .isActive(instance.getIsActive())
+                .createdAt(instance.getCreatedAt());
+            
+            // If instance is configured, check real-time status from Z-API
+            if (instance.isConfigured()) {
+                hasConfiguredInstance[0] = true;
+                
+                try {
+                    Map<String, Object> zapiStatus = connectionMonitorService.getInstanceStatus(instance);
+                    Boolean connected = (Boolean) zapiStatus.get("connected");
+                    String error = (String) zapiStatus.get("error");
+                    
+                    if (Boolean.TRUE.equals(connected)) {
+                        hasConnectedInstance[0] = true;
+                        builder.status("CONNECTED")
+                               .connected(true)
+                               .error(null);
+                    } else {
+                        builder.status("DISCONNECTED")
+                               .connected(false)
+                               .error(error);
+                    }
+                    
+                    log.debug("Z-API status for instance {}: connected={}, error={}", 
+                        instance.getInstanceId(), connected, error);
+                        
+                } catch (Exception e) {
+                    log.warn("Failed to get Z-API status for instance {}: {}", 
+                        instance.getInstanceId(), e.getMessage());
+                    builder.status("ERROR")
+                           .connected(false)
+                           .error("Failed to check status: " + e.getMessage());
+                }
+            } else {
+                // Instance not configured yet
+                builder.status("NOT_CONFIGURED")
+                       .connected(false)
+                       .error(null);
+            }
+            
+            return builder.build();
+        }).toList();
         
         return ResponseEntity.ok(WhatsAppSetupStatusResponse.builder()
-            .requiresSetup(!hasConfiguredInstance)
-            .hasConfiguredInstance(hasConfiguredInstance)
-            .hasConnectedInstance(hasConnectedInstance)
+            .requiresSetup(!hasConfiguredInstance[0])
+            .hasConfiguredInstance(hasConfiguredInstance[0])
+            .hasConnectedInstance(hasConnectedInstance[0])
             .totalInstances(instances.size())
             .maxAllowedInstances(company.getMaxWhatsappNumbers())
-            .instances(instances.stream().map(this::mapToInstanceInfo).toList())
+            .instances(instanceInfos)
             .build());
     }
 
@@ -121,15 +172,8 @@ public class WhatsAppSetupController {
             .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
 
         try {
-            // Update instance status to activation process
-            whatsappInstanceService.updateInstanceStatus(instanceId, WhatsAppInstanceStatus.AWAITING_QR_SCAN);
-            
             // Get activation status from Z-API
             var status = zapiActivationService.getInstanceStatus();
-            
-            if (status.isConnected()) {
-                whatsappInstanceService.updateInstanceStatus(instanceId, WhatsAppInstanceStatus.CONNECTED);
-            }
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -140,7 +184,6 @@ public class WhatsAppSetupController {
 
         } catch (Exception e) {
             log.error("Error activating WhatsApp instance {}: {}", instanceId, e.getMessage(), e);
-            whatsappInstanceService.markInstanceAsError(instanceId, e.getMessage());
             
             return ResponseEntity.ok(Map.of(
                 "success", false,
@@ -184,10 +227,7 @@ public class WhatsAppSetupController {
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "instanceId", instanceId,
-                "currentStatus", instance.getStatus(),
-                "zapiStatus", zapiStatus,
-                "lastStatusCheck", instance.getLastStatusCheck(),
-                "lastConnectedAt", instance.getLastConnectedAt()
+                "zapiStatus", zapiStatus
             ));
 
         } catch (Exception e) {
@@ -215,19 +255,12 @@ public class WhatsAppSetupController {
             Boolean connected = (Boolean) zapiStatus.get("connected");
             
             if (Boolean.TRUE.equals(connected)) {
-                // Already connected, just update our database
-                whatsappInstanceService.updateInstanceStatus(instanceId, WhatsAppInstanceStatus.CONNECTED);
-                
                 return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Instance is already connected",
-                    "status", "CONNECTED",
                     "instanceId", instanceId
                 ));
             } else {
-                // Need to show QR code for reconnection
-                whatsappInstanceService.updateInstanceStatus(instanceId, WhatsAppInstanceStatus.AWAITING_QR_SCAN);
-                
                 // Configure webhooks for monitoring
                 connectionMonitorService.configureDisconnectionWebhook(instance.getInstanceId(), instance.getAccessToken());
                 connectionMonitorService.configureConnectionWebhook(instance.getInstanceId(), instance.getAccessToken());
@@ -235,7 +268,6 @@ public class WhatsAppSetupController {
                 return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Reconnection initiated. Please scan QR code.",
-                    "status", "AWAITING_QR_SCAN",
                     "instanceId", instanceId,
                     "zapiStatus", zapiStatus
                 ));
@@ -243,7 +275,6 @@ public class WhatsAppSetupController {
 
         } catch (Exception e) {
             log.error("Error reconnecting instance {}: {}", instanceId, e.getMessage(), e);
-            whatsappInstanceService.markInstanceAsError(instanceId, e.getMessage());
             
             return ResponseEntity.ok(Map.of(
                 "success", false,
@@ -261,20 +292,17 @@ public class WhatsAppSetupController {
 
             log.info("🔍 Manual status check requested for instance: {}", instance.getInstanceId());
             
-            // Force immediate status check
-            connectionMonitorService.updateInstanceFromStatusCheck(instance);
-            
-            // Get updated instance
-            WhatsAppInstance updatedInstance = whatsappInstanceService.findById(instanceId)
-                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
+            // Check current Z-API status
+            Map<String, Object> zapiStatus = connectionMonitorService.checkInstanceStatus(
+                instance.getInstanceId(), 
+                instance.getAccessToken()
+            );
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Status check completed",
                 "instanceId", instanceId,
-                "currentStatus", updatedInstance.getStatus(),
-                "lastStatusCheck", updatedInstance.getLastStatusCheck(),
-                "errorMessage", updatedInstance.getErrorMessage() != null ? updatedInstance.getErrorMessage() : ""
+                "zapiStatus", zapiStatus
             ));
 
         } catch (Exception e) {
@@ -294,11 +322,11 @@ public class WhatsAppSetupController {
             List<WhatsAppInstance> instances = whatsappInstanceService.findByCompany(company);
             
             long connectedCount = instances.stream()
-                .filter(i -> i.getStatus() == WhatsAppInstanceStatus.CONNECTED)
+                .filter(WhatsAppInstance::isConnected)
                 .count();
             
             long disconnectedCount = instances.stream()
-                .filter(i -> i.getStatus() == WhatsAppInstanceStatus.DISCONNECTED)
+                .filter(i -> !i.isConnected())
                 .count();
             
             return ResponseEntity.ok(Map.of(
@@ -306,8 +334,7 @@ public class WhatsAppSetupController {
                 "totalInstances", instances.size(),
                 "connectedInstances", connectedCount,
                 "disconnectedInstances", disconnectedCount,
-                "monitoringActive", true,
-                "lastCheck", LocalDateTime.now()
+                "monitoringActive", true
             ));
             
         } catch (Exception e) {
@@ -336,20 +363,6 @@ public class WhatsAppSetupController {
             .orElseThrow(() -> new IllegalStateException("Company not found in request context"));
     }
 
-    private WhatsAppInstanceInfo mapToInstanceInfo(WhatsAppInstance instance) {
-        return WhatsAppInstanceInfo.builder()
-            .id(instance.getId())
-            .phoneNumber(instance.getPhoneNumber())
-            .displayName(instance.getDisplayName())
-            .provider(instance.getProvider())
-            .status(instance.getStatus())
-            .isPrimary(instance.getIsPrimary())
-            .isActive(instance.getIsActive())
-            .lastConnectedAt(instance.getLastConnectedAt())
-            .createdAt(instance.getCreatedAt())
-            .errorMessage(instance.getErrorMessage())
-            .build();
-    }
 
     // Request/Response DTOs
     public record CreateInstanceRequest(String phoneNumber, String displayName) {}
@@ -374,11 +387,12 @@ public class WhatsAppSetupController {
         private String phoneNumber;
         private String displayName;
         private MessagingProvider provider;
-        private WhatsAppInstanceStatus status;
         private Boolean isPrimary;
         private Boolean isActive;
-        private java.time.LocalDateTime lastConnectedAt;
         private java.time.LocalDateTime createdAt;
-        private String errorMessage;
+        // Real-time status fields from Z-API
+        private String status;
+        private Boolean connected;
+        private String error;
     }
 }

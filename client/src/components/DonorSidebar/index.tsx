@@ -71,24 +71,26 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
     (d) => d.lastMessage || d.hasActiveConversation
   );
 
-
   // Handler para scroll infinito
-  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    
-    // Verifica se chegou perto do final (80%)
-    if (scrollTop + clientHeight >= scrollHeight * 0.8) {
-      if (hasMorePages && !isLoadingMore && onLoadMore) {
-        onLoadMore();
+  const handleScroll = React.useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+
+      // Verifica se chegou perto do final (80%)
+      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+        if (hasMorePages && !isLoadingMore && onLoadMore) {
+          onLoadMore();
+        }
       }
-    }
-  }, [hasMorePages, isLoadingMore, onLoadMore]);
-  
+    },
+    [hasMorePages, isLoadingMore, onLoadMore]
+  );
+
   // Filtrar por campanha se uma campanha específica estiver selecionada
-  const campaignFilteredDonors = selectedCampaign 
+  const campaignFilteredDonors = selectedCampaign
     ? activeDonors.filter((donor) => donor.campaignId === selectedCampaign.id)
     : activeDonors;
-  
+
   const filteredDonors = campaignFilteredDonors.filter((donor) =>
     donor.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -139,7 +141,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
             >
               <Option value="all">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                  <div className="w-3 h-3 rounded-xl bg-gray-400"></div>
                   <span>Todas as campanhas</span>
                 </div>
               </Option>
@@ -147,7 +149,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                 <Option key={campaign.id} value={campaign.id}>
                   <div className="flex items-center gap-2">
                     <div
-                      className="w-3 h-3 rounded-full"
+                      className="w-3 h-3 rounded-xl"
                       style={{ backgroundColor: campaign.color }}
                     ></div>
                     <span>{campaign.name}</span>
@@ -248,7 +250,10 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 bg-gray-50" onScroll={handleScroll}>
+      <div
+        className="flex-1 overflow-y-auto p-2 bg-gray-50"
+        onScroll={handleScroll}
+      >
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-32 text-gray-500">
             <Loader className="w-6 h-6 animate-spin mb-2" />
@@ -296,13 +301,13 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                 <div className="flex items-center gap-2.5">
                   {/* Avatar compacto */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
+                    <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
                       <User className="w-4 h-4 text-white" />
                     </div>
                     <Circle
                       className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 ${getStatusColor(
                         donor.status
-                      )} bg-white rounded-full border-2 border-white`}
+                      )} bg-white rounded-xl border-2 border-white`}
                       fill="currentColor"
                     />
                   </div>
@@ -318,7 +323,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                           {donor.timestamp}
                         </span>
                         {donor.unread > 0 && (
-                          <div className="bg-red-500 text-white text-xs rounded-full min-w-[16px] h-3.5 flex items-center justify-center px-1 font-semibold">
+                          <div className="bg-red-500 text-white text-xs rounded-xl min-w-[16px] h-3.5 flex items-center justify-center px-1 font-semibold">
                             {donor.unread}
                           </div>
                         )}
@@ -378,13 +383,13 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                   {/* Header: Avatar + Nome + Timestamp + Unread */}
                   <div className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">
-                      <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
+                      <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
                         <User className="w-5 h-5 text-white" />
                       </div>
                       <Circle
                         className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${getStatusColor(
                           donor.status
-                        )} bg-white rounded-full border-2 border-white`}
+                        )} bg-white rounded-xl border-2 border-white`}
                         fill="currentColor"
                       />
                     </div>
@@ -399,7 +404,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                             {donor.timestamp}
                           </span>
                           {donor.unread > 0 && (
-                            <div className="bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 font-semibold shadow-sm">
+                            <div className="bg-red-500 text-white text-xs rounded-xl min-w-[20px] h-5 flex items-center justify-center px-1.5 font-semibold shadow-sm">
                               {donor.unread}
                             </div>
                           )}
@@ -465,7 +470,9 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                   {/* Info Adicional */}
                   <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
                     <span className="font-medium">
-                      {donor.birthDate ? `${calculateAge(donor.birthDate)} anos` : 'Idade N/I'}
+                      {donor.birthDate
+                        ? `${calculateAge(donor.birthDate)} anos`
+                        : "Idade N/I"}
                     </span>
                     <span>{donor.totalDonations} doações</span>
                     <span>Última: {donor.lastDonation}</span>
@@ -475,7 +482,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
             )
           )
         )}
-        
+
         {/* Indicador de carregamento para paginação infinita */}
         {hasMorePages && isLoadingMore && (
           <div className="flex items-center justify-center py-4">

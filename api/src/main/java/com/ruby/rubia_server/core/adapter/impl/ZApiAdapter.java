@@ -3,7 +3,12 @@ package com.ruby.rubia_server.core.adapter.impl;
 import com.ruby.rubia_server.core.adapter.MessagingAdapter;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
+import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -25,13 +30,7 @@ import java.util.HashMap;
 @ConditionalOnProperty(name = "messaging.provider", havingValue = "zapi")
 @Slf4j
 public class ZApiAdapter implements MessagingAdapter {
-
-    @Value("${zapi.instance.url}")
-    private String instanceUrl;
-
-    @Value("${zapi.token}")
-    private String token;
-
+  
     @Value("${zapi.clientToken}")
     private String clientToken;
 
@@ -40,18 +39,70 @@ public class ZApiAdapter implements MessagingAdapter {
 
     private final RestTemplate restTemplate;
     private final PhoneService phoneService;
+    private final WhatsAppInstanceService whatsAppInstanceService;
+    private final CompanyContextUtil companyContextUtil;
+    private final WhatsAppInstanceValidator instanceValidator;
+    private final ZApiUrlFactory urlFactory;
 
-    public ZApiAdapter(PhoneService phoneService) {
-        this.restTemplate = new RestTemplate();
+    public ZApiAdapter(RestTemplate restTemplate,
+                      PhoneService phoneService, 
+                      WhatsAppInstanceService whatsAppInstanceService,
+                      CompanyContextUtil companyContextUtil,
+                      WhatsAppInstanceValidator instanceValidator,
+                      ZApiUrlFactory urlFactory) {
+        this.restTemplate = restTemplate;
         this.phoneService = phoneService;
+        this.whatsAppInstanceService = whatsAppInstanceService;
+        this.companyContextUtil = companyContextUtil;
+        this.instanceValidator = instanceValidator;
+        this.urlFactory = urlFactory;
+    }
+
+    /**
+     * Gets the active WhatsApp instance for the current company context
+     * and validates it's ready for messaging operations
+     */
+    private WhatsAppInstance getActiveInstance() {
+        try {
+            WhatsAppInstance instance = whatsAppInstanceService.findActiveConnectedInstance(companyContextUtil.getCurrentCompany())
+                .orElseThrow(() -> new IllegalStateException("No connected WhatsApp instance found for company"));
+            
+            // Validate instance is ready for messaging
+            instanceValidator.validateInstanceReadyForMessaging(instance);
+            
+            return instance;
+        } catch (IllegalStateException e) {
+            // For company context resolution errors, wrap with generic message
+            if (e.getMessage() != null && e.getMessage().contains("company context")) {
+                log.error("Error getting active instance: {}", e.getMessage());
+                throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
+            }
+            // For other IllegalStateExceptions (instance not found, validation failures), re-throw as-is
+            throw e;
+        } catch (Exception e) {
+            log.error("Error getting active instance: {}", e.getMessage());
+            throw new IllegalStateException("Cannot determine active WhatsApp instance", e);
+        }
+    }
+
+    /**
+     * Builds the Z-API URL for the given endpoint using active instance data
+     */
+    private String buildZApiUrl(String endpoint) {
+        WhatsAppInstance instance = getActiveInstance();
+        return urlFactory.buildUrl(instance, endpoint);
     }
 
     @Override
     public MessageResult sendMessage(String to, String message) {
         try {
             log.info("Sending Z-API message to: {} with message: {}", to, message.substring(0, Math.min(50, message.length())));
+            
+            // Validate input parameters
+            instanceValidator.validatePhoneNumber(to);
+            instanceValidator.validateMessageContent(message);
 
-            String url = instanceUrl + "/token/" + token + "/send-text";
+            String url = buildZApiUrl("send-text");
             log.info("Z-API URL: {}", url);
             
             String formattedPhone = phoneService.formatForZApi(to);
@@ -83,6 +134,9 @@ public class ZApiAdapter implements MessagingAdapter {
                 return MessageResult.error(error, "z-api");
             }
 
+        } catch (IllegalStateException e) {
+            // Re-throw IllegalStateException to allow tests to verify proper error handling
+            throw e;
         } catch (Exception e) {
             String error = "Error sending message via Z-API: " + e.getMessage();
             log.error(error, e);
@@ -94,22 +148,40 @@ public class ZApiAdapter implements MessagingAdapter {
     public MessageResult sendMediaMessage(String to, String mediaUrl, String caption) {
         try {
             log.info("Sending Z-API media message to: {}", to);
+          
+            // Detect media type from base64 prefix or content
+            String endpoint;
+            String mediaParam;
+            
+            if (mediaUrl.contains("audio/") || mediaUrl.contains("wav") || mediaUrl.contains("mp3") || mediaUrl.contains("ogg")) {
+                endpoint = "/send-audio";
+                mediaParam = "audio";
+            } else if (mediaUrl.contains("image/")) {
+                endpoint = "/send-image";
+                mediaParam = "image";
+            } else if (mediaUrl.contains("video/")) {
+                endpoint = "/send-video";
+                mediaParam = "video";
+            } else {
+                // Default to document for other file types
+                endpoint = "/send-document";
+                mediaParam = "document";
+            }
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildZApiUrl(endpoint);
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
-            requestBody.put("url", mediaUrl);
+            requestBody.put(mediaParam, mediaUrl);
+            
             if (caption != null && !caption.trim().isEmpty()) {
                 requestBody.put("caption", caption);
             }
 
             HttpHeaders headers = createHeaders();
-
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<Map> response = restTemplate.exchange(
-                url, HttpMethod.POST, request, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, request, Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
@@ -175,6 +247,17 @@ public class ZApiAdapter implements MessagingAdapter {
             } else if (fromMeObj instanceof String) {
                 isFromMe = "true".equals(fromMeObj);
             }
+
+            // Check if message was sent from our API
+            Object fromApiObj = payload.get("fromApi");
+            boolean isFromApi = false;
+            if (fromApiObj instanceof Boolean) {
+                isFromApi = (Boolean) fromApiObj;
+            } else if (fromApiObj instanceof String) {
+                isFromApi = "true".equals(fromApiObj);
+            }
+            
+            log.debug("Message flags - fromMe: {}, fromApi: {}", isFromMe, isFromApi);
 
             String messageBody = null;
             String mediaUrl = null;
@@ -244,10 +327,37 @@ public class ZApiAdapter implements MessagingAdapter {
             }
 
             
+            // Determine correct from/to based on message context
+            String fromNumber, toNumber;
+            
+            if (isFromMe && isFromApi) {
+                // Message sent via our API - only process if it has media
+                boolean hasMedia = (mediaUrl != null && !mediaUrl.trim().isEmpty());
+                if (!hasMedia) {
+                    // Ignore text messages sent via API to avoid duplication
+                    log.debug("Ignoring API-sent text message (fromMe=true, fromApi=true)");
+                    return null;
+                }
+                // Process media messages sent via API
+                fromNumber = phone;
+                toNumber = connectedPhone;
+                log.debug("Processing API-sent media message: from {} to {}", fromNumber, toNumber);
+            } else if (isFromMe && !isFromApi) {
+                // Message sent from WhatsApp Web/App
+                fromNumber = phone;
+                toNumber = connectedPhone;
+                log.debug("WhatsApp Web/App message: from {} to {}", fromNumber, toNumber);
+            } else {
+                // Message from customer to us (fromMe=false)
+                fromNumber = phone;
+                toNumber = connectedPhone;
+                log.debug("Message from customer: from {} to {}", fromNumber, toNumber);
+            }
+            
             return IncomingMessage.builder()
                 .messageId(messageId)
-                .from(isFromMe ? connectedPhone : phone)
-                .to(isFromMe ? phone : connectedPhone)
+                .from(fromNumber)
+                .to(toNumber)
                 .connectedPhone(connectedPhone)
                 .chatLid(chatLid)
                 .body(messageBody)
@@ -290,7 +400,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API document to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildZApiUrl("send-file-url");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -328,7 +438,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API audio to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-audio";
+            String url = buildZApiUrl("send-audio");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -360,7 +470,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API base64 file to: {}", to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-base64";
+            String url = buildZApiUrl("send-file-base64");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -418,32 +528,19 @@ public class ZApiAdapter implements MessagingAdapter {
 
     public String uploadFile(MultipartFile file) {
         try {
-            log.info("Uploading file to Z-API: {}", file.getOriginalFilename());
+            log.info("Converting file to base64: {}", file.getOriginalFilename());
 
-            String url = instanceUrl + "/token/" + token + "/upload-file";
+            // Convert file to base64 instead of uploading to Z-API
+            byte[] fileBytes = file.getBytes();
+            String base64 = java.util.Base64.getEncoder().encodeToString(fileBytes);
+            String base64WithPrefix = "data:" + file.getContentType() + ";base64," + base64;
             
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("client-token", clientToken);
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", file.getResource());
-
-            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, request, Map.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String fileUrl = (String) response.getBody().get("url");
-                log.info("File uploaded successfully to Z-API: {}", fileUrl);
-                return fileUrl;
-            } else {
-                throw new RuntimeException("Failed to upload file to Z-API");
-            }
+            log.info("File converted to base64 successfully");
+            return base64WithPrefix;
 
         } catch (Exception e) {
-            log.error("Error uploading file: {}", e.getMessage(), e);
-            throw new RuntimeException("Error uploading file: " + e.getMessage(), e);
+            log.error("Error converting file to base64: {}", e.getMessage(), e);
+            throw new RuntimeException("Error converting file to base64: " + e.getMessage(), e);
         }
     }
 
@@ -458,7 +555,7 @@ public class ZApiAdapter implements MessagingAdapter {
         try {
             log.info("Sending Z-API {} to: {}", mediaType, to);
 
-            String url = instanceUrl + "/token/" + token + "/send-file-url";
+            String url = buildZApiUrl("send-text");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("phone", phoneService.formatForZApi(to));
@@ -488,4 +585,5 @@ public class ZApiAdapter implements MessagingAdapter {
             return MessageResult.error(error, "z-api");
         }
     }
+
 }

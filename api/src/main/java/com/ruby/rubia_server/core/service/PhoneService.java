@@ -40,13 +40,10 @@ public class PhoneService {
         // Handle Brazilian phone numbers with standard format +55DDDnúmero
         if (digitsOnly.length() == 10 || digitsOnly.length() == 11) {
             // Brazilian phone without country code (DDDnúmero)
-            return NORMALIZED_PREFIX + digitsOnly;
-        } else if (digitsOnly.length() == 12 && digitsOnly.startsWith(BRAZILIAN_COUNTRY_CODE)) {
+            return BRAZILIAN_COUNTRY_CODE + digitsOnly;
+        } else if (digitsOnly.length() >= 12 && digitsOnly.startsWith(BRAZILIAN_COUNTRY_CODE)) {
             // Brazilian phone with country code but without + (55DDDnúmero)
-            return "+" + digitsOnly;
-        } else if (digitsOnly.length() == 13 && digitsOnly.startsWith(BRAZILIAN_COUNTRY_CODE)) {
-            // Phone with + removed during regex (was +55DDDnúmero)
-            return "+" + digitsOnly;
+            return digitsOnly;
         }
         
         // For unexpected formats, log warning and attempt normalization
@@ -54,7 +51,7 @@ public class PhoneService {
         
         // Try to extract Brazilian number from international formats
         if (digitsOnly.startsWith(BRAZILIAN_COUNTRY_CODE) && digitsOnly.length() >= 12) {
-            return "+" + digitsOnly.substring(0, 13); // Keep +55 + 11 digits max
+            return digitsOnly.substring(0, 13); // Keep +55 + 11 digits max
         }
         
         return NORMALIZED_PREFIX + digitsOnly; // Fallback: assume it's Brazilian

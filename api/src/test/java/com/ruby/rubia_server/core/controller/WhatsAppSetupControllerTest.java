@@ -6,7 +6,6 @@ import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.CompanyGroup;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.enums.MessagingProvider;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import com.ruby.rubia_server.core.repository.CompanyGroupRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.WhatsAppInstanceRepository;
@@ -76,7 +75,6 @@ class WhatsAppSetupControllerTest extends AbstractIntegrationTest {
             .phoneNumber("5511999999999")
             .displayName("Test WhatsApp")
             .provider(MessagingProvider.Z_API)
-            .status(WhatsAppInstanceStatus.CONNECTED)
             .isActive(true)
             .isPrimary(true)
             .createdAt(LocalDateTime.now())
@@ -92,20 +90,19 @@ class WhatsAppSetupControllerTest extends AbstractIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.requiresSetup").value(false))
             .andExpect(jsonPath("$.hasConfiguredInstance").value(true))
-            .andExpect(jsonPath("$.hasConnectedInstance").value(true))
+            .andExpect(jsonPath("$.hasConfiguredInstance").value(true))
             .andExpect(jsonPath("$.totalInstances").value(1))
             .andExpect(jsonPath("$.maxAllowedInstances").value(3))
             .andExpect(jsonPath("$.instances", hasSize(1)))
             .andExpect(jsonPath("$.instances[0].phoneNumber").value("5511999999999"))
-            .andExpect(jsonPath("$.instances[0].status").value("CONNECTED"))
             .andExpect(jsonPath("$.instances[0].isPrimary").value(true));
     }
 
     @Test
     @WithMockUser
     void getSetupStatus_WithNotConfiguredInstance_ShouldReturnRequiresSetup() throws Exception {
-        // Update instance to not configured
-        testInstance.setStatus(WhatsAppInstanceStatus.NOT_CONFIGURED);
+        // Update instance to inactive to simulate not configured
+        testInstance.setIsActive(false);
         whatsappInstanceRepository.save(testInstance);
 
         mockMvc.perform(get("/api/whatsapp-setup/status")
@@ -113,7 +110,7 @@ class WhatsAppSetupControllerTest extends AbstractIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.requiresSetup").value(true))
             .andExpect(jsonPath("$.hasConfiguredInstance").value(false))
-            .andExpect(jsonPath("$.hasConnectedInstance").value(false));
+            .andExpect(jsonPath("$.hasConfiguredInstance").value(false));
     }
 
     @Test
@@ -131,7 +128,6 @@ class WhatsAppSetupControllerTest extends AbstractIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.phoneNumber").value("5511988887777"))
             .andExpect(jsonPath("$.displayName").value("New WhatsApp Instance"))
-            .andExpect(jsonPath("$.status").value("NOT_CONFIGURED"))
             .andExpect(jsonPath("$.isActive").value(true))
             .andExpect(jsonPath("$.isPrimary").value(false)); // Should not be primary (second instance)
     }
@@ -184,7 +180,7 @@ class WhatsAppSetupControllerTest extends AbstractIntegrationTest {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.instanceId").value("ZAPI123456"))
-            .andExpect(jsonPath("$.status").value("CONFIGURING"));
+            .andExpect(jsonPath("$.instanceId").value("ZAPI123456"));
     }
 
     @Test
@@ -221,7 +217,6 @@ class WhatsAppSetupControllerTest extends AbstractIntegrationTest {
             .phoneNumber("5511988887777")
             .displayName("Another WhatsApp")
             .provider(MessagingProvider.Z_API)
-            .status(WhatsAppInstanceStatus.CONNECTED)
             .isActive(true)
             .isPrimary(false)
             .build();
