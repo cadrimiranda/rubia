@@ -47,6 +47,8 @@ public class CampaignProcessingService {
     private final MessageTemplateService messageTemplateService;
     private final ConversationService conversationService;
     private final MessageService messageService;
+    private final CampaignMessagingService campaignMessagingService;
+    private final SecureCampaignQueueService secureCampaignQueueService;
 
     public static class CampaignProcessingResult {
         private final Campaign campaign;
@@ -200,6 +202,26 @@ public class CampaignProcessingService {
 
         log.info("Campanha {} criada com {} contatos. Processados: {}, Criados: {}, Duplicados: {}", 
                 campaignName, created, processed, created, duplicates);
+
+        // Adicionar campanha à fila segura de processamento se houver contatos criados
+        if (created > 0) {
+            log.info("Adicionando campanha {} à fila segura com {} contatos", 
+                    campaign.getId(), created);
+            
+            try {
+                // Usar a versão segura (Redis) quando disponível
+                secureCampaignQueueService.enqueueCampaign(
+                    campaign.getId(), 
+                    companyId.toString(), 
+                    "system-auto"  // Identificador de processamento automático
+                );
+            } catch (Exception e) {
+                log.error("Erro ao adicionar campanha {} à fila segura: {}", 
+                        campaign.getId(), e.getMessage());
+                // Em produção, isso deve ser tratado como erro crítico
+                throw new RuntimeException("Falha ao adicionar campanha à fila de processamento", e);
+            }
+        }
 
         return new CampaignProcessingResult(campaign, campaignContacts, errors, processed, created, duplicates);
     }
