@@ -35,11 +35,11 @@ public class CampaignMessagingService {
         // Calcular delay
         int delay = calculateRandomDelay();
 
-        // Retornar Future que será resolvido após o delay
+        // Retornar Future que será resolvido após o delay com retry automático
         return delaySchedulingService.scheduleMessageSend(
             campaignContact,
             delay,
-            () -> performActualSend(campaignContact)
+            () -> performActualSendWithRetry(campaignContact)
         );
     }
 
@@ -92,6 +92,43 @@ public class CampaignMessagingService {
         int minDelay = properties.getMinDelayMs();
         int maxDelay = properties.getMaxDelayMs();
         return minDelay + (int)(Math.random() * (maxDelay - minDelay));
+    }
+
+    /**
+     * Executa o envio com retry automático
+     */
+    private boolean performActualSendWithRetry(CampaignContact campaignContact) {
+        int maxRetries = properties.getMaxRetries();
+        int retryDelay = properties.getRetryDelayMs();
+        
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            boolean success = performActualSend(campaignContact);
+            
+            if (success) {
+                if (attempt > 1) {
+                    log.info("Mensagem enviada com sucesso na tentativa {} para contato {}", 
+                            attempt, campaignContact.getId());
+                }
+                return true;
+            }
+            
+            if (attempt < maxRetries) {
+                log.warn("Tentativa {} falhou para contato {}. Tentando novamente em {}ms", 
+                        attempt, campaignContact.getId(), retryDelay);
+                
+                try {
+                    Thread.sleep(retryDelay);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.error("Retry interrompido para contato {}", campaignContact.getId());
+                    return false;
+                }
+            }
+        }
+        
+        log.error("Falha definitiva após {} tentativas para contato {}", 
+                maxRetries, campaignContact.getId());
+        return false;
     }
 
     /**

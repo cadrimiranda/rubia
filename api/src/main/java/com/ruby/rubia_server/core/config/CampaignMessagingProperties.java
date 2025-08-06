@@ -13,37 +13,67 @@ public class CampaignMessagingProperties {
     
     /**
      * Tamanho do lote para processamento de mensagens
-     * Baseado nas limitações da API WHAPI para evitar rate limiting
+     * Otimizado para MVP: 30 mensagens por lote
      */
-    private int batchSize = 20;
+    private int batchSize = 30;
     
     /**
      * Tempo de pausa entre lotes em minutos
-     * Recomendado pela WHAPI para evitar bloqueios
+     * Otimizado para MVP: 30 minutos entre lotes
      */
-    private int batchPauseMinutes = 60;
+    private int batchPauseMinutes = 30;
     
     /**
      * Delay mínimo entre mensagens em milissegundos
-     * Configuração conservadora baseada nas diretrizes WHAPI
+     * Otimizado para MVP: 15 segundos
      */
-    private int minDelayMs = 30000; // 30 segundos
+    private int minDelayMs = 15000; // 15 segundos
     
     /**
      * Delay máximo entre mensagens em milissegundos
-     * Configuração conservadora baseada nas diretrizes WHAPI
+     * Otimizado para MVP: 45 segundos
      */
-    private int maxDelayMs = 60000; // 60 segundos
+    private int maxDelayMs = 45000; // 45 segundos
     
     /**
      * Timeout para envio de mensagem individual
-     * Tempo máximo para aguardar resposta da API
+     * Mantido em 30 segundos para segurança
      */
     private Duration messageTimeout = Duration.ofSeconds(30);
     
     /**
      * Timeout para processamento de lote completo
-     * Tempo máximo para processar um lote inteiro
+     * Otimizado para MVP: 15 minutos por lote
      */
-    private Duration batchTimeout = Duration.ofMinutes(10);
+    private Duration batchTimeout = Duration.ofMinutes(15);
+    
+    /**
+     * Máximo de tentativas de reenvio por mensagem
+     */
+    private int maxRetries = 3;
+    
+    /**
+     * Delay entre tentativas de reenvio em milissegundos
+     */
+    private int retryDelayMs = 5000; // 5 segundos
+    
+    /**
+     * Ativar envio apenas em horário comercial
+     */
+    private boolean businessHoursOnly = true;
+    
+    /**
+     * Hora de início do horário comercial (24h format)
+     */
+    private int businessStartHour = 9;
+    
+    /**
+     * Hora de fim do horário comercial (24h format)
+     */
+    private int businessEndHour = 18;
+    
+    /**
+     * Randomizar ordem das mensagens no lote
+     */
+    private boolean randomizeOrder = true;
 }

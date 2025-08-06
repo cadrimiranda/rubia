@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,8 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -15,9 +18,10 @@ import java.util.concurrent.CompletableFuture;
 public class CampaignDelaySchedulingService {
 
     private final TaskScheduler taskScheduler;
+    private final CampaignMessagingProperties properties;
 
     /**
-     * Agenda o envio de uma mensagem após um delay específico de forma assíncrona
+     * Agenda o envio de uma mensagem respeitando horário comercial e delay específico
      * 
      * @param contact Contato da campanha
      * @param delayMs Delay em milissegundos
@@ -29,10 +33,10 @@ public class CampaignDelaySchedulingService {
                                                          MessageSendTask messageTask) {
         
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        Instant scheduledTime = Instant.now().plusMillis(delayMs);
+        Instant scheduledTime = calculateScheduledTime(delayMs);
 
-        log.debug("Agendando envio de mensagem para contato {} em {} ms", 
-                contact.getId(), delayMs);
+        log.debug("Agendando envio de mensagem para contato {} em {}", 
+                contact.getId(), scheduledTime);
 
         taskScheduler.schedule(() -> {
             try {
@@ -51,6 +55,39 @@ public class CampaignDelaySchedulingService {
         }, scheduledTime);
 
         return future;
+    }
+
+    /**
+     * Calcula o horário de agendamento respeitando horário comercial
+     */
+    private Instant calculateScheduledTime(int delayMs) {
+        Instant proposedTime = Instant.now().plusMillis(delayMs);
+        
+        if (!properties.isBusinessHoursOnly()) {
+            return proposedTime;
+        }
+
+        LocalTime proposedLocalTime = LocalTime.ofInstant(proposedTime, ZoneId.systemDefault());
+        LocalTime businessStart = LocalTime.of(properties.getBusinessStartHour(), 0);
+        LocalTime businessEnd = LocalTime.of(properties.getBusinessEndHour(), 0);
+
+        // Se está dentro do horário comercial, mantém o horário proposto
+        if (proposedLocalTime.isAfter(businessStart) && proposedLocalTime.isBefore(businessEnd)) {
+            return proposedTime;
+        }
+
+        // Se é antes do horário comercial, agenda para o início do horário
+        if (proposedLocalTime.isBefore(businessStart)) {
+            return proposedTime.atZone(ZoneId.systemDefault())
+                    .with(businessStart)
+                    .toInstant();
+        }
+
+        // Se é depois do horário comercial, agenda para o próximo dia útil
+        return proposedTime.atZone(ZoneId.systemDefault())
+                .plusDays(1)
+                .with(businessStart)
+                .toInstant();
     }
 
     /**

@@ -314,11 +314,19 @@ public class SecureCampaignQueueService {
     private void scheduleMessagesInRedis(UUID campaignId, List<CampaignContact> contacts, 
                                        String companyId, String userId) {
         try {
+            // Randomizar ordem dos contatos se configurado
+            List<CampaignContact> processedContacts = new ArrayList<>(contacts);
+            if (properties.isRandomizeOrder()) {
+                Collections.shuffle(processedContacts);
+                log.debug("🔀 Ordem dos {} contatos randomizada para campanha {}", 
+                        processedContacts.size(), campaignId);
+            }
+            
             LocalDateTime currentTime = LocalDateTime.now();
             int currentBatch = 1;
             
-            for (int i = 0; i < contacts.size(); i++) {
-                CampaignContact contact = contacts.get(i);
+            for (int i = 0; i < processedContacts.size(); i++) {
+                CampaignContact contact = processedContacts.get(i);
                 
                 // Calcular tempo agendado
                 LocalDateTime scheduledTime = calculateScheduledTime(currentTime, i, currentBatch);
