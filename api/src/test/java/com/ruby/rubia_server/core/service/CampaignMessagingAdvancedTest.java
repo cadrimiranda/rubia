@@ -27,7 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
 
     @Autowired
@@ -45,6 +45,9 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
     @Autowired
     private CompanyRepository companyRepository;
 
+    @Autowired
+    private CompanyGroupRepository companyGroupRepository;
+
     @SpyBean
     private CampaignMessagingService campaignMessagingService;
 
@@ -52,13 +55,21 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
     private MessagingService messagingService;
 
     private Company company;
+    private CompanyGroup companyGroup;
     private MessageTemplate messageTemplate;
 
     @BeforeEach
     void setUp() {
+        // Create CompanyGroup first
+        companyGroup = new CompanyGroup();
+        companyGroup.setName("Test Group " + System.nanoTime()); // Unique name
+        companyGroup = companyGroupRepository.save(companyGroup);
+
         company = new Company();
         company.setName("Test Company");
+        company.setSlug("test-company-" + System.nanoTime()); // Unique slug for each test
         company.setContactPhone("5511999999999");
+        company.setCompanyGroup(companyGroup);
         company = companyRepository.save(company);
 
         messageTemplate = new MessageTemplate();
@@ -357,10 +368,11 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
     }
 
     private Campaign createCampaignWithContacts(int contactCount) {
+        // Always use the setup company with CompanyGroup to avoid constraint violations
         Campaign campaign = new Campaign();
         campaign.setName("Test Campaign " + UUID.randomUUID());
         campaign.setStatus(CampaignStatus.ACTIVE);
-        campaign.setCompany(company);
+        campaign.setCompany(company); // Uses company from setUp() with CompanyGroup
         campaign.setInitialMessageTemplate(messageTemplate);
         campaign = campaignRepository.save(campaign);
 
@@ -370,7 +382,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
                     Customer customer = new Customer();
                     customer.setName("Customer " + i);
                     customer.setPhone("551199999" + String.format("%04d", i));
-                    customer.setCompany(company);
+                    customer.setCompany(company); // Uses company from setUp() with CompanyGroup
                     return customerRepository.save(customer);
                 })
                 .toList();
@@ -384,5 +396,21 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         });
 
         return finalCampaign;
+    }
+
+    /**
+     * Helper method to create a test company with CompanyGroup when needed in individual tests
+     */
+    private Company createTestCompanyWithGroup() {
+        CompanyGroup testGroup = new CompanyGroup();
+        testGroup.setName("Test Group " + System.nanoTime());
+        testGroup = companyGroupRepository.save(testGroup);
+        
+        Company testCompany = new Company();
+        testCompany.setName("Test Company " + System.nanoTime());
+        testCompany.setSlug("test-company-" + System.nanoTime());
+        testCompany.setContactPhone("5511999999999");
+        testCompany.setCompanyGroup(testGroup);
+        return companyRepository.save(testCompany);
     }
 }

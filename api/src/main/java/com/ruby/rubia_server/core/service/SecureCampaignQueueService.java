@@ -109,6 +109,12 @@ public class SecureCampaignQueueService {
             Campaign campaign = campaignService.findById(campaignId)
                 .orElseThrow(() -> new IllegalArgumentException("Campanha não encontrada: " + campaignId));
             
+            // Verificar se campanha está ativa
+            if (campaign.getStatus() != CampaignStatus.ACTIVE) {
+                log.warn("Tentativa de enfileirar campanha inativa: {} (status: {})", campaignId, campaign.getStatus());
+                return;
+            }
+            
             List<CampaignContact> pendingContacts = campaignContactService
                 .findByCampaignIdAndStatus(campaignId, CampaignContactStatus.PENDING);
             

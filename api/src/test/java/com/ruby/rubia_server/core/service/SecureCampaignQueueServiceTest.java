@@ -1,6 +1,7 @@
 package com.ruby.rubia_server.core.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Company;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -29,6 +32,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class SecureCampaignQueueServiceTest {
 
     @Mock
@@ -45,6 +49,9 @@ class SecureCampaignQueueServiceTest {
 
     @Mock
     private CampaignMessagingService campaignMessagingService;
+
+    @Mock
+    private CampaignMessagingProperties properties;
 
     @Mock
     private ValueOperations<String, Object> valueOperations;
@@ -90,6 +97,13 @@ class SecureCampaignQueueServiceTest {
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        
+        // Setup default properties mock behavior
+        when(properties.isRandomizeOrder()).thenReturn(false);
+        when(properties.getMinDelayMs()).thenReturn(2000);
+        when(properties.getMaxDelayMs()).thenReturn(8000);
+        when(properties.getBatchSize()).thenReturn(30);
+        when(properties.getBatchPauseMinutes()).thenReturn(30);
     }
 
     @Test
@@ -105,7 +119,7 @@ class SecureCampaignQueueServiceTest {
         secureCampaignQueueService.enqueueCampaign(campaignId, companyId.toString(), userId);
 
         // Assert
-        verify(campaignService).findById(campaignId);
+        verify(campaignService, times(2)).findById(campaignId); // Called in validation and main process
         verify(campaignContactService).findByCampaignIdAndStatus(campaignId, CampaignContactStatus.PENDING);
         verify(valueOperations).set(anyString(), any(), eq(7L), eq(TimeUnit.DAYS));
         verify(zSetOperations, times(pendingContacts.size())).add(anyString(), anyString(), anyDouble());
@@ -126,16 +140,16 @@ class SecureCampaignQueueServiceTest {
     }
 
     @Test
-    void enqueueCampaign_WithCampaignNotFound_ShouldThrowIllegalArgumentException() {
+    void enqueueCampaign_WithCampaignNotFound_ShouldThrowSecurityException() {
         // Arrange
         when(campaignService.findById(campaignId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+        SecurityException exception = assertThrows(SecurityException.class, () ->
                 secureCampaignQueueService.enqueueCampaign(campaignId, companyId.toString(), userId)
         );
         
-        assertTrue(exception.getMessage().contains("Campanha não encontrada"));
+        assertTrue(exception.getMessage().contains("Acesso negado à campanha"));
     }
 
     @Test
@@ -178,7 +192,10 @@ class SecureCampaignQueueServiceTest {
         secureCampaignQueueService.enqueueCampaign(campaignId, companyId.toString(), userId);
 
         // Assert
+        // Should not search for contacts for inactive campaigns
         verify(campaignContactService, never()).findByCampaignIdAndStatus(any(), any());
+        // Should not add to Redis queue for inactive campaigns  
+        verify(zSetOperations, never()).add(anyString(), anyString(), anyDouble());
     }
 
     @Test
