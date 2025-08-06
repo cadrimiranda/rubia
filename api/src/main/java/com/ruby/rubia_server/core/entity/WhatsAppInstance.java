@@ -2,7 +2,6 @@ package com.ruby.rubia_server.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.ruby.rubia_server.core.enums.MessagingProvider;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -51,11 +50,6 @@ public class WhatsAppInstance {
     @Column(name = "webhook_url")
     private String webhookUrl;
     
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    @Builder.Default
-    private WhatsAppInstanceStatus status = WhatsAppInstanceStatus.NOT_CONFIGURED;
-    
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
@@ -64,17 +58,8 @@ public class WhatsAppInstance {
     @Builder.Default
     private Boolean isPrimary = false;
     
-    @Column(name = "last_connected_at")
-    private LocalDateTime lastConnectedAt;
-    
-    @Column(name = "last_status_check")
-    private LocalDateTime lastStatusCheck;
-    
     @Column(name = "configuration_data", columnDefinition = "TEXT")
     private String configurationData;
-    
-    @Column(name = "error_message")
-    private String errorMessage;
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -86,16 +71,14 @@ public class WhatsAppInstance {
     
     // Helper methods
     public boolean isConfigured() {
-        return status != WhatsAppInstanceStatus.NOT_CONFIGURED;
+        return instanceId != null && accessToken != null;
     }
     
     public boolean isConnected() {
-        return status == WhatsAppInstanceStatus.CONNECTED;
+        return isConfigured() && isActive;
     }
     
     public boolean needsConfiguration() {
-        return status == WhatsAppInstanceStatus.NOT_CONFIGURED || 
-               status == WhatsAppInstanceStatus.DISCONNECTED ||
-               status == WhatsAppInstanceStatus.ERROR;
+        return !isConfigured();
     }
 }

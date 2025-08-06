@@ -22,5 +22,10 @@ public enum RevisionType {
     /**
      * Revisão criada quando o template é restaurado
      */
-    RESTORE
+    RESTORE,
+    
+    /**
+     * Revisão criada quando o template é melhorado por IA
+     */
+    AI_ENHANCEMENT
 }

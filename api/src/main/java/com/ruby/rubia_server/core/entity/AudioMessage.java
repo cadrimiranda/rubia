@@ -68,6 +68,10 @@ public class AudioMessage {
     @Column(name = "error_message")
     private String errorMessage;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;

@@ -36,7 +36,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">
           <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
               <svg
                 className="w-6 h-6 text-red-600"
                 fill="none"

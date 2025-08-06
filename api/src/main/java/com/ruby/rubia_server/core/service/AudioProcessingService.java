@@ -93,12 +93,14 @@ public class AudioProcessingService {
                         .toNumber(toNumber)
                         .direction(AudioMessage.MessageDirection.OUTGOING)
                         .audioUrl(audioUrl)
-                        .status(AudioMessage.ProcessingStatus.COMPLETED)
-                        .processedAt(LocalDateTime.now())
+                        .status(AudioMessage.ProcessingStatus.RECEIVED)
                         .build();
 
-                audioMessageRepository.save(audioMessage);
+                audioMessage = audioMessageRepository.save(audioMessage);
                 log.info("Outgoing audio message saved: {}", result.getMessageId());
+                
+                // Download and store audio file asynchronously (same as incoming messages)
+                processAudioAsync(audioMessage);
                 
                 return result.getMessageId();
             } else {

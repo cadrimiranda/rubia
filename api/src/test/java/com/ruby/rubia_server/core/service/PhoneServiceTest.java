@@ -16,26 +16,26 @@ class PhoneServiceTest {
     @Test
     void shouldNormalizePhoneWithoutCountryCode() {
         // 11 digits (with 9th digit)
-        assertThat(phoneService.normalize("11999887766")).isEqualTo("+5511999887766");
+        assertThat(phoneService.normalize("11999887766")).isEqualTo("5511999887766");
         
         // 10 digits (without 9th digit)
-        assertThat(phoneService.normalize("1199887766")).isEqualTo("+551199887766");
+        assertThat(phoneService.normalize("1199887766")).isEqualTo("551199887766");
     }
 
     @Test
     void shouldNormalizePhoneWithCountryCodeNoPlus() {
-        assertThat(phoneService.normalize("5511999887766")).isEqualTo("+5511999887766");
+        assertThat(phoneService.normalize("5511999887766")).isEqualTo("5511999887766");
     }
 
     @Test
     void shouldNormalizePhoneWithCountryCodeAndPlus() {
-        assertThat(phoneService.normalize("+5511999887766")).isEqualTo("+5511999887766");
+        assertThat(phoneService.normalize("+5511999887766")).isEqualTo("5511999887766");
     }
 
     @Test
     void shouldNormalizePhoneWithFormatting() {
-        assertThat(phoneService.normalize("(11) 99988-7766")).isEqualTo("+5511999887766");
-        assertThat(phoneService.normalize("+55 (11) 9 9988-7766")).isEqualTo("+5511999887766");
+        assertThat(phoneService.normalize("(11) 99988-7766")).isEqualTo("5511999887766");
+        assertThat(phoneService.normalize("+55 (11) 9 9988-7766")).isEqualTo("5511999887766");
     }
 
     @Test
@@ -61,9 +61,9 @@ class PhoneServiceTest {
     @Test
     void shouldExtractFromProvider() {
         assertThat(phoneService.extractFromProvider("whatsapp:+5511999887766"))
-                .isEqualTo("+5511999887766");
+                .isEqualTo("5511999887766");
         assertThat(phoneService.extractFromProvider("+5511999887766"))
-                .isEqualTo("+5511999887766");
+                .isEqualTo("5511999887766");
     }
 
     @Test

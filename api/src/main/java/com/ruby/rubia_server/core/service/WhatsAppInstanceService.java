@@ -2,14 +2,12 @@ package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
-import com.ruby.rubia_server.core.enums.WhatsAppInstanceStatus;
 import com.ruby.rubia_server.core.repository.WhatsAppInstanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -75,7 +73,6 @@ public class WhatsAppInstanceService {
                 .phoneNumber(phoneNumber)
                 .displayName(displayName)
                 .isPrimary(isFirstInstance) // First instance becomes primary
-                .status(WhatsAppInstanceStatus.NOT_CONFIGURED)
                 .isActive(true)
                 .build();
 
@@ -83,22 +80,6 @@ public class WhatsAppInstanceService {
     }
     
 
-    @Transactional
-    public WhatsAppInstance updateInstanceStatus(UUID instanceId, WhatsAppInstanceStatus status) {
-        WhatsAppInstance instance = whatsappInstanceRepository.findById(instanceId)
-                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
-
-        instance.setStatus(status);
-        instance.setLastStatusCheck(LocalDateTime.now());
-
-        if (status == WhatsAppInstanceStatus.CONNECTED) {
-            instance.setLastConnectedAt(LocalDateTime.now());
-            instance.setErrorMessage(null);
-        }
-
-        log.info("Updated WhatsApp instance {} status to {}", instanceId, status);
-        return whatsappInstanceRepository.save(instance);
-    }
 
     @Transactional
     public WhatsAppInstance updateInstanceConfiguration(UUID instanceId, String instanceIdValue, String accessToken) {
@@ -107,24 +88,11 @@ public class WhatsAppInstanceService {
 
         instance.setInstanceId(instanceIdValue);
         instance.setAccessToken(accessToken);
-        instance.setStatus(WhatsAppInstanceStatus.CONFIGURING);
 
         log.info("Updated WhatsApp instance {} configuration", instanceId);
         return whatsappInstanceRepository.save(instance);
     }
 
-    @Transactional
-    public void markInstanceAsError(UUID instanceId, String errorMessage) {
-        WhatsAppInstance instance = whatsappInstanceRepository.findById(instanceId)
-                .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
-
-        instance.setStatus(WhatsAppInstanceStatus.ERROR);
-        instance.setErrorMessage(errorMessage);
-        instance.setLastStatusCheck(LocalDateTime.now());
-
-        log.error("Marked WhatsApp instance {} as error: {}", instanceId, errorMessage);
-        whatsappInstanceRepository.save(instance);
-    }
 
     @Transactional
     public void setPrimaryInstance(UUID instanceId) {
@@ -154,7 +122,6 @@ public class WhatsAppInstanceService {
                 .orElseThrow(() -> new IllegalArgumentException("WhatsApp instance not found"));
 
         instance.setIsActive(false);
-        instance.setStatus(WhatsAppInstanceStatus.SUSPENDED);
 
         // If this was the primary instance, make another instance primary
         if (instance.getIsPrimary()) {
@@ -174,5 +141,48 @@ public class WhatsAppInstanceService {
 
     public Optional<WhatsAppInstance> findByInstanceId(String instanceId) {
         return whatsappInstanceRepository.findByInstanceIdAndIsActiveTrue(instanceId);
+    }
+
+    /**
+     * Finds the active connected WhatsApp instance for a company.
+     * Returns the primary instance if connected, otherwise the first connected instance.
+     */
+    public Optional<WhatsAppInstance> findActiveConnectedInstance(Company company) {
+        List<WhatsAppInstance> instances = findByCompany(company);
+        List<WhatsAppInstance> connectedInstances = instances.stream()
+            .filter(WhatsAppInstance::isConnected)
+            .toList();
+        
+        if (connectedInstances.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        // Return primary instance if connected
+        Optional<WhatsAppInstance> primaryInstance = connectedInstances.stream()
+            .filter(WhatsAppInstance::getIsPrimary)
+            .findFirst();
+            
+        if (primaryInstance.isPresent()) {
+            return primaryInstance;
+        }
+        
+        // Return first connected instance if no primary
+        return connectedInstances.stream().findFirst();
+    }
+
+    /**
+     * Finds the active WhatsApp instance to use for messaging for a specific phone number.
+     * This method helps determine which instance should handle outgoing messages.
+     */
+    public Optional<WhatsAppInstance> findInstanceForMessaging(String phoneNumber) {
+        // First try to find instance by phone number
+        Optional<WhatsAppInstance> instanceByPhone = findByPhoneNumber(phoneNumber);
+        if (instanceByPhone.isPresent() && instanceByPhone.get().isConnected()) {
+            return instanceByPhone;
+        }
+        
+        // If not found or not connected, return any connected instance for the company
+        // This requires company context, which should be available from security context
+        return Optional.empty(); // Implementation depends on how company context is resolved
     }
 }

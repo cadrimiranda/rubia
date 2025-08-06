@@ -101,7 +101,7 @@ const generateContactData = (): CreateCustomerRequest => {
  */
 export const processCampaignFile = async (
   campaignData: CampaignData,
-  file: File,
+  _file: File,
   selectedTemplates: ConversationTemplate[]
 ): Promise<{
   campaignId: string
@@ -118,7 +118,6 @@ export const processCampaignFile = async (
   const campaignId = `camp_${Date.now()}`
   
   // Fixar em exatamente 20 contatos para novas campanhas criadas
-  const contactsFromFile = 20
   const contactsProcessed = 20
   
   
@@ -132,7 +131,11 @@ export const processCampaignFile = async (
     endDate: campaignData.endDate,
     status: 'active',
     color: ['#3b82f6', '#dc2626', '#059669', '#7c3aed', '#f59e0b'][Math.floor(Math.random() * 5)],
-    templatesUsed: selectedTemplates.map(t => t.id)
+    templatesUsed: selectedTemplates.length,
+    totalContacts: 0, // Will be updated after contacts are generated
+    contactsReached: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
   
   // Adicionar à lista de campanhas mock
@@ -159,6 +162,7 @@ export const processCampaignFile = async (
       whatsappId: contactData.whatsappId,
       profileUrl: contactData.profileUrl,
       isBlocked: false,
+      companyId: 'company_1',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -173,6 +177,9 @@ export const processCampaignFile = async (
     
     newContacts.push(contact)
   }
+  
+  // Update campaign with actual contact count
+  newCampaign.totalContacts = newContacts.length;
   
   // Simular delay de criação de conversas
   await new Promise(resolve => setTimeout(resolve, 1000))
@@ -191,7 +198,7 @@ export const processCampaignFile = async (
     const conversation: ConversationDTO = {
       id: `conv_${campaignId}_${i}`,
       customerId: contact.customer.id,
-      customer: contact.customer,
+      companyId: 'mock-company',
       status: 'ENTRADA', // Sempre ENTRADA = Ativos
       channel: 'WHATSAPP',
       priority: 1,
@@ -252,16 +259,16 @@ export const processCampaignFile = async (
 const generateAutomaticResponse = async (
   contact: CampaignContact
 ): Promise<void> => {
-  const responses = [
-    'Oi! Obrigado por entrar em contato. Tenho interesse em saber mais sobre a doação.',
-    'Olá! Gostaria de agendar uma doação, qual o melhor horário?',
-    'Oi, tudo bem? Fiz doação mês passado, quando posso doar novamente?',
-    'Olá! Tenho algumas dúvidas sobre o processo de doação.',
-    'Oi! Posso levar um amigo para doar junto comigo?',
-    'Olá! Qual o endereço do centro de doação?'
-  ]
+  // const responses = [
+  //   'Oi! Obrigado por entrar em contato. Tenho interesse em saber mais sobre a doação.',
+  //   'Olá! Gostaria de agendar uma doação, qual o melhor horário?',
+  //   'Oi, tudo bem? Fiz doação mês passado, quando posso doar novamente?',
+  //   'Olá! Tenho algumas dúvidas sobre o processo de doação.',
+  //   'Oi! Posso levar um amigo para doar junto comigo?',
+  //   'Olá! Qual o endereço do centro de doação?'
+  // ]
   
-  const response = responses[Math.floor(Math.random() * responses.length)]
+  // const response = responses[Math.floor(Math.random() * responses.length)]
   
   // Simular delay de resposta (30 segundos a 5 minutos)
   const responseDelay = Math.floor(Math.random() * 270 + 30) * 1000

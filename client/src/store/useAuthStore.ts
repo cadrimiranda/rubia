@@ -328,7 +328,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     if ((state as AuthState & { _initialized?: boolean })._initialized) {
       return
     }
-    set({ isLoading: true, ...state, _initialized: true } as AuthState & { _initialized: boolean })
+    set({ ...state, isLoading: true, _initialized: true } as AuthState & { _initialized: boolean })
     
     try {
       // Inicializar contexto da empresa primeiro
