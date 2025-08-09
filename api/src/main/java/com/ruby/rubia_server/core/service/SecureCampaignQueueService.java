@@ -228,7 +228,21 @@ public class SecureCampaignQueueService {
 
             // Verificar se campanha ainda está ativa
             String stateKey = STATE_KEY_PREFIX + item.getCampaignId();
-            CampaignState state = (CampaignState) redisTemplate.opsForValue().get(stateKey);
+            Object stateObj = redisTemplate.opsForValue().get(stateKey);
+            CampaignState state = null;
+            
+            if (stateObj instanceof CampaignState) {
+                state = (CampaignState) stateObj;
+            } else if (stateObj instanceof java.util.LinkedHashMap) {
+                // Converter LinkedHashMap para CampaignState
+                try {
+                    String json = objectMapper.writeValueAsString(stateObj);
+                    state = objectMapper.readValue(json, CampaignState.class);
+                } catch (Exception e) {
+                    log.error("Erro ao converter estado da campanha: {}", e.getMessage());
+                    return false;
+                }
+            }
             
             if (state == null || state.getStatus() != CampaignStatus.ACTIVE) {
                 log.debug("Campanha {} não está mais ativa", item.getCampaignId());
@@ -399,7 +413,20 @@ public class SecureCampaignQueueService {
     private void updateCampaignStateInRedis(UUID campaignId, boolean success) {
         try {
             String stateKey = STATE_KEY_PREFIX + campaignId;
-            CampaignState state = (CampaignState) redisTemplate.opsForValue().get(stateKey);
+            Object stateObj = redisTemplate.opsForValue().get(stateKey);
+            CampaignState state = null;
+            
+            if (stateObj instanceof CampaignState) {
+                state = (CampaignState) stateObj;
+            } else if (stateObj instanceof java.util.LinkedHashMap) {
+                try {
+                    String json = objectMapper.writeValueAsString(stateObj);
+                    state = objectMapper.readValue(json, CampaignState.class);
+                } catch (Exception e) {
+                    log.error("Erro ao converter estado da campanha: {}", e.getMessage());
+                    return;
+                }
+            }
             
             if (state != null) {
                 state.setProcessedContacts(state.getProcessedContacts() + 1);

@@ -592,14 +592,18 @@ public class CampaignProcessingService {
         boolean hasDraftMessage = messageService.hasDraftMessage(conversation.getId());
         
         if (!hasDraftMessage) {
-            // Criar Mensagem DRAFT com o template selecionado
+            // Personalizar o conteúdo do template antes de criar a mensagem DRAFT
+            String personalizedContent = personalizeTemplateContent(selectedTemplate.getContent(), customerDTO);
+            
+            // Criar Mensagem DRAFT com o template personalizado
             CreateMessageDTO messageDTO = CreateMessageDTO.builder()
                 .conversationId(conversation.getId())
                 .companyId(companyId) // Necessário para validações
-                .content(selectedTemplate.getContent()) // Conteúdo do template
+                .content(personalizedContent) // Conteúdo do template personalizado
                 .senderType(SenderType.AGENT) // Será enviado pelo agente
                 .status(MessageStatus.DRAFT) // Status DRAFT
                 .messageTemplateId(selectedTemplate.getId()) // Referência ao template
+                .campaignContactId(campaignContact.getId()) // Relacionamento direto
                 .build();
             
             messageService.create(messageDTO);
@@ -609,5 +613,20 @@ public class CampaignProcessingService {
                  conversation.getId(), customerDTO.getName(), campaign.getName());
         
         return campaignContact;
+    }
+
+    /**
+     * Personaliza o conteúdo do template substituindo variáveis pelos dados do cliente
+     */
+    private String personalizeTemplateContent(String template, CustomerDTO customer) {
+        String message = template;
+        
+        if (customer != null && customer.getName() != null) {
+            message = message.replace("{{nome}}", customer.getName());
+        } else {
+            message = message.replace("{{nome}}", "");
+        }
+        
+        return message;
     }
 }

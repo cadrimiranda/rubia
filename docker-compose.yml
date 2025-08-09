@@ -43,15 +43,17 @@ services:
   redis:
     image: redis:7-alpine
     container_name: rubia-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - rubia-network
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -89,6 +91,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: rubia_password
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+      SPRING_REDIS_DATABASE: ${REDIS_DATABASE:-0}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: rubia_user

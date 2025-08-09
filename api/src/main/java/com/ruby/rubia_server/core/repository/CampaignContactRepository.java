@@ -21,6 +21,8 @@ public interface CampaignContactRepository extends JpaRepository<CampaignContact
     
     List<CampaignContact> findByCustomerIdAndStatus(UUID customerId, CampaignContactStatus status);
     
+    List<CampaignContact> findByCustomer_PhoneAndStatus(String customerPhone, CampaignContactStatus status);
+    
     long countByCampaignId(UUID campaignId);
     
     long countByCustomerId(UUID customerId);

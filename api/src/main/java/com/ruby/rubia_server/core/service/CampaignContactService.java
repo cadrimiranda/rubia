@@ -101,6 +101,25 @@ public class CampaignContactService {
         return campaignContactRepository.findByCustomerIdAndStatus(customerId, status);
     }
 
+    @Transactional(readOnly = true)
+    public List<CampaignContact> findPendingByCustomerPhone(String customerPhone) {
+        log.debug("Finding pending CampaignContacts by customer phone: {}", customerPhone);
+        return campaignContactRepository.findByCustomer_PhoneAndStatus(customerPhone, CampaignContactStatus.PENDING);
+    }
+
+    @Transactional
+    public void markAsSentByCustomerPhone(String customerPhone, String reason) {
+        log.debug("Marking CampaignContacts as SENT for phone: {} (reason: {})", customerPhone, reason);
+        List<CampaignContact> pendingContacts = findPendingByCustomerPhone(customerPhone);
+        
+        for (CampaignContact contact : pendingContacts) {
+            contact.setStatus(CampaignContactStatus.SENT);
+            contact.setMessageSentAt(LocalDateTime.now());
+            campaignContactRepository.save(contact);
+            log.info("Marked CampaignContact {} as SENT due to manual sending", contact.getId());
+        }
+    }
+
     @Transactional
     public Optional<CampaignContact> update(UUID id, UpdateCampaignContactDTO updateDTO) {
         log.debug("Updating CampaignContact with id: {}", id);

@@ -75,6 +75,10 @@ public class Message {
     @JoinColumn(name = "message_template_id")
     private MessageTemplate messageTemplate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_contact_id")
+    private CampaignContact campaignContact;
+
     // A relação com ConversationMedia permanece como está (One-to-One opcional)
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_media_id", unique = true)

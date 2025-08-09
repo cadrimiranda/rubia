@@ -67,6 +67,12 @@ public class MessagingService {
     private WebSocketNotificationService webSocketNotificationService;
     
     @Autowired
+    private CampaignContactService campaignContactService;
+    
+    @Autowired
+    private MessageRepository messageRepository;
+    
+    @Autowired
     private PhoneService phoneService;
     
     @Autowired
@@ -94,7 +100,15 @@ public class MessagingService {
             fromNumber = getUserWhatsappNumber(userId, companyId);
         }
         
-        return currentAdapter.sendMessage(to, message);
+        // Enviar mensagem
+        MessageResult result = currentAdapter.sendMessage(to, message);
+        
+        // Se mensagem enviada com sucesso, sincronizar com campanhas
+        if (result.isSuccess()) {
+            syncWithCampaigns(to, "Manual sending via MessagingService");
+        }
+        
+        return result;
     }
     
     public MessageResult sendMediaMessage(String to, String mediaUrl, String caption) {
@@ -112,7 +126,15 @@ public class MessagingService {
             fromNumber = getUserWhatsappNumber(userId, companyId);
         }
         
-        return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+        // Enviar mensagem de mídia
+        MessageResult result = currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+        
+        // Se mensagem enviada com sucesso, sincronizar com campanhas
+        if (result.isSuccess()) {
+            syncWithCampaigns(to, "Manual media sending via MessagingService");
+        }
+        
+        return result;
     }
     
     public IncomingMessage parseIncomingMessage(Object webhookPayload) {
@@ -431,5 +453,63 @@ public class MessagingService {
 
     public MessageResult sendMediaByUrl(String to, String mediaUrl, String caption) {
         return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+    }
+
+    /**
+     * Sincroniza envio manual com campanhas ativas
+     * Marca mensagens DRAFT específicas como SENT e atualiza CampaignContact
+     * OTIMIZADO: Busca direta por ID ao invés de por telefone
+     */
+    private void syncWithCampaigns(String customerPhone, String reason) {
+        try {
+            // Normalizar telefone
+            String normalizedPhone = phoneService.normalize(customerPhone);
+            
+            // Buscar campanhas pendentes para este telefone (mantido como fallback)
+            List<com.ruby.rubia_server.core.entity.CampaignContact> pendingContacts = 
+                campaignContactService.findPendingByCustomerPhone(normalizedPhone);
+            
+            if (!pendingContacts.isEmpty()) {
+                logger.info("Found {} pending campaign contacts for phone {}. Updating DRAFT messages to SENT.", 
+                    pendingContacts.size(), normalizedPhone);
+                
+                int updatedMessages = 0;
+                
+                for (com.ruby.rubia_server.core.entity.CampaignContact contact : pendingContacts) {
+                    // OTIMIZAÇÃO: Buscar mensagem DRAFT diretamente pelo CampaignContact ID
+                    Optional<com.ruby.rubia_server.core.entity.Message> draftMessage = 
+                        messageRepository.findByCampaignContactIdAndStatus(contact.getId(), 
+                            com.ruby.rubia_server.core.enums.MessageStatus.DRAFT);
+                    
+                    if (draftMessage.isPresent()) {
+                        // Atualizar mensagem para SENT
+                        com.ruby.rubia_server.core.entity.Message message = draftMessage.get();
+                        message.setStatus(com.ruby.rubia_server.core.enums.MessageStatus.SENT);
+                        messageRepository.save(message);
+                        
+                        // Atualizar CampaignContact
+                        contact.setStatus(com.ruby.rubia_server.core.enums.CampaignContactStatus.SENT);
+                        contact.setMessageSentAt(java.time.LocalDateTime.now());
+                        // campaignContactService salva automaticamente (gerenciado)
+                        
+                        updatedMessages++;
+                        
+                        logger.debug("Updated DRAFT message {} to SENT for CampaignContact {}", 
+                            message.getId(), contact.getId());
+                    }
+                }
+                
+                logger.info("Successfully synchronized {} DRAFT messages with campaign contacts (reason: {})", 
+                    updatedMessages, reason);
+                    
+            } else {
+                logger.debug("No pending campaign contacts found for phone {}", normalizedPhone);
+            }
+            
+        } catch (Exception e) {
+            // Log erro mas não falha o envio principal
+            logger.error("Error synchronizing manual message sending with campaigns for phone {}: {}", 
+                customerPhone, e.getMessage(), e);
+        }
     }
 }

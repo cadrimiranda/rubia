@@ -13,6 +13,7 @@ import com.ruby.rubia_server.core.enums.MediaType;
 import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.core.repository.CampaignContactRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
@@ -43,6 +44,7 @@ public class MessageService {
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
     private final MessageTemplateRepository messageTemplateRepository;
+    private final CampaignContactRepository campaignContactRepository;
     private final ConversationMediaService conversationMediaService;
     
     public boolean hasDraftMessage(UUID conversationId) {
@@ -83,6 +85,13 @@ public class MessageService {
                     .orElseThrow(() -> new IllegalArgumentException("Template de mensagem não encontrado"));
         }
         
+        // Get CampaignContact if provided
+        com.ruby.rubia_server.core.entity.CampaignContact campaignContact = null;
+        if (createDTO.getCampaignContactId() != null) {
+            campaignContact = campaignContactRepository.findById(createDTO.getCampaignContactId())
+                    .orElseThrow(() -> new IllegalArgumentException("CampaignContact não encontrado"));
+        }
+        
         // Create ConversationMedia if this is a media message
         ConversationMedia media = null;
         if (createDTO.getMediaUrl() != null && !createDTO.getMediaUrl().trim().isEmpty()) {
@@ -120,6 +129,7 @@ public class MessageService {
                 .aiConfidence(createDTO.getAiConfidence())
                 .status(createDTO.getStatus())
                 .messageTemplate(messageTemplate)
+                .campaignContact(campaignContact)
                 .media(media)
                 .build();
         
