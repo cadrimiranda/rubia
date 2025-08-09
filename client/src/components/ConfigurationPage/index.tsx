@@ -47,6 +47,7 @@ import {
 import { useAuthStore } from "../../store/useAuthStore";
 import { aiModelService } from "../../services/aiModelService";
 import AgentManagement from "../AgentManagement";
+import { userApi } from "../../api";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -109,6 +110,10 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     MessageTemplateRevision[]
   >([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    userApi.clearQueue();
+  }, []);
 
   // Carregar templates da API
   const loadTemplates = useCallback(async () => {

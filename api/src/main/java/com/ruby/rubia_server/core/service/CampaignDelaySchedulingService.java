@@ -63,7 +63,11 @@ public class CampaignDelaySchedulingService {
     private Instant calculateScheduledTime(int delayMs) {
         Instant proposedTime = Instant.now().plusMillis(delayMs);
         
+        log.debug("🕐 calculateScheduledTime: delayMs={}, proposedTime={}, businessHoursOnly={}", 
+                delayMs, proposedTime, properties.isBusinessHoursOnly());
+        
         if (!properties.isBusinessHoursOnly()) {
+            log.debug("🕐 Horário comercial desabilitado, usando horário proposto: {}", proposedTime);
             return proposedTime;
         }
 
@@ -71,8 +75,13 @@ public class CampaignDelaySchedulingService {
         LocalTime businessStart = LocalTime.of(properties.getBusinessStartHour(), 0);
         LocalTime businessEnd = LocalTime.of(properties.getBusinessEndHour(), 0);
 
+        log.debug("🕐 Horários: proposto={}, início={}, fim={}, dentro={}", 
+                proposedLocalTime, businessStart, businessEnd, 
+                proposedLocalTime.isAfter(businessStart) && proposedLocalTime.isBefore(businessEnd));
+
         // Se está dentro do horário comercial, mantém o horário proposto
         if (proposedLocalTime.isAfter(businessStart) && proposedLocalTime.isBefore(businessEnd)) {
+            log.debug("🕐 Dentro do horário comercial, mantendo: {}", proposedTime);
             return proposedTime;
         }
 

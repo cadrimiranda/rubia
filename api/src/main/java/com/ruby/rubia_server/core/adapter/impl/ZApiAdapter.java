@@ -86,10 +86,37 @@ public class ZApiAdapter implements MessagingAdapter {
     }
 
     /**
+     * Gets the active WhatsApp instance for the specified company
+     * and validates it's ready for messaging operations
+     */
+    private WhatsAppInstance getActiveInstanceForCompany(com.ruby.rubia_server.core.entity.Company company) {
+        try {
+            WhatsAppInstance instance = whatsAppInstanceService.findActiveConnectedInstance(company)
+                .orElseThrow(() -> new IllegalStateException("No connected WhatsApp instance found for company " + company.getId()));
+            
+            // Validate instance is ready for messaging
+            instanceValidator.validateInstanceReadyForMessaging(instance);
+            
+            return instance;
+        } catch (Exception e) {
+            log.error("Error getting active instance for company {}: {}", company.getId(), e.getMessage());
+            throw new IllegalStateException("Cannot determine active WhatsApp instance for company " + company.getId(), e);
+        }
+    }
+
+    /**
      * Builds the Z-API URL for the given endpoint using active instance data
      */
     private String buildZApiUrl(String endpoint) {
         WhatsAppInstance instance = getActiveInstance();
+        return urlFactory.buildUrl(instance, endpoint);
+    }
+
+    /**
+     * Builds the Z-API URL for the given endpoint using company-specific instance data
+     */
+    private String buildZApiUrlForCompany(String endpoint, com.ruby.rubia_server.core.entity.Company company) {
+        WhatsAppInstance instance = getActiveInstanceForCompany(company);
         return urlFactory.buildUrl(instance, endpoint);
     }
 
@@ -139,6 +166,56 @@ public class ZApiAdapter implements MessagingAdapter {
             throw e;
         } catch (Exception e) {
             String error = "Error sending message via Z-API: " + e.getMessage();
+            log.error(error, e);
+            return MessageResult.error(error, "z-api");
+        }
+    }
+
+    /**
+     * Sends a message using the specified company context (for background tasks)
+     */
+    public MessageResult sendMessage(String to, String message, com.ruby.rubia_server.core.entity.Company company) {
+        try {
+            log.info("Sending Z-API message to: {} for company: {} with message: {}", to, company.getId(), message.substring(0, Math.min(50, message.length())));
+            
+            // Validate input parameters
+            instanceValidator.validatePhoneNumber(to);
+            instanceValidator.validateMessageContent(message);
+
+            String url = buildZApiUrlForCompany("send-text", company);
+            log.info("Z-API URL: {}", url);
+            
+            String formattedPhone = phoneService.formatForZApi(to);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("phone", formattedPhone);
+            requestBody.put("message", message);
+            
+            log.info("Request body: phone={}, message length={}", formattedPhone, message.length());
+
+            HttpHeaders headers = createHeaders();
+            log.info("Headers: {}", headers.toSingleValueMap());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url, HttpMethod.POST, request, Map.class);
+
+            log.info("Z-API Response: status={}, body={}", response.getStatusCode(), response.getBody());
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+                String messageId = (String) responseBody.get("messageId");
+                
+                log.info("Z-API message sent successfully for company {}. Message ID: {}", company.getId(), messageId);
+                return MessageResult.success(messageId, "sent", "z-api");
+            } else {
+                String error = "Failed to send message via Z-API for company " + company.getId() + " - Status: " + response.getStatusCode();
+                log.error(error);
+                return MessageResult.error(error, "z-api");
+            }
+
+        } catch (Exception e) {
+            String error = "Error sending message via Z-API for company " + company.getId() + ": " + e.getMessage();
             log.error(error, e);
             return MessageResult.error(error, "z-api");
         }

@@ -90,7 +90,15 @@ public class MessagingService {
         return sendMessage(to, message, null, null);
     }
     
+    public MessageResult sendMessage(String to, String message, Company company) {
+        return sendMessage(to, message, null, null, company);
+    }
+    
     public MessageResult sendMessage(String to, String message, UUID companyId, UUID userId) {
+        return sendMessage(to, message, companyId, userId, null);
+    }
+    
+    public MessageResult sendMessage(String to, String message, UUID companyId, UUID userId, Company company) {
         logger.info("📱 MessagingService.sendMessage chamado - to: {}, currentAdapter: {}", 
                 to, currentAdapter != null ? currentAdapter.getProviderName() : "null");
         
@@ -106,7 +114,12 @@ public class MessagingService {
         
         // Enviar mensagem
         logger.info("📱 CHAMANDO currentAdapter.sendMessage - adapter: {}", currentAdapter.getProviderName());
-        MessageResult result = currentAdapter.sendMessage(to, message);
+        MessageResult result;
+        if (company != null && currentAdapter instanceof ZApiAdapter) {
+            result = ((ZApiAdapter) currentAdapter).sendMessage(to, message, company);
+        } else {
+            result = currentAdapter.sendMessage(to, message);
+        }
         logger.info("📱 RESULTADO do adapter: success={}, messageId={}, error={}", 
                 result.isSuccess(), result.getMessageId(), result.getError());
         

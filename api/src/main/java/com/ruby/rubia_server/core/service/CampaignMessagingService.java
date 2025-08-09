@@ -148,11 +148,12 @@ public class CampaignMessagingService {
             String personalizedMessage = personalizeMessage(templateContent, campaignContact);
             log.info("🚀 Mensagem personalizada: {}", personalizedMessage.substring(0, Math.min(50, personalizedMessage.length())) + "...");
 
-            // Enviar via MessagingService
+            // Enviar via MessagingService com contexto da empresa
             log.info("🚀 CHAMANDO MessagingService.sendMessage para telefone: {}", customerPhone);
             MessageResult result = messagingService.sendMessage(
                 customerPhone, 
-                personalizedMessage
+                personalizedMessage,
+                campaignContact.getCustomer().getCompany()
             );
             log.info("🚀 RESULTADO do MessagingService: success={}, messageId={}, error={}", 
                     result.isSuccess(), result.getMessageId(), result.getError());
