@@ -93,6 +93,8 @@ public class SecureCampaignQueueService {
         log.info("🔒 Adicionando campanha {} à fila Redis (empresa={}, usuário={})", 
                 campaignId, companyId, userId);
         
+        log.info("🔍 DEBUGING COMPANY CONTEXT - Input companyId: {}", companyId);
+        
         try {
             // Validar permissões
             if (!validateCampaignAccess(campaignId, companyId)) {
@@ -306,16 +308,33 @@ public class SecureCampaignQueueService {
      */
     private boolean validateCampaignAccess(UUID campaignId, String companyId) {
         try {
+            log.debug("🔍 Validando acesso à campanha: {} para empresa: {}", campaignId, companyId);
+            
             Optional<Campaign> optionalCampaign = campaignService.findById(campaignId);
             if (optionalCampaign.isEmpty()) {
+                log.warn("⚠️ Campanha {} não encontrada", campaignId);
                 return false;
             }
             
             Campaign campaign = optionalCampaign.get();
-            return campaign.getCompany().getId().toString().equals(companyId);
+            String campaignCompanyId = campaign.getCompany().getId().toString();
+            
+            log.info("🔍 Comparando IDs - Campanha pertence à empresa: {}, Usuário da empresa: {}", 
+                    campaignCompanyId, companyId);
+            
+            boolean hasAccess = campaignCompanyId.equals(companyId);
+            
+            if (!hasAccess) {
+                log.warn("🚨 ACESSO NEGADO: Campanha {} (empresa: {}) sendo acessada por usuário da empresa: {}", 
+                        campaignId, campaignCompanyId, companyId);
+            } else {
+                log.debug("✅ Acesso autorizado para campanha {} da empresa {}", campaignId, companyId);
+            }
+            
+            return hasAccess;
             
         } catch (Exception e) {
-            log.error("Erro na validação de acesso: {}", e.getMessage());
+            log.error("❌ Erro na validação de acesso à campanha {}: {}", campaignId, e.getMessage(), e);
             return false;
         }
     }
@@ -672,6 +691,50 @@ public class SecureCampaignQueueService {
             return (estimatedMinutes / 60) + " horas";
         } else {
             return (estimatedMinutes / 1440) + " dias";
+        }
+    }
+
+    /**
+     * Remove itens não autorizados da fila Redis
+     */
+    public void cleanUnauthorizedQueueItems() {
+        log.info("🧹 Iniciando limpeza de itens não autorizados na fila Redis");
+        
+        try {
+            // Buscar todos os itens da fila
+            Set<Object> queueItems = redisTemplate.opsForZSet()
+                .range(QUEUE_KEY, 0, -1);
+            
+            if (queueItems.isEmpty()) {
+                log.info("Fila Redis está vazia");
+                return;
+            }
+            
+            int removedCount = 0;
+            for (Object itemObj : queueItems) {
+                try {
+                    SecureCampaignQueueItem item = objectMapper.readValue(
+                        itemObj.toString(), SecureCampaignQueueItem.class);
+                    
+                    // Verificar se o item é autorizado
+                    if (!validateCampaignAccess(item.getCampaignId(), item.getCompanyId())) {
+                        redisTemplate.opsForZSet().remove(QUEUE_KEY, itemObj);
+                        removedCount++;
+                        log.debug("Removido item não autorizado: campanha={}, empresa={}", 
+                                item.getCampaignId(), item.getCompanyId());
+                    }
+                    
+                } catch (Exception e) {
+                    log.warn("Erro ao processar item da fila durante limpeza, removendo: {}", e.getMessage());
+                    redisTemplate.opsForZSet().remove(QUEUE_KEY, itemObj);
+                    removedCount++;
+                }
+            }
+            
+            log.info("✅ Limpeza concluída: {} itens removidos da fila", removedCount);
+            
+        } catch (Exception e) {
+            log.error("❌ Erro durante limpeza da fila: {}", e.getMessage(), e);
         }
     }
 }

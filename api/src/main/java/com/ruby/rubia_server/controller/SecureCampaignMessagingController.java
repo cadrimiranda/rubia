@@ -33,6 +33,31 @@ public class SecureCampaignMessagingController {
     private final CampaignService campaignService;
 
     /**
+     * Limpa itens não autorizados da fila Redis
+     */
+    @PostMapping("/queue/clean")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> cleanUnauthorizedQueueItems(Authentication authentication) {
+        log.info("🧹 Limpeza da fila solicitada por: {}", authentication.getName());
+        
+        try {
+            secureCampaignQueueService.cleanUnauthorizedQueueItems();
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Limpeza da fila executada com sucesso",
+                "timestamp", java.time.LocalDateTime.now()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Erro durante limpeza da fila: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Erro durante limpeza da fila: " + e.getMessage(),
+                "timestamp", java.time.LocalDateTime.now()
+            ));
+        }
+    }
+
+    /**
      * Adiciona campanha à fila segura (apenas usuários autenticados da empresa)
      */
     @PostMapping("/{campaignId}/start-messaging")

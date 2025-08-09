@@ -32,7 +32,7 @@ public class CreateCampaignDTO {
     private String description;
     
     @Builder.Default
-    private CampaignStatus status = CampaignStatus.DRAFT;
+    private CampaignStatus status = CampaignStatus.ACTIVE;
     
     @NotNull(message = "Start date is required")
     private LocalDate startDate;

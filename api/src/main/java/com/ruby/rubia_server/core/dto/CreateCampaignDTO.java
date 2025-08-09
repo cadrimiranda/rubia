@@ -28,8 +28,8 @@ public class CreateCampaignDTO {
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
 
-    @NotNull(message = "Status is required")
-    private CampaignStatus status;
+    @Builder.Default
+    private CampaignStatus status = CampaignStatus.ACTIVE;
 
     private UUID createdByUserId;
 
