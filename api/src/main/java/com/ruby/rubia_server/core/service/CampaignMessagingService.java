@@ -135,19 +135,27 @@ public class CampaignMessagingService {
      * Executa o envio real da mensagem (sem Thread.sleep)
      */
     private boolean performActualSend(CampaignContact campaignContact) {
+        log.info("🚀 INICIANDO performActualSend para contato: {}", campaignContact.getId());
         try {
             String customerPhone = campaignContact.getCustomer().getPhone();
+            log.info("🚀 Telefone do cliente: {}", customerPhone);
+            
             MessageTemplate template = campaignContact.getCampaign().getInitialMessageTemplate();
             String templateContent = template.getContent();
+            log.info("🚀 Template content length: {}", templateContent != null ? templateContent.length() : "null");
             
             // Personalizar mensagem substituindo variáveis
             String personalizedMessage = personalizeMessage(templateContent, campaignContact);
+            log.info("🚀 Mensagem personalizada: {}", personalizedMessage.substring(0, Math.min(50, personalizedMessage.length())) + "...");
 
             // Enviar via MessagingService
+            log.info("🚀 CHAMANDO MessagingService.sendMessage para telefone: {}", customerPhone);
             MessageResult result = messagingService.sendMessage(
                 customerPhone, 
                 personalizedMessage
             );
+            log.info("🚀 RESULTADO do MessagingService: success={}, messageId={}, error={}", 
+                    result.isSuccess(), result.getMessageId(), result.getError());
 
             boolean success = result.isSuccess();
 

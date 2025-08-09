@@ -169,9 +169,12 @@ public class SecureCampaignQueueService {
         try {
             LocalDateTime now = LocalDateTime.now();
             
-            // Buscar itens prontos para processamento
+            // Buscar itens prontos para processamento (próximos 5 minutos)
+            LocalDateTime processingWindow = now.plusMinutes(5);
             Set<Object> queueItems = redisTemplate.opsForZSet()
-                .rangeByScore(QUEUE_KEY, 0, now.atZone(java.time.ZoneOffset.UTC).toEpochSecond());
+                .rangeByScore(QUEUE_KEY, 
+                    now.atZone(java.time.ZoneOffset.UTC).toEpochSecond(),
+                    processingWindow.atZone(java.time.ZoneOffset.UTC).toEpochSecond());
             
             if (queueItems.isEmpty()) {
                 return;

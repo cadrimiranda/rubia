@@ -91,8 +91,11 @@ public class MessagingService {
     }
     
     public MessageResult sendMessage(String to, String message, UUID companyId, UUID userId) {
+        logger.info("📱 MessagingService.sendMessage chamado - to: {}, currentAdapter: {}", 
+                to, currentAdapter != null ? currentAdapter.getProviderName() : "null");
+        
         if (currentAdapter == null) {
-            logger.error("No messaging adapter configured");
+            logger.error("❌ No messaging adapter configured");
             return MessageResult.error("No adapter available", "none");
         }
         
@@ -102,7 +105,10 @@ public class MessagingService {
         }
         
         // Enviar mensagem
+        logger.info("📱 CHAMANDO currentAdapter.sendMessage - adapter: {}", currentAdapter.getProviderName());
         MessageResult result = currentAdapter.sendMessage(to, message);
+        logger.info("📱 RESULTADO do adapter: success={}, messageId={}, error={}", 
+                result.isSuccess(), result.getMessageId(), result.getError());
         
         // Se mensagem enviada com sucesso, sincronizar com campanhas
         if (result.isSuccess()) {
