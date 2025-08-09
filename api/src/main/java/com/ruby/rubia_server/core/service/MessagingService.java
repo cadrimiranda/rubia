@@ -10,6 +10,7 @@ import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
+import com.ruby.rubia_server.core.entity.ChatLidMapping;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.SenderType;
@@ -375,9 +376,39 @@ public class MessagingService {
                 return conversationService.findById(conversation.get().getId(), customer.getCompany().getId());
             }
 
-            // Se não encontrou mapping, significa que é primeira mensagem do cliente
-            // Buscar conversa mais recente da empresa por telefone
-            logger.debug("🔍 Nenhum mapping encontrado, buscando conversa recente por telefone");
+            // Se não encontrou mapping por chatLid, procurar mappings de campanha por telefone
+            logger.debug("🔍 Nenhum mapping encontrado por chatLid, buscando mappings de campanha por telefone");
+            
+            List<ChatLidMapping> campaignMappings = chatLidMappingService.findMappingsByPhone(
+                customer.getPhone(), 
+                customer.getCompany().getId()
+            );
+            
+            // Procurar mapping de campanha sem chatLid (criado durante campanha)
+            Optional<ChatLidMapping> campaignMapping = campaignMappings.stream()
+                .filter(mapping -> mapping.getChatLid() == null && mapping.getFromCampaign())
+                .findFirst();
+                
+            if (campaignMapping.isPresent()) {
+                logger.info("✅ Mapping de campanha encontrado: {}, atualizando com chatLid", campaignMapping.get().getConversationId());
+                
+                // Atualizar mapping com chatLid
+                chatLidMappingService.updateMappingWithChatLid(campaignMapping.get().getConversationId(), chatLid);
+                
+                // Retornar conversa existente da campanha
+                ConversationDTO campaignConversation = conversationService.findById(
+                    campaignMapping.get().getConversationId(), 
+                    customer.getCompany().getId()
+                );
+                
+                if (campaignConversation != null) {
+                    logger.info("✅ Conversa de campanha reutilizada: {}", campaignConversation.getId());
+                    return campaignConversation;
+                }
+            }
+            
+            // Se não encontrou mapping de campanha, buscar conversa mais recente por customer
+            logger.debug("🔍 Nenhum mapping de campanha encontrado, buscando conversa recente por customer");
             
             List<ConversationDTO> customerConversations = conversationService
                 .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
