@@ -77,6 +77,9 @@ public class MessagingService {
     private PhoneService phoneService;
     
     @Autowired
+    private ChatLidMappingService chatLidMappingService;
+    
+    @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
         this.adapters = adapters;
         this.currentAdapter = adapters.isEmpty() ? null : adapters.get(0);
@@ -356,18 +359,80 @@ public class MessagingService {
     }
     
     private ConversationDTO findOrCreateConversationByChatLid(String chatLid, Customer customer) {
-        logger.debug("Looking for conversation with chatLid: {} for customer: {}", chatLid, customer.getId());
+        logger.debug("🔗 Buscando conversa usando ChatLidMappingService - chatLid: {}, customer: {}", chatLid, customer.getId());
         
-        // First, try to find conversation by chatLid if provided
-        if (chatLid != null && !chatLid.trim().isEmpty()) {
-            Optional<ConversationDTO> conversationByChatLid = conversationService.findByChatLid(chatLid);
-            if (conversationByChatLid.isPresent()) {
-                logger.debug("Found existing conversation by chatLid: {}", conversationByChatLid.get().getId());
-                return conversationByChatLid.get();
-            }
+        if (chatLid == null || chatLid.trim().isEmpty()) {
+            logger.debug("ChatLid vazio, usando método tradicional");
+            return findOrCreateConversationTraditional(customer);
         }
-        
-        // Fallback to existing logic: find by customer and company
+
+        try {
+            // Usar ChatLidMappingService para encontrar ou criar conversa
+            Optional<Conversation> conversation = chatLidMappingService.findConversationByChatLid(chatLid);
+            
+            if (conversation.isPresent()) {
+                logger.debug("✅ Conversa encontrada via mapping: {}", conversation.get().getId());
+                return conversationService.findById(conversation.get().getId(), customer.getCompany().getId());
+            }
+
+            // Se não encontrou mapping, significa que é primeira mensagem do cliente
+            // Buscar conversa mais recente da empresa por telefone
+            logger.debug("🔍 Nenhum mapping encontrado, buscando conversa recente por telefone");
+            
+            List<ConversationDTO> customerConversations = conversationService
+                .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
+            
+            Optional<ConversationDTO> recentConversation = customerConversations.stream()
+                .findFirst(); // Primeira conversa como fallback
+            
+            if (recentConversation.isPresent()) {
+                logger.info("✅ Conversa recente encontrada: {}, criando mapping", recentConversation.get().getId());
+                
+                // Criar mapping para a conversa existente
+                UUID instanceId = getCurrentWhatsAppInstanceId(customer.getCompany());
+                chatLidMappingService.findOrCreateMapping(
+                    chatLid, 
+                    customer.getPhone(), 
+                    customer.getCompany().getId(), 
+                    instanceId
+                );
+                
+                return recentConversation.get();
+            }
+
+            // Nenhuma conversa encontrada, criar nova
+            logger.info("📞 Criando nova conversa para chatLid: {} e customer: {}", chatLid, customer.getId());
+            
+            CreateConversationDTO createDTO = CreateConversationDTO.builder()
+                .customerId(customer.getId())
+                .channel(Channel.WHATSAPP)
+                .status(ConversationStatus.ENTRADA)
+                .priority(1)
+                .chatLid(chatLid)
+                .build();
+
+            ConversationDTO newConversation = conversationService.create(createDTO, customer.getCompany().getId());
+            
+            // Criar mapping para nova conversa
+            UUID instanceId = getCurrentWhatsAppInstanceId(customer.getCompany());
+            chatLidMappingService.findOrCreateMapping(
+                chatLid, 
+                customer.getPhone(), 
+                customer.getCompany().getId(), 
+                instanceId
+            );
+            
+            logger.info("🔗 Mapping criado para nova conversa: {}", newConversation.getId());
+            return newConversation;
+
+        } catch (Exception e) {
+            logger.error("❌ Erro ao usar ChatLidMappingService, usando método tradicional: {}", e.getMessage());
+            return findOrCreateConversationTraditional(customer);
+        }
+    }
+
+    private ConversationDTO findOrCreateConversationTraditional(Customer customer) {
+        // Fallback para método tradicional quando chatLid não está disponível
         List<ConversationDTO> customerConversations = conversationService
             .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
         
@@ -384,28 +449,29 @@ public class MessagingService {
         
         if (existingConversation.isPresent()) {
             logger.debug("Using existing WhatsApp conversation: {}", existingConversation.get().getId());
-            // Update the conversation with chatLid if it doesn't have one
-            ConversationDTO conversation = existingConversation.get();
-            if (chatLid != null && !chatLid.trim().isEmpty() && conversation.getChatLid() == null) {
-                logger.info("Updating conversation {} with chatLid: {}", conversation.getId(), chatLid);
-                conversationService.updateChatLid(conversation.getId(), chatLid);
-                conversation.setChatLid(chatLid);
-            }
-            return conversation;
+            return existingConversation.get();
         }
         
         // No active conversation found, create a new one
-        logger.info("Creating new conversation for customer: {} with chatLid: {}", customer.getId(), chatLid);
+        logger.info("Creating new conversation for customer: {}", customer.getId());
         
         CreateConversationDTO createDTO = CreateConversationDTO.builder()
             .customerId(customer.getId())
             .channel(Channel.WHATSAPP)
             .status(ConversationStatus.ENTRADA)
             .priority(1)
-            .chatLid(chatLid)
             .build();
         
         return conversationService.create(createDTO, customer.getCompany().getId());
+    }
+
+    private UUID getCurrentWhatsAppInstanceId(Company company) {
+        // Buscar instância ativa da empresa
+        return whatsAppInstanceRepository.findByCompanyAndIsActiveTrue(company)
+            .stream()
+            .findFirst()
+            .map(WhatsAppInstance::getId)
+            .orElse(null);
     }
 
     private ConversationDTO findOrCreateConversation(Customer customer) {

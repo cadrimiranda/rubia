@@ -4,12 +4,14 @@ import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageResult;
+import com.ruby.rubia_server.core.dto.ConversationDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -20,6 +22,8 @@ public class CampaignMessagingService {
     private final MessagingService messagingService;
     private final CampaignDelaySchedulingService delaySchedulingService;
     private final CampaignMessagingProperties properties;
+    private final ChatLidMappingService chatLidMappingService;
+    private final ConversationService conversationService;
 
     /**
      * Envia uma única mensagem para um contato da campanha de forma assíncrona
@@ -163,6 +167,9 @@ public class CampaignMessagingService {
             if (success) {
                 log.debug("Mensagem enviada com sucesso para contato {}: {} - MessageId: {}", 
                         campaignContact.getId(), customerPhone, result.getMessageId());
+                
+                // Criar mapping de campanha para facilitar resposta do cliente
+                createCampaignMapping(campaignContact, customerPhone);
             } else {
                 log.warn("Falha ao enviar mensagem para contato {}: {} - Erro: {}", 
                         campaignContact.getId(), customerPhone, result.getError());
@@ -198,5 +205,44 @@ public class CampaignMessagingService {
         // message = message.replace("{{data}}", LocalDate.now().format(formatter));
         
         return message;
+    }
+
+    /**
+     * Cria mapping de campanha para conversa quando mensagem é enviada
+     * Permite que resposta do cliente seja associada à conversa correta
+     */
+    private void createCampaignMapping(CampaignContact campaignContact, String customerPhone) {
+        try {
+            log.debug("🔗 Criando mapping de campanha para contato: {}", campaignContact.getId());
+
+            // Buscar conversa associada ao customer
+            List<ConversationDTO> conversations = conversationService
+                .findByCustomerAndCompany(campaignContact.getCustomer().getId(), campaignContact.getCustomer().getCompany().getId());
+            
+            Optional<ConversationDTO> conversation = conversations.stream()
+                .findFirst(); // Pegar a primeira conversa (mais recente seria ideal, mas usar primeira)
+
+            if (conversation.isPresent()) {
+                // Verificar se já existe mapping para esta conversa
+                if (chatLidMappingService.findMappingByConversationId(conversation.get().getId()).isEmpty()) {
+                    chatLidMappingService.createMappingForCampaign(
+                        conversation.get().getId(),
+                        customerPhone,
+                        campaignContact.getCustomer().getCompany().getId(),
+                        null // instanceId será preenchido quando cliente responder
+                    );
+                    log.info("🔗 Mapping de campanha criado para conversa: {}", conversation.get().getId());
+                } else {
+                    log.debug("Mapping já existe para conversa: {}", conversation.get().getId());
+                }
+            } else {
+                log.warn("Nenhuma conversa encontrada para criar mapping de campanha: {}", customerPhone);
+            }
+
+        } catch (Exception e) {
+            // Não falhar o envio da campanha se mapping falhar
+            log.warn("Erro ao criar mapping de campanha para contato {}: {}", 
+                    campaignContact.getId(), e.getMessage());
+        }
     }
 }

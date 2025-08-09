@@ -63,8 +63,13 @@ class CampaignOptimizationIntegrationTest {
     @BeforeEach
     void setUp() {
         delaySchedulingService = new CampaignDelaySchedulingService(taskScheduler, properties);
+        // Mock the new dependencies
+        ChatLidMappingService mockChatLidMappingService = mock(ChatLidMappingService.class);
+        ConversationService mockConversationService = mock(ConversationService.class);
+        
         campaignMessagingService = new CampaignMessagingService(
-            messagingService, delaySchedulingService, properties);
+            messagingService, delaySchedulingService, properties, 
+            mockChatLidMappingService, mockConversationService);
     }
 
     @Test

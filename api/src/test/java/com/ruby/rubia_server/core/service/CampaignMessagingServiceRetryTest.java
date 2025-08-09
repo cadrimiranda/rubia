@@ -55,7 +55,12 @@ class CampaignMessagingServiceRetryTest {
 
     @BeforeEach
     void setUp() {
-        service = new CampaignMessagingService(messagingService, delaySchedulingService, properties);
+        // Mock the new dependencies
+        ChatLidMappingService mockChatLidMappingService = mock(ChatLidMappingService.class);
+        ConversationService mockConversationService = mock(ConversationService.class);
+        
+        service = new CampaignMessagingService(messagingService, delaySchedulingService, properties, 
+                                             mockChatLidMappingService, mockConversationService);
         
         // Setup basic mocks
         when(campaignContact.getId()).thenReturn(UUID.randomUUID());
