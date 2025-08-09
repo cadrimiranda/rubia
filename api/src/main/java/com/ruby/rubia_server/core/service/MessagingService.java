@@ -18,6 +18,7 @@ import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.WhatsAppInstanceRepository;
+import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.service.CustomerService;
 import com.ruby.rubia_server.core.service.ConversationService;
 import com.ruby.rubia_server.core.service.MessageService;
