@@ -12,6 +12,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -68,7 +69,7 @@ class CampaignOptimizationIntegrationTest {
         // Mock the new dependencies
         ChatLidMappingService mockChatLidMappingService = mock(ChatLidMappingService.class);
         ConversationService mockConversationService = mock(ConversationService.class);
-        SecureCampaignQueueService mockSecureCampaignQueueService = mock(SecureCampaignQueueService.class);
+        ApplicationEventPublisher mockEventPublisher = mock(ApplicationEventPublisher.class);
         
         // Mock das novas dependências
         ScheduledExecutorService mockScheduledExecutor = mock(ScheduledExecutorService.class);
@@ -76,7 +77,7 @@ class CampaignOptimizationIntegrationTest {
         
         campaignMessagingService = new CampaignMessagingService(
             messagingService, delaySchedulingService, properties, 
-            mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService,
+            mockChatLidMappingService, mockConversationService, mockEventPublisher,
             mockScheduledExecutor, mockMeterRegistry);
     }
 

@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Customer;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,7 +50,10 @@ public class CampaignProcessingService {
     private final ConversationService conversationService;
     private final MessageService messageService;
     private final CampaignMessagingService campaignMessagingService;
-    private final SecureCampaignQueueService secureCampaignQueueService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
+    
+    private static final String QUEUE_KEY = "rubia:campaign:queue";
 
     public static class CampaignProcessingResult {
         private final Campaign campaign;
@@ -209,21 +214,63 @@ public class CampaignProcessingService {
                     campaign.getId(), created);
             
             try {
-                // Usar a versão segura (Redis) quando disponível
-                secureCampaignQueueService.enqueueCampaign(
-                    campaign.getId(), 
-                    companyId.toString(), 
-                    "system-auto"  // Identificador de processamento automático
-                );
+                // Adicionar contatos pendentes diretamente à fila do CampaignQueueProcessor
+                enqueueCampaignContacts(campaign, companyId.toString());
             } catch (Exception e) {
-                log.error("Erro ao adicionar campanha {} à fila segura: {}", 
+                log.error("Erro ao adicionar campanha {} à fila: {}", 
                         campaign.getId(), e.getMessage());
-                // Em produção, isso deve ser tratado como erro crítico
                 throw new RuntimeException("Falha ao adicionar campanha à fila de processamento", e);
             }
         }
 
         return new CampaignProcessingResult(campaign, campaignContacts, errors, processed, created, duplicates);
+    }
+
+    /**
+     * Adiciona contatos de campanha pendentes diretamente à fila do CampaignQueueProcessor
+     */
+    private void enqueueCampaignContacts(Campaign campaign, String companyId) {
+        log.info("🔄 Enfileirando contatos da campanha {} para processamento", campaign.getId());
+        
+        // Buscar contatos pendentes da campanha
+        List<CampaignContact> pendingContacts = campaignContactService
+            .findByCampaignIdAndStatus(campaign.getId(), CampaignContactStatus.PENDING);
+        
+        if (pendingContacts.isEmpty()) {
+            log.info("Nenhum contato pendente para campanha {}", campaign.getId());
+            return;
+        }
+        
+        int enqueued = 0;
+        long baseTimestamp = System.currentTimeMillis();
+        
+        for (int i = 0; i < pendingContacts.size(); i++) {
+            CampaignContact contact = pendingContacts.get(i);
+            
+            try {
+                // Criar item da fila
+                CampaignQueueProcessor.CampaignQueueItem queueItem = 
+                    new CampaignQueueProcessor.CampaignQueueItem(
+                        campaign.getId(),
+                        contact.getId(),
+                        companyId
+                    );
+                
+                // Serializar para JSON
+                String itemJson = objectMapper.writeValueAsString(queueItem);
+                
+                // Adicionar à fila Redis com timestamp escalonado para evitar picos
+                long timestamp = baseTimestamp + (i * 1000); // 1 segundo de intervalo entre cada
+                redisTemplate.opsForZSet().add(QUEUE_KEY, itemJson, timestamp);
+                
+                enqueued++;
+                
+            } catch (Exception e) {
+                log.error("❌ Erro ao enfileirar contato {}: {}", contact.getId(), e.getMessage());
+            }
+        }
+        
+        log.info("✅ {} contatos da campanha {} adicionados à fila", enqueued, campaign.getId());
     }
 
     private List<MessageTemplate> validateTemplates(List<UUID> templateIds, UUID companyId) {

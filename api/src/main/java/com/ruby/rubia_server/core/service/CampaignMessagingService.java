@@ -5,11 +5,13 @@ import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.dto.ConversationDTO;
+import com.ruby.rubia_server.core.event.CampaignRetryEvent;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +31,7 @@ public class CampaignMessagingService {
     private final CampaignMessagingProperties properties;
     private final ChatLidMappingService chatLidMappingService;
     private final ConversationService conversationService;
-    private final SecureCampaignQueueService secureCampaignQueueService;
+    private final ApplicationEventPublisher eventPublisher;
     
     @Qualifier("scheduledExecutor")
     private final ScheduledExecutorService scheduledExecutor;
@@ -352,7 +354,7 @@ public class CampaignMessagingService {
     private void reAddToRedisForRetry(CampaignContact campaignContact, int retryDelayMs) {
         try {
             // Re-adicionar à fila Redis com delay
-            // O SecureCampaignQueueService processará novamente após o delay
+            // O CampaignQueueProcessor processará novamente após o delay
             log.info("🔄 Re-adicionando contato {} à fila Redis para retry em {}ms", 
                     campaignContact.getId(), retryDelayMs);
             
@@ -362,15 +364,18 @@ public class CampaignMessagingService {
                 retryDelayMs, 
                 () -> {
                     try {
-                        secureCampaignQueueService.addContactForRetry(
+                        // Publish retry event instead of direct service call
+                        CampaignRetryEvent retryEvent = new CampaignRetryEvent(
+                            this,
                             campaignContact.getCampaign().getId(),
                             campaignContact.getId(),
                             campaignContact.getCustomer().getCompany().getId().toString()
                         );
-                        log.info("✅ Contato {} re-adicionado à fila Redis para retry", 
+                        eventPublisher.publishEvent(retryEvent);
+                        log.info("✅ Contato {} evento de retry publicado", 
                                 campaignContact.getId());
                     } catch (Exception e) {
-                        log.error("❌ Erro ao re-adicionar contato {} à fila Redis: {}", 
+                        log.error("❌ Erro ao publicar evento de retry para contato {}: {}", 
                                 campaignContact.getId(), e.getMessage(), e);
                     }
                 }

@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -60,14 +61,14 @@ class CampaignMessagingServiceRetryTest {
         // Mock the new dependencies
         ChatLidMappingService mockChatLidMappingService = mock(ChatLidMappingService.class);
         ConversationService mockConversationService = mock(ConversationService.class);
-        SecureCampaignQueueService mockSecureCampaignQueueService = mock(SecureCampaignQueueService.class);
+        ApplicationEventPublisher mockEventPublisher = mock(ApplicationEventPublisher.class);
         
         // Mock das novas dependências
         ScheduledExecutorService mockScheduledExecutor = mock(ScheduledExecutorService.class);
         MeterRegistry mockMeterRegistry = mock(MeterRegistry.class);
         
         service = new CampaignMessagingService(messagingService, delaySchedulingService, properties, 
-                                             mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService,
+                                             mockChatLidMappingService, mockConversationService, mockEventPublisher,
                                              mockScheduledExecutor, mockMeterRegistry);
         
         // Setup basic mocks

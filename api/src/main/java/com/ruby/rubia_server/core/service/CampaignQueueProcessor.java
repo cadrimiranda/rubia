@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,19 +32,32 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class CampaignQueueProcessor {
     
     private final RedisTemplate<String, Object> redisTemplate;
     private final CampaignMessagingService messageService;
-    
-    @Qualifier("campaignConcurrencyLimiter")
+    private final CampaignContactService campaignContactService;
+    private final ObjectMapper objectMapper;
     private final Semaphore concurrencyLimiter;
-    
-    @Qualifier("queueProcessingLimiter")  
     private final Semaphore queueProcessingLimiter;
-    
     private final MeterRegistry meterRegistry;
+    
+    public CampaignQueueProcessor(
+            RedisTemplate<String, Object> redisTemplate,
+            CampaignMessagingService messageService,
+            CampaignContactService campaignContactService,
+            ObjectMapper objectMapper,
+            @Qualifier("campaignConcurrencyLimiter") Semaphore concurrencyLimiter,
+            @Qualifier("queueProcessingLimiter") Semaphore queueProcessingLimiter,
+            MeterRegistry meterRegistry) {
+        this.redisTemplate = redisTemplate;
+        this.messageService = messageService;
+        this.campaignContactService = campaignContactService;
+        this.objectMapper = objectMapper;
+        this.concurrencyLimiter = concurrencyLimiter;
+        this.queueProcessingLimiter = queueProcessingLimiter;
+        this.meterRegistry = meterRegistry;
+    }
     
     private static final String QUEUE_KEY = "rubia:campaign:queue";
     private static final String PROCESSING_KEY = "rubia:campaign:processing";
@@ -52,6 +67,35 @@ public class CampaignQueueProcessor {
     
     private final AtomicBoolean isProcessing = new AtomicBoolean(false);
     private final Map<String, CompletableFuture<Boolean>> activeTasks = new ConcurrentHashMap<>();
+    
+    /**
+     * Item da fila com timestamp para controle de timeout
+     */
+    public static class CampaignQueueItem {
+        private UUID campaignId;
+        private UUID campaignContactId;
+        private String companyId;
+        private long processingStartedAt; // Timestamp quando começou a processar
+        
+        public CampaignQueueItem() {}
+        
+        public CampaignQueueItem(UUID campaignId, UUID campaignContactId, String companyId) {
+            this.campaignId = campaignId;
+            this.campaignContactId = campaignContactId;
+            this.companyId = companyId;
+            this.processingStartedAt = System.currentTimeMillis();
+        }
+        
+        // Getters and setters
+        public UUID getCampaignId() { return campaignId; }
+        public void setCampaignId(UUID campaignId) { this.campaignId = campaignId; }
+        public UUID getCampaignContactId() { return campaignContactId; }
+        public void setCampaignContactId(UUID campaignContactId) { this.campaignContactId = campaignContactId; }
+        public String getCompanyId() { return companyId; }
+        public void setCompanyId(String companyId) { this.companyId = companyId; }
+        public long getProcessingStartedAt() { return processingStartedAt; }
+        public void setProcessingStartedAt(long processingStartedAt) { this.processingStartedAt = processingStartedAt; }
+    }
     
     @Scheduled(fixedRate = 5000) // A cada 5 segundos
     public void processCampaignQueue() {
@@ -174,9 +218,55 @@ public class CampaignQueueProcessor {
     }
     
     private CompletableFuture<Boolean> processQueueItem(String itemJson) {
-        // Este método será implementado para usar o SecureCampaignQueueService
-        // Por ora, retorna um placeholder
-        return CompletableFuture.completedFuture(true);
+        try {
+            log.debug("🔄 Processando item da fila: {}", itemJson);
+            
+            // Parse do JSON para extrair informações do contato
+            CampaignQueueItem item = objectMapper.readValue(itemJson, CampaignQueueItem.class);
+            
+            // Buscar o CampaignContact no banco de dados
+            Optional<CampaignContact> optionalContact = campaignContactService.findById(item.getCampaignContactId());
+            
+            if (optionalContact.isEmpty()) {
+                log.warn("❌ CampaignContact {} não encontrado", item.getCampaignContactId());
+                return CompletableFuture.completedFuture(false);
+            }
+            
+            CampaignContact contact = optionalContact.get();
+            
+            // Verificar se ainda está pendente (pode ter sido processado por outra instância)
+            if (contact.getStatus() != com.ruby.rubia_server.core.enums.CampaignContactStatus.PENDING) {
+                log.debug("⏭️ CampaignContact {} não está mais pendente (status: {})", 
+                         contact.getId(), contact.getStatus());
+                return CompletableFuture.completedFuture(true);
+            }
+            
+            log.info("📤 Enviando mensagem para contato: {} - Telefone: {}", 
+                    contact.getId(), contact.getCustomer().getPhone());
+            
+            // Processar o envio usando o CampaignMessagingService
+            // Este método já implementa CompletableFuture + retry não bloqueante
+            return messageService.sendSingleMessageAsync(contact)
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        log.error("❌ Erro ao processar contato {}: {}", contact.getId(), throwable.getMessage());
+                        meterRegistry.counter("campaign.processing.errors", 
+                                "error", throwable.getClass().getSimpleName()).increment();
+                    } else if (result) {
+                        log.info("✅ Mensagem enviada com sucesso para contato: {}", contact.getId());
+                        meterRegistry.counter("campaign.processing.success").increment();
+                    } else {
+                        log.warn("⚠️ Falha no envio para contato: {}", contact.getId());
+                        meterRegistry.counter("campaign.processing.failed").increment();
+                    }
+                });
+                
+        } catch (Exception e) {
+            log.error("❌ Erro ao processar item da fila: {}", e.getMessage(), e);
+            meterRegistry.counter("campaign.processing.errors", 
+                    "error", e.getClass().getSimpleName()).increment();
+            return CompletableFuture.completedFuture(false);
+        }
     }
     
     private void removeFromProcessingList(String itemJson) {
@@ -254,23 +344,41 @@ public class CampaignQueueProcessor {
         try {
             String itemJson = item.toString();
             
-            // Heurística 1: Verificar por timestamp no JSON (se implementado)
-            if (itemJson.contains("\"scheduledTime\"")) {
-                // Parse do timestamp seria implementado aqui
-                // Por ora, usar timeout fixo baseado na idade do processamento
-                return isProcessingTooLong();
+            // Tentar parse do item para verificar timestamp real
+            if (itemJson.contains("\"processingStartedAt\"")) {
+                try {
+                    CampaignQueueItem queueItem = objectMapper.readValue(itemJson, CampaignQueueItem.class);
+                    long processingStartTime = queueItem.getProcessingStartedAt();
+                    long processingDuration = currentTime - processingStartTime;
+                    
+                    // Considera travado se está processando há mais de 5 minutos
+                    boolean isStuck = processingDuration > PROCESSING_TIMEOUT.toMillis();
+                    
+                    if (isStuck) {
+                        log.warn("⏰ Item travado detectado: processando há {}ms (limite: {}ms)", 
+                                processingDuration, PROCESSING_TIMEOUT.toMillis());
+                    }
+                    
+                    return isStuck;
+                    
+                } catch (Exception parseException) {
+                    log.debug("Erro ao fazer parse do item para verificar timeout: {}", parseException.getMessage());
+                }
             }
             
-            // Heurística 2: Baseado na discrepância entre itens em processamento e tarefas ativas
+            // Fallback: Heurística baseada na discrepância entre itens em processamento e tarefas ativas
             Long processingCount = redisTemplate.opsForList().size(PROCESSING_KEY);
             int activeTaskCount = activeTasks.size();
             
             // Se há muito mais itens em processamento que tarefas ativas, há problema
-            if (processingCount != null && processingCount > activeTaskCount + 5) {
-                return true;
+            boolean stuck = processingCount != null && processingCount > activeTaskCount + 10;
+            
+            if (stuck) {
+                log.warn("⚠️ Possível travamento detectado: {} itens processando, {} tarefas ativas", 
+                        processingCount, activeTaskCount);
             }
             
-            return false;
+            return stuck;
             
         } catch (Exception e) {
             log.warn("Erro ao verificar timeout do item: {}", e.getMessage());
@@ -278,14 +386,6 @@ public class CampaignQueueProcessor {
         }
     }
     
-    /**
-     * Verifica se o processamento está demorando muito tempo
-     */
-    private boolean isProcessingTooLong() {
-        // Se não há tarefas ativas mas há itens em processamento, algo está errado
-        Long processingSize = redisTemplate.opsForList().size(PROCESSING_KEY);
-        return activeTasks.isEmpty() && processingSize != null && processingSize > 0;
-    }
     
     /**
      * Remove tarefas ativas órfãs que perderam conexão com a fila
@@ -315,37 +415,23 @@ public class CampaignQueueProcessor {
         }
     }
     
-    private boolean isStuck(Object item) {
-        try {
-            // Parse do item para verificar se há timestamp
-            String itemJson = item.toString();
-            
-            // Verifica se o item está em processamento há mais tempo que o timeout
-            // Para uma implementação completa, você precisaria adicionar timestamp aos itens
-            // Por ora, usa uma heurística baseada no número de itens em processamento
-            
-            // Se há muitos itens em processamento e poucos active tasks, 
-            // provavelmente há itens travados
-            Long processingCount = redisTemplate.opsForList().size(PROCESSING_KEY);
-            int activeTaskCount = activeTasks.size();
-            
-            // Se há mais de 10 itens em processamento mas menos de 5 tarefas ativas,
-            // considera que há itens travados
-            if (processingCount != null && processingCount > 10 && activeTaskCount < 5) {
-                return true;
-            }
-            
-            // Implementação futura: parse do JSON para verificar timestamp
-            // if (itemJson.contains("processingStartTime")) {
-            //     // Parse e verificação de timeout
-            // }
-            
-            return false;
-            
-        } catch (Exception e) {
-            log.warn("Erro ao verificar se item está travado: {}", e.getMessage());
+    
+    /**
+     * Verifica se o processamento está demorando demais baseado em heurística
+     */
+    private boolean isProcessingTooLong() {
+        // Verifica se há tarefas ativas há muito tempo
+        if (activeTasks.isEmpty()) {
             return false;
         }
+        
+        // Se há muitas tarefas ativas por muito tempo, pode indicar travamento
+        Long processingCount = redisTemplate.opsForList().size(PROCESSING_KEY);
+        int activeTaskCount = activeTasks.size();
+        
+        // Heurística: se há mais de 20 itens em processamento e mais de 10 tarefas ativas
+        // há mais de 5 minutos, considera travamento
+        return processingCount != null && processingCount > 20 && activeTaskCount > 10;
     }
     
     @PreDestroy
