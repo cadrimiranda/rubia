@@ -40,7 +40,7 @@ public class MessageEnhancementAuditService {
             String openaiFullPayload) {
 
         log.debug("Recording successful message enhancement for user: {} with agent: {}", 
-                 user.getId(), aiAgent.getName());
+                 user != null ? user.getId() : "null", aiAgent.getName());
 
         MessageEnhancementAudit audit = MessageEnhancementAudit.builder()
                 .company(company)
@@ -87,7 +87,7 @@ public class MessageEnhancementAuditService {
             String openaiFullPayload) {
 
         log.debug("Recording failed message enhancement for user: {} with agent: {}", 
-                 user.getId(), aiAgent.getName());
+                 user != null ? user.getId() : "null", aiAgent.getName());
 
         MessageEnhancementAudit audit = MessageEnhancementAudit.builder()
                 .company(company)

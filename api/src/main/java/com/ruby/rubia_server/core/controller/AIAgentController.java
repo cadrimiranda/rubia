@@ -4,6 +4,7 @@ import com.ruby.rubia_server.core.dto.AIAgentDTO;
 import com.ruby.rubia_server.core.dto.CreateAIAgentDTO;
 import com.ruby.rubia_server.core.dto.UpdateAIAgentDTO;
 import com.ruby.rubia_server.core.entity.AIAgent;
+import com.ruby.rubia_server.core.entity.User;
 import com.ruby.rubia_server.core.service.AIAgentService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
@@ -17,8 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Map;
@@ -298,11 +297,9 @@ public class AIAgentController {
         }
 
         try {
-            // Get current user from security context
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            UUID userId = authentication != null && authentication.getPrincipal() instanceof UUID 
-                ? (UUID) authentication.getPrincipal() 
-                : null;
+            // Get current authenticated user
+            User authenticatedUser = companyContextUtil.getAuthenticatedUser();
+            UUID userId = authenticatedUser.getId();
 
             // Extract conversation ID if provided
             String conversationIdStr = request.get("conversationId");
