@@ -248,11 +248,6 @@ export const BloodCenterChat: React.FC = () => {
               unread: !lastMessage.isFromUser ? (currentDonor.unread || 0) + 1 : currentDonor.unread || 0
             };
 
-            // Se é o donor selecionado, também atualizar o estado
-            if (state.selectedDonor?.id === currentDonor.id) {
-              updateState({ selectedDonor: updatedDonor });
-            }
-
             // Retornar array atualizado
             return prevDonors.map(d => d.id === currentDonor.id ? updatedDonor : d);
           }
@@ -262,7 +257,21 @@ export const BloodCenterChat: React.FC = () => {
         return prevDonors;
       });
     });
-  }, [messagesCache, state.selectedDonor, updateState]);
+  }, [messagesCache]);
+
+  // Atualizar selectedDonor quando o donor correspondente na lista muda
+  useEffect(() => {
+    if (state.selectedDonor) {
+      const updatedDonor = donors.find(d => d.id === state.selectedDonor.id);
+      if (updatedDonor && (
+        updatedDonor.lastMessage !== state.selectedDonor.lastMessage ||
+        updatedDonor.timestamp !== state.selectedDonor.timestamp ||
+        updatedDonor.unread !== state.selectedDonor.unread
+      )) {
+        updateState({ selectedDonor: updatedDonor });
+      }
+    }
+  }, [donors, state.selectedDonor?.id, updateState]);
 
   // Converter ConversationDTO em Donor (desabilitado para usar mock data)
   /*
