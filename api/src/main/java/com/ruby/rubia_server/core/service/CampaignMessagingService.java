@@ -5,14 +5,19 @@ import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.MessageTemplate;
 import com.ruby.rubia_server.core.entity.MessageResult;
 import com.ruby.rubia_server.core.dto.ConversationDTO;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.*;
 
 @Service
 @RequiredArgsConstructor
@@ -25,27 +30,53 @@ public class CampaignMessagingService {
     private final ChatLidMappingService chatLidMappingService;
     private final ConversationService conversationService;
     private final SecureCampaignQueueService secureCampaignQueueService;
+    
+    @Qualifier("scheduledExecutor")
+    private final ScheduledExecutorService scheduledExecutor;
+    private final MeterRegistry meterRegistry;
 
     /**
      * Envia uma única mensagem para um contato da campanha de forma assíncrona
      * Usado pelo sistema de filas para enviar mensagens de forma controlada
+     * Implementa retry com exponential backoff e jitter
      */
-    @Async
+    @Async("campaignExecutor")
     public CompletableFuture<Boolean> sendSingleMessageAsync(CampaignContact campaignContact) {
         // Validações iniciais (síncronas)
         if (!validateContact(campaignContact)) {
+            recordMetrics(campaignContact, false, new IllegalArgumentException("Invalid contact"));
             return CompletableFuture.completedFuture(false);
         }
 
-        // Calcular delay
-        int delay = calculateRandomDelay();
+        // Calcular delay inicial
+        int initialDelay = calculateRandomDelay();
+        
+        log.debug("📅 Agendando envio para {} com delay de {}ms", 
+                campaignContact.getCustomer().getPhone(), initialDelay);
 
-        // Retornar Future que será resolvido após o delay com retry automático
-        return delaySchedulingService.scheduleMessageSend(
-            campaignContact,
-            delay,
-            () -> performActualSendWithRetry(campaignContact)
-        );
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        
+        ScheduledFuture<?> scheduledTask = scheduledExecutor.schedule(() -> {
+            sendWithRetry(campaignContact, 1)
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        future.completeExceptionally(throwable);
+                        recordMetrics(campaignContact, false, throwable);
+                    } else {
+                        future.complete(result);
+                        recordMetrics(campaignContact, result, null);
+                    }
+                });
+        }, initialDelay, TimeUnit.MILLISECONDS);
+        
+        // Permite cancelamento se necessário
+        future.whenComplete((r, t) -> {
+            if (future.isCancelled()) {
+                scheduledTask.cancel(false);
+            }
+        });
+        
+        return future;
     }
 
 
@@ -91,12 +122,82 @@ public class CampaignMessagingService {
     }
 
     /**
+     * Implementa retry com exponential backoff e jitter
+     */
+    private CompletableFuture<Boolean> sendWithRetry(CampaignContact contact, int attempt) {
+        return CompletableFuture.supplyAsync(() -> {
+            Timer.Sample sample = Timer.start(meterRegistry);
+            try {
+                log.info("📤 Tentativa {}/{} - Enviando para {}", 
+                        attempt, properties.getMaxRetries(), contact.getCustomer().getPhone());
+                        
+                boolean result = performActualSend(contact);
+                sample.stop(meterRegistry.timer("campaign.send.duration", 
+                        "attempt", String.valueOf(attempt), "success", String.valueOf(result)));
+                return result;
+            } catch (Exception e) {
+                sample.stop(meterRegistry.timer("campaign.send.duration", 
+                        "attempt", String.valueOf(attempt), "error", "true"));
+                throw new CompletionException(e);
+            }
+        }, scheduledExecutor).handle((result, throwable) -> {
+            if (throwable != null) {
+                // Converte exceção em resultado de falha
+                log.error("❌ Exceção na tentativa {}: {}", attempt, throwable.getMessage());
+                return false;
+            }
+            return result;
+        }).thenCompose(result -> {
+            if (result) {
+                log.info("✅ Mensagem enviada com sucesso para {} na tentativa {}", 
+                        contact.getCustomer().getPhone(), attempt);
+                return CompletableFuture.completedFuture(true);
+            }
+            
+            if (attempt >= properties.getMaxRetries()) {
+                log.error("❌ Falha após {} tentativas para {}", 
+                        properties.getMaxRetries(), contact.getCustomer().getPhone());
+                return CompletableFuture.completedFuture(false);
+            }
+            
+            long retryDelay = calculateRetryDelayWithJitter(attempt);
+            log.warn("⚠️ Falha na tentativa {}. Retry {} em {}ms para {}", 
+                    attempt, attempt + 1, retryDelay, contact.getCustomer().getPhone());
+            
+            CompletableFuture<Boolean> retryFuture = new CompletableFuture<>();
+            
+            scheduledExecutor.schedule(() -> {
+                sendWithRetry(contact, attempt + 1)
+                    .whenComplete((retryResult, retryThrowable) -> {
+                        if (retryThrowable != null) {
+                            retryFuture.completeExceptionally(retryThrowable);
+                        } else {
+                            retryFuture.complete(retryResult);
+                        }
+                    });
+            }, retryDelay, TimeUnit.MILLISECONDS);
+            
+            return retryFuture;
+        });
+    }
+
+    /**
      * Calcula delay aleatório dentro do range WHAPI configurável
      */
     private int calculateRandomDelay() {
         int minDelay = properties.getMinDelayMs();
         int maxDelay = properties.getMaxDelayMs();
-        return minDelay + (int)(Math.random() * (maxDelay - minDelay));
+        return ThreadLocalRandom.current().nextInt(minDelay, maxDelay + 1);
+    }
+    
+    /**
+     * Calcula delay de retry com exponential backoff e jitter
+     */
+    private long calculateRetryDelayWithJitter(int attempt) {
+        // Exponential backoff com jitter
+        long baseDelay = Math.min(properties.getRetryDelayMs() * (1L << (attempt - 1)), 30000L);
+        long jitter = ThreadLocalRandom.current().nextLong(0, baseDelay / 4);
+        return baseDelay + jitter;
     }
 
     /**
@@ -278,6 +379,35 @@ public class CampaignMessagingService {
         } catch (Exception e) {
             log.error("❌ Erro no agendamento de retry para contato {}: {}", 
                     campaignContact.getId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Registra métricas de processamento
+     */
+    private void recordMetrics(CampaignContact contact, boolean success, Throwable error) {
+        String campaignId = contact.getCampaign() != null ? 
+            contact.getCampaign().getId().toString() : "unknown";
+        String companyId = contact.getCustomer() != null && contact.getCustomer().getCompany() != null ?
+            contact.getCustomer().getCompany().getId().toString() : "unknown";
+            
+        meterRegistry.counter("campaign.messages.total",
+            "campaign_id", campaignId,
+            "company_id", companyId,
+            "status", success ? "success" : "failed",
+            "error", error != null ? error.getClass().getSimpleName() : "none"
+        ).increment();
+        
+        // Registra duração total do processamento se houver timestamp
+        if (contact.getCreatedAt() != null) {
+            Duration processingTime = Duration.between(
+                contact.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant(), 
+                Instant.now()
+            );
+            meterRegistry.timer("campaign.processing.duration",
+                "campaign_id", campaignId,
+                "company_id", companyId
+            ).record(processingTime);
         }
     }
 }

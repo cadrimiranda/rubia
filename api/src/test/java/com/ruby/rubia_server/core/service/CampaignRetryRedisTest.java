@@ -5,6 +5,7 @@ import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
 import com.ruby.rubia_server.core.enums.CampaignStatus;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -121,9 +123,14 @@ class CampaignRetryRedisTest {
             campaignContactService, campaignMessagingService, properties
         );
         
+        // Mock das novas dependências
+        ScheduledExecutorService mockScheduledExecutor = mock(ScheduledExecutorService.class);
+        MeterRegistry mockMeterRegistry = mock(MeterRegistry.class);
+        
         campaignMessagingServiceWithRetry = new CampaignMessagingService(
             messagingService, delaySchedulingService, properties,
-            chatLidMappingService, conversationService, secureCampaignQueueService
+            chatLidMappingService, conversationService, secureCampaignQueueService,
+            mockScheduledExecutor, mockMeterRegistry
         );
     }
 

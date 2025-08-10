@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,8 +62,13 @@ class CampaignMessagingServiceRetryTest {
         ConversationService mockConversationService = mock(ConversationService.class);
         SecureCampaignQueueService mockSecureCampaignQueueService = mock(SecureCampaignQueueService.class);
         
+        // Mock das novas dependências
+        ScheduledExecutorService mockScheduledExecutor = mock(ScheduledExecutorService.class);
+        MeterRegistry mockMeterRegistry = mock(MeterRegistry.class);
+        
         service = new CampaignMessagingService(messagingService, delaySchedulingService, properties, 
-                                             mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService);
+                                             mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService,
+                                             mockScheduledExecutor, mockMeterRegistry);
         
         // Setup basic mocks
         when(campaignContact.getId()).thenReturn(UUID.randomUUID());

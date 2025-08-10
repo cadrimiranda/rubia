@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,9 +70,14 @@ class CampaignOptimizationIntegrationTest {
         ConversationService mockConversationService = mock(ConversationService.class);
         SecureCampaignQueueService mockSecureCampaignQueueService = mock(SecureCampaignQueueService.class);
         
+        // Mock das novas dependências
+        ScheduledExecutorService mockScheduledExecutor = mock(ScheduledExecutorService.class);
+        MeterRegistry mockMeterRegistry = mock(MeterRegistry.class);
+        
         campaignMessagingService = new CampaignMessagingService(
             messagingService, delaySchedulingService, properties, 
-            mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService);
+            mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService,
+            mockScheduledExecutor, mockMeterRegistry);
     }
 
     @Test
