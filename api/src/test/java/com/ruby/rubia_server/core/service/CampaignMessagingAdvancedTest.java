@@ -78,8 +78,8 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         messageTemplate.setCompany(company);
         messageTemplate = messageTemplateRepository.save(messageTemplate);
 
-        // Mock messaging service to always succeed
-        when(messagingService.sendMessage(any(), any()))
+        // Mock messaging service to always succeed  
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class)))
                 .thenReturn(MessageResult.builder()
                         .success(true)
                         .messageId("msg-" + UUID.randomUUID())
@@ -102,7 +102,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         CountDownLatch latch = new CountDownLatch(10);
         
         // Mock the messaging service to count processed messages
-        when(messagingService.sendMessage(any(), any())).thenAnswer(invocation -> {
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class))).thenAnswer(invocation -> {
             latch.countDown();
             return MessageResult.builder()
                     .success(true)
@@ -123,7 +123,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         // 5. Validate final status
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         
-        verify(messagingService, times(10)).sendMessage(any(), any());
+        verify(messagingService, times(10)).sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class));
         
         // Verify contacts status updates would occur (in real scenario)
         contacts.forEach(contact -> {
@@ -134,14 +134,22 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
 
     @Test
     @DisplayName("Service Failure Handling")
+    @Transactional
     void shouldHandleServiceFailureGracefully() throws InterruptedException {
         Campaign campaign = createCampaignWithContacts(5);
         List<CampaignContact> contacts = campaignContactRepository.findByCampaignId(campaign.getId());
+        
+        // Eagerly initialize lazy-loaded properties to avoid LazyInitializationException
+        contacts.forEach(contact -> {
+            contact.getCustomer().getPhone(); // trigger lazy loading
+            contact.getCustomer().getCompany().getName(); // trigger lazy loading
+            contact.getCampaign().getInitialMessageTemplate().getContent(); // trigger lazy loading
+        });
 
         CountDownLatch gracefulHandlingLatch = new CountDownLatch(5);
         
         // Mock to verify graceful handling - alternate success/failure
-        when(messagingService.sendMessage(any(), any()))
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class)))
                 .thenReturn(MessageResult.error("Service failure", "test"))
                 .thenReturn(MessageResult.success("msg-1", "sent", "test"))
                 .thenReturn(MessageResult.error("Service failure", "test"))
@@ -158,15 +166,23 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
 
         assertTrue(gracefulHandlingLatch.await(10, TimeUnit.SECONDS), "Should handle all contacts gracefully");
 
-        verify(messagingService, times(5)).sendMessage(any(), any());
+        verify(messagingService, times(5)).sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class));
     }
 
     @Test
     @DisplayName("High Volume Campaign Performance")
+    @Transactional
     void shouldHandleLargeCampaigns() {
         // Create campaign with 100 contacts (reduced from 1000+ for test performance)
         Campaign campaign = createCampaignWithContacts(100);
         List<CampaignContact> contacts = campaignContactRepository.findByCampaignId(campaign.getId());
+        
+        // Eagerly initialize lazy-loaded properties to avoid LazyInitializationException
+        contacts.forEach(contact -> {
+            contact.getCustomer().getPhone(); // trigger lazy loading
+            contact.getCustomer().getCompany().getName(); // trigger lazy loading
+            contact.getCampaign().getInitialMessageTemplate().getContent(); // trigger lazy loading
+        });
 
         long startTime = System.currentTimeMillis();
 
@@ -196,7 +212,8 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("Concurrent Campaign Processing")
+    @DisplayName("Concurrent Campaign Processing")  
+    @Transactional
     void shouldHandleMultipleCampaignsSimultaneously() throws InterruptedException {
         // Create 3 campaigns with 5 contacts each
         Campaign campaign1 = createCampaignWithContacts(5);
@@ -206,10 +223,17 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         List<CampaignContact> contacts1 = campaignContactRepository.findByCampaignId(campaign1.getId());
         List<CampaignContact> contacts2 = campaignContactRepository.findByCampaignId(campaign2.getId());
         List<CampaignContact> contacts3 = campaignContactRepository.findByCampaignId(campaign3.getId());
+        
+        // Eagerly initialize lazy-loaded properties to avoid LazyInitializationException
+        List.of(contacts1, contacts2, contacts3).stream().flatMap(List::stream).forEach(contact -> {
+            contact.getCustomer().getPhone(); // trigger lazy loading
+            contact.getCustomer().getCompany().getName(); // trigger lazy loading
+            contact.getCampaign().getInitialMessageTemplate().getContent(); // trigger lazy loading
+        });
 
         CountDownLatch concurrentLatch = new CountDownLatch(15); // Total 15 messages
 
-        when(messagingService.sendMessage(any(), any())).thenAnswer(invocation -> {
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class))).thenAnswer(invocation -> {
             concurrentLatch.countDown();
             return MessageResult.builder()
                     .success(true)
@@ -233,7 +257,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0])).join();
 
         // Verify all messages were processed
-        verify(messagingService, times(15)).sendMessage(any(), any());
+        verify(messagingService, times(15)).sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class));
 
         // Verify campaign isolation (each campaign maintains its own data)
         assertNotEquals(campaign1.getId(), campaign2.getId());
@@ -245,14 +269,20 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
 
     @Test
     @DisplayName("API Rate Limiting Simulation")
+    @Transactional
     void shouldHandleRateLimitingGracefully() throws InterruptedException {
         Campaign campaign = createCampaignWithContacts(3);
         List<CampaignContact> contacts = campaignContactRepository.findByCampaignId(campaign.getId());
-
-        CountDownLatch retryLatch = new CountDownLatch(3);
+        
+        // Eagerly initialize lazy-loaded properties to avoid LazyInitializationException
+        contacts.forEach(contact -> {
+            contact.getCustomer().getPhone(); // trigger lazy loading
+            contact.getCustomer().getCompany().getName(); // trigger lazy loading
+            contact.getCampaign().getInitialMessageTemplate().getContent(); // trigger lazy loading
+        });
 
         // Mock rate limiting on first calls, then success
-        when(messagingService.sendMessage(any(), any()))
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class)))
                 .thenReturn(MessageResult.error("Rate limited - 429", "test"))
                 .thenReturn(MessageResult.error("Rate limited - 429", "test"))
                 .thenReturn(MessageResult.builder()
@@ -262,31 +292,22 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
                         .provider("test")
                         .build());
 
-        // Mock retry behavior in service
-        doAnswer(invocation -> {
-            retryLatch.countDown();
-            CampaignContact contact = invocation.getArgument(0);
-            return CompletableFuture.supplyAsync(() -> {
-                try {
-                    // Simulate exponential backoff
-                    Thread.sleep(100 * (3 - (int)retryLatch.getCount() + 1));
-                    MessageResult result = messagingService.sendMessage(any(), any());
-                    return result != null && result.isSuccess();
-                } catch (Exception e) {
-                    return false;
-                }
-            });
-        }).when(campaignMessagingService).sendSingleMessageAsync(any(CampaignContact.class));
+        // Process contacts with retry logic - using the real service with mocked messaging
+        // The mock we set up above will handle the retry behavior
 
         // Process contacts with retry logic
         List<CompletableFuture<Boolean>> futures = contacts.stream()
                 .map(campaignMessagingService::sendSingleMessageAsync)
                 .toList();
 
-        assertTrue(retryLatch.await(10, TimeUnit.SECONDS), "Should handle rate limiting with retries");
-
+        // Wait for processing to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        verify(messagingService, atLeast(3)).sendMessage(any(), any());
+        
+        // Verify that messaging service was called multiple times (3 contacts + retries)
+        // Since we mock first 2 calls to fail and 3rd to succeed, and we have 3 contacts,
+        // it could be called up to 5 times due to retry logic
+        verify(messagingService, atLeast(3)).sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class));
+        verify(messagingService, atMost(9)).sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class)); // max 3 retries per contact
     }
 
     @Test
@@ -297,7 +318,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         List<CampaignContact> contacts = campaignContactRepository.findByCampaignId(campaign.getId());
 
         // Mock messaging failure
-        when(messagingService.sendMessage(any(), any()))
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class)))
                 .thenReturn(MessageResult.error("Messaging service unavailable", "test"));
 
         CampaignContact firstContact = contacts.get(0);
@@ -316,6 +337,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
 
     @Test
     @DisplayName("Message Template XSS Prevention")
+    @Transactional
     void shouldSanitizeMessageTemplates() {
         // Create template with potentially malicious content
         MessageTemplate maliciousTemplate = new MessageTemplate();
@@ -342,9 +364,14 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         contact.setCustomer(customer);
         contact.setStatus(CampaignContactStatus.PENDING);
         contact = campaignContactRepository.save(contact);
+        
+        // Eagerly initialize lazy-loaded properties to avoid LazyInitializationException
+        contact.getCustomer().getPhone(); // trigger lazy loading
+        contact.getCustomer().getCompany().getName(); // trigger lazy loading
+        contact.getCampaign().getInitialMessageTemplate().getContent(); // trigger lazy loading
 
         // Mock to capture the actual message content sent
-        when(messagingService.sendMessage(any(), any())).thenAnswer(invocation -> {
+        when(messagingService.sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class))).thenAnswer(invocation -> {
             String messageContent = invocation.getArgument(1);
             
             // Verify XSS content is sanitized
@@ -364,7 +391,7 @@ class CampaignMessagingAdvancedTest extends AbstractIntegrationTest {
         CompletableFuture<Boolean> result = campaignMessagingService.sendSingleMessageAsync(contact);
         assertTrue(result.join(), "Message should be processed successfully after sanitization");
 
-        verify(messagingService).sendMessage(any(), any());
+        verify(messagingService).sendMessage(any(String.class), any(String.class), isNull(), isNull(), any(Company.class));
     }
 
     private Campaign createCampaignWithContacts(int contactCount) {
