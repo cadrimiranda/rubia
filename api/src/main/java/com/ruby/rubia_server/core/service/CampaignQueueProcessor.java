@@ -9,8 +9,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
@@ -78,6 +82,18 @@ public class CampaignQueueProcessor {
         private long processingStartedAt; // Timestamp quando começou a processar
         
         public CampaignQueueItem() {}
+        
+        @JsonCreator
+        public CampaignQueueItem(
+                @JsonProperty("campaignId") UUID campaignId, 
+                @JsonProperty("campaignContactId") UUID campaignContactId, 
+                @JsonProperty("companyId") String companyId,
+                @JsonProperty("processingStartedAt") Long processingStartedAt) {
+            this.campaignId = campaignId;
+            this.campaignContactId = campaignContactId;
+            this.companyId = companyId;
+            this.processingStartedAt = processingStartedAt != null ? processingStartedAt : System.currentTimeMillis();
+        }
         
         public CampaignQueueItem(UUID campaignId, UUID campaignContactId, String companyId) {
             this.campaignId = campaignId;
@@ -161,10 +177,12 @@ public class CampaignQueueProcessor {
             
             for (Object result : results) {
                 if (result != null) {
-                    String itemJson = result.toString();
-                    items.add(itemJson);
-                    // Move para lista de processamento para rastreamento
-                    redisTemplate.opsForList().rightPush(PROCESSING_KEY, itemJson);
+                    String itemJson = extractJsonFromTuple(result);
+                    if (itemJson != null) {
+                        items.add(itemJson);
+                        // Move para lista de processamento para rastreamento
+                        redisTemplate.opsForList().rightPush(PROCESSING_KEY, itemJson);
+                    }
                 }
             }
             
@@ -173,6 +191,28 @@ public class CampaignQueueProcessor {
         }
         
         return items;
+    }
+    
+    private String extractJsonFromTuple(Object result) {
+        if (result instanceof TypedTuple) {
+            TypedTuple<?> tuple = (TypedTuple<?>) result;
+            Object value = tuple.getValue();
+            return value != null ? value.toString() : null;
+        } else if (result.getClass().getSimpleName().equals("DefaultTuple")) {
+            // Handle DefaultTuple using reflection since it implements TypedTuple but instanceof fails
+            try {
+                java.lang.reflect.Method getValueMethod = result.getClass().getMethod("getValue");
+                Object value = getValueMethod.invoke(result);
+                if (value instanceof byte[]) {
+                    return new String((byte[]) value, java.nio.charset.StandardCharsets.UTF_8);
+                } else if (value != null) {
+                    return value.toString();
+                }
+            } catch (Exception e) {
+                log.warn("Failed to extract value from DefaultTuple: {}", e.getMessage());
+            }
+        }
+        return result.toString();
     }
     
     private void processItemWithBackpressure(String itemJson) {
@@ -186,10 +226,21 @@ public class CampaignQueueProcessor {
                 return;
             }
             
+            // Tenta desserializar o item para garantir que não haja aspas extras
+            // A string do Redis pode vir com aspas extras, o que causa o erro do Jackson
+            String cleanJson;
+            try {
+                // Desserializa a string JSON aninhada se necessário
+                cleanJson = objectMapper.readValue(itemJson, String.class);
+            } catch (Exception e) {
+                // Se falhar, assume que já é um JSON limpo
+                cleanJson = itemJson;
+            }
+            
             String taskId = UUID.randomUUID().toString();
             
             // Parse do item da fila para extrair o CampaignContact
-            CompletableFuture<Boolean> future = processQueueItem(itemJson)
+            CompletableFuture<Boolean> future = processQueueItem(cleanJson)
                 .whenComplete((result, throwable) -> {
                     try {
                         if (throwable != null) {
@@ -217,15 +268,16 @@ public class CampaignQueueProcessor {
         }
     }
     
-    private CompletableFuture<Boolean> processQueueItem(String itemJson) {
+    @Transactional
+    public CompletableFuture<Boolean> processQueueItem(String itemJson) {
         try {
             log.debug("🔄 Processando item da fila: {}", itemJson);
             
             // Parse do JSON para extrair informações do contato
             CampaignQueueItem item = objectMapper.readValue(itemJson, CampaignQueueItem.class);
             
-            // Buscar o CampaignContact no banco de dados
-            Optional<CampaignContact> optionalContact = campaignContactService.findById(item.getCampaignContactId());
+            // Buscar o CampaignContact no banco de dados com todas as relações carregadas (eager loading)
+            Optional<CampaignContact> optionalContact = campaignContactService.findByIdWithRelations(item.getCampaignContactId());
             
             if (optionalContact.isEmpty()) {
                 log.warn("❌ CampaignContact {} não encontrado", item.getCampaignContactId());
@@ -314,12 +366,13 @@ public class CampaignQueueProcessor {
             long currentTime = System.currentTimeMillis();
             
             for (Object item : processingItems) {
-                if (isStuckWithTimeout(item, currentTime)) {
-                    log.warn("🔄 Recuperando mensagem travada: {}", item.toString().substring(0, Math.min(100, item.toString().length())));
-                    removeFromProcessingList(item.toString());
+                String itemJson = extractJsonFromTuple(item);
+                if (itemJson != null && isStuckWithTimeout(item, currentTime)) {
+                    log.warn("🔄 Recuperando mensagem travada: {}", itemJson.substring(0, Math.min(100, itemJson.length())));
+                    removeFromProcessingList(itemJson);
                     
                     // Re-adiciona à fila com timestamp atual para reprocessamento imediato
-                    redisTemplate.opsForZSet().add(QUEUE_KEY, item.toString(), currentTime);
+                    redisTemplate.opsForZSet().add(QUEUE_KEY, itemJson, currentTime);
                     recoveredCount++;
                 }
             }

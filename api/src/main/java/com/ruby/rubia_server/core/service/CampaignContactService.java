@@ -66,6 +66,12 @@ public class CampaignContactService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<CampaignContact> findByIdWithRelations(UUID id) {
+        log.debug("Finding CampaignContact with Customer, Campaign, and MessageTemplate by id: {}", id);
+        return campaignContactRepository.findByIdWithRelations(id);
+    }
+
+    @Transactional(readOnly = true)
     public Page<CampaignContact> findAll(Pageable pageable) {
         log.debug("Finding all CampaignContacts with pageable: {}", pageable);
         return campaignContactRepository.findAll(pageable);
