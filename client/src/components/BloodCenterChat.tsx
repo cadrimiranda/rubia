@@ -224,40 +224,45 @@ export const BloodCenterChat: React.FC = () => {
       // Pegar a mensagem mais recente da conversa
       const lastMessage = cache.messages[cache.messages.length - 1];
       
-      // Encontrar o donor correspondente
-      const donorIndex = donors.findIndex(d => d.conversationId === conversationId);
-      
-      if (donorIndex >= 0) {
-        const currentDonor = donors[donorIndex];
+      // Usar função callback para evitar dependência direta em donors
+      setDonors(prevDonors => {
+        // Encontrar o donor correspondente
+        const donorIndex = prevDonors.findIndex(d => d.conversationId === conversationId);
         
-        // Verificar se é uma mensagem nova (diferente da última conhecida)
-        const isNewMessage = !currentDonor.lastMessage || 
-          currentDonor.lastMessage !== lastMessage.content ||
-          !currentDonor.timestamp ||
-          new Date(lastMessage.timestamp).getTime() > new Date(`1970-01-01 ${currentDonor.timestamp}`).getTime();
-        
-        if (isNewMessage) {
-          const updatedDonor = {
-            ...currentDonor,
-            lastMessage: lastMessage.content || (lastMessage.messageType === 'audio' ? '🎵 Mensagem de áudio' : 'Anexo enviado'),
-            timestamp: lastMessage.timestamp instanceof Date 
-              ? lastMessage.timestamp.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-              : new Date(lastMessage.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-            unread: !lastMessage.isFromUser ? (currentDonor.unread || 0) + 1 : currentDonor.unread || 0
-          };
+        if (donorIndex >= 0) {
+          const currentDonor = prevDonors[donorIndex];
+          
+          // Verificar se é uma mensagem nova (diferente da última conhecida)
+          const isNewMessage = !currentDonor.lastMessage || 
+            currentDonor.lastMessage !== lastMessage.content ||
+            !currentDonor.timestamp ||
+            new Date(lastMessage.timestamp).getTime() > new Date(`1970-01-01 ${currentDonor.timestamp}`).getTime();
+          
+          if (isNewMessage) {
+            const updatedDonor = {
+              ...currentDonor,
+              lastMessage: lastMessage.content || (lastMessage.messageType === 'audio' ? '🎵 Mensagem de áudio' : 'Anexo enviado'),
+              timestamp: lastMessage.timestamp instanceof Date 
+                ? lastMessage.timestamp.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                : new Date(lastMessage.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+              unread: !lastMessage.isFromUser ? (currentDonor.unread || 0) + 1 : currentDonor.unread || 0
+            };
 
-          setDonors(prevDonors => 
-            prevDonors.map(d => d.id === currentDonor.id ? updatedDonor : d)
-          );
+            // Se é o donor selecionado, também atualizar o estado
+            if (state.selectedDonor?.id === currentDonor.id) {
+              updateState({ selectedDonor: updatedDonor });
+            }
 
-          // Se é o donor selecionado, também atualizar o estado
-          if (state.selectedDonor?.id === currentDonor.id) {
-            updateState({ selectedDonor: updatedDonor });
+            // Retornar array atualizado
+            return prevDonors.map(d => d.id === currentDonor.id ? updatedDonor : d);
           }
         }
-      }
+        
+        // Se não houve mudanças, retornar o array original
+        return prevDonors;
+      });
     });
-  }, [messagesCache, donors, state.selectedDonor, updateState]);
+  }, [messagesCache, state.selectedDonor, updateState]);
 
   // Converter ConversationDTO em Donor (desabilitado para usar mock data)
   /*
