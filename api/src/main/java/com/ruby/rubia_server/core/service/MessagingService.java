@@ -362,7 +362,7 @@ public class MessagingService {
     }
     
     private ConversationDTO findOrCreateConversationByChatLid(String chatLid, Customer customer) {
-        logger.debug("🔗 Buscando conversa usando ChatLidMappingService - chatLid: {}, customer: {}", chatLid, customer.getId());
+        logger.debug("🔗 Buscando conversa usando ChatLidMappingService - chatLid: {}, customer: {}, phone: {}", chatLid, customer.getId(), customer.getPhone());
         
         if (chatLid == null || chatLid.trim().isEmpty()) {
             logger.debug("ChatLid vazio, usando método tradicional");
@@ -378,44 +378,69 @@ public class MessagingService {
                 return conversationService.findById(conversation.get().getId(), customer.getCompany().getId());
             }
 
-            // Se não encontrou mapping por chatLid, procurar mappings de campanha por telefone
-            logger.debug("🔍 Nenhum mapping encontrado por chatLid, buscando mappings de campanha por telefone");
+            // Se não encontrou mapping por chatLid, priorizar campanhas ativas mais recentes
+            logger.debug("🔍 Nenhum mapping encontrado por chatLid, buscando campanhas ativas por telefone");
             
-            // Buscar com variações do telefone (com e sem 9º dígito)
-            String[] phoneVariations = phoneService.generatePhoneVariations(customer.getPhone());
-            List<ChatLidMapping> campaignMappings = new ArrayList<>();
-            
-            for (String phoneVariation : phoneVariations) {
-                if (phoneVariation != null) {
-                    List<ChatLidMapping> mappings = chatLidMappingService.findMappingsByPhone(
-                        phoneVariation, 
-                        customer.getCompany().getId()
-                    );
-                    campaignMappings.addAll(mappings);
-                    logger.debug("🔍 Buscando mappings para variação: {}, encontrados: {}", phoneVariation, mappings.size());
+            // Buscar mapping de campanha ativa mais recente (com variações de telefone)
+            Optional<ChatLidMapping> campaignMapping = chatLidMappingService.findMostRecentActiveCampaignMapping(
+                customer.getPhone(), 
+                customer.getCompany().getId()
+            );
+
+            if (campaignMapping.isPresent()) {
+                logger.info("✅ Campanha ativa encontrada: campaignId={}, conversationId={}", 
+                    campaignMapping.get().getCampaignId(), campaignMapping.get().getConversationId());
+            } else {
+                // Fallback: buscar qualquer mapping de campanha sem chatLid
+                logger.debug("🔍 Nenhuma campanha ativa encontrada, buscando mappings de campanha legacy");
+                
+                String[] phoneVariations = phoneService.generatePhoneVariations(customer.getPhone());
+                List<ChatLidMapping> legacyMappings = new ArrayList<>();
+                
+                for (String phoneVariation : phoneVariations) {
+                    if (phoneVariation != null) {
+                        List<ChatLidMapping> mappings = chatLidMappingService.findMappingsByPhone(
+                            phoneVariation, 
+                            customer.getCompany().getId()
+                        );
+                        legacyMappings.addAll(mappings);
+                        logger.debug("🔍 Buscando mappings legacy para variação: {}, encontrados: {}", phoneVariation, mappings.size());
+                    }
                 }
+                
+                campaignMapping = legacyMappings.stream()
+                    .filter(mapping -> mapping.getChatLid() == null && mapping.getFromCampaign())
+                    .findFirst();
             }
-            
-            // Procurar mapping de campanha sem chatLid (criado durante campanha)
-            Optional<ChatLidMapping> campaignMapping = campaignMappings.stream()
-                .filter(mapping -> mapping.getChatLid() == null && mapping.getFromCampaign())
-                .findFirst();
                 
             if (campaignMapping.isPresent()) {
-                logger.info("✅ Mapping de campanha encontrado: {}, atualizando com chatLid", campaignMapping.get().getConversationId());
+                logger.info("✅ Mapping de campanha encontrado: {}, verificando se conversa está ativa", campaignMapping.get().getConversationId());
                 
-                // Atualizar mapping com chatLid
-                chatLidMappingService.updateMappingWithChatLid(campaignMapping.get().getConversationId(), chatLid);
-                
-                // Retornar conversa existente da campanha
+                // Buscar conversa da campanha
                 ConversationDTO campaignConversation = conversationService.findById(
                     campaignMapping.get().getConversationId(), 
                     customer.getCompany().getId()
                 );
                 
                 if (campaignConversation != null) {
-                    logger.info("✅ Conversa de campanha reutilizada: {}", campaignConversation.getId());
-                    return campaignConversation;
+                    // Verificar se conversa está ativa (não finalizada)
+                    boolean isActive = campaignConversation.getStatus() == ConversationStatus.ENTRADA || 
+                                     campaignConversation.getStatus() == ConversationStatus.ESPERANDO;
+                    
+                    if (isActive) {
+                        logger.info("✅ Conversa de campanha ativa reutilizada: {} (status: {})", 
+                            campaignConversation.getId(), campaignConversation.getStatus());
+                        
+                        // Atualizar mapping com chatLid
+                        chatLidMappingService.updateMappingWithChatLid(campaignMapping.get().getConversationId(), chatLid);
+                        
+                        return campaignConversation;
+                    } else {
+                        logger.debug("Conversa de campanha encontrada mas está finalizada (status: {}), criando nova conversa", 
+                            campaignConversation.getStatus());
+                    }
+                } else {
+                    logger.warn("Mapping encontrado mas conversa não existe: {}", campaignMapping.get().getConversationId());
                 }
             }
             

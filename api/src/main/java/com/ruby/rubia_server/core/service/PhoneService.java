@@ -191,7 +191,8 @@ public class PhoneService {
             // Se o 9º dígito é '9', cria variação sem ele
             if ("9".equals(ninthDigit)) {
                 String withoutNine = "+55" + ddd + restOfNumber;
-                return new String[]{normalized, withoutNine};
+                String withoutPlus = "55" + ddd + "9" + restOfNumber;
+                return new String[]{normalized, withoutNine, withoutPlus};
             }
         }
         
@@ -202,7 +203,8 @@ public class PhoneService {
             
             // Adiciona o 9 antes do número
             String withNine = "+55" + ddd + "9" + restOfNumber;
-            return new String[]{normalized, withNine};
+            String withoutPlus = "55" + ddd + "9" + restOfNumber;
+            return new String[]{normalized, withNine, withoutPlus};
         }
         
         return new String[]{normalized, null};

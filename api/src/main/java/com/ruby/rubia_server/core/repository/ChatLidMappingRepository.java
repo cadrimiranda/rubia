@@ -62,4 +62,16 @@ public interface ChatLidMappingRepository extends JpaRepository<ChatLidMapping, 
      * Busca mappings criados por campanhas
      */
     List<ChatLidMapping> findByFromCampaignTrueAndCompanyId(UUID companyId);
+
+    /**
+     * Busca mappings de campanhas ativas por telefone, ordenados por data (mais recente primeiro)
+     */
+    @Query("SELECT m FROM ChatLidMapping m WHERE m.phone = :phone AND m.companyId = :companyId AND m.fromCampaign = true AND m.campaignId IS NOT NULL ORDER BY m.createdAt DESC")
+    List<ChatLidMapping> findActiveCampaignMappingsByPhoneAndCompany(@Param("phone") String phone, @Param("companyId") UUID companyId);
+
+    /**
+     * Busca o mapping de campanha mais recente por telefone
+     */
+    @Query("SELECT m FROM ChatLidMapping m WHERE m.phone = :phone AND m.companyId = :companyId AND m.fromCampaign = true AND m.campaignId IS NOT NULL ORDER BY m.createdAt DESC LIMIT 1")
+    Optional<ChatLidMapping> findMostRecentCampaignMappingByPhone(@Param("phone") String phone, @Param("companyId") UUID companyId);
 }

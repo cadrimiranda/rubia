@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +25,7 @@ public class ChatLidMappingService {
 
     private final ChatLidMappingRepository repository;
     private final ConversationService conversationService;
+    private final PhoneService phoneService;
 
     /**
      * Encontra ou cria mapping para webhook do WhatsApp
@@ -106,6 +108,29 @@ public class ChatLidMappingService {
     }
 
     /**
+     * Cria mapping para campanhas com ID da campanha (sem chatLid inicial)
+     */
+    @Transactional
+    public ChatLidMapping createMappingForCampaign(UUID conversationId, String phone, UUID companyId, UUID instanceId, UUID campaignId) {
+        
+
+        ChatLidMapping campaignMapping = ChatLidMapping.builder()
+            .conversationId(conversationId)
+            .phone(phone)
+            .companyId(companyId)
+            .whatsappInstanceId(instanceId)
+            .fromCampaign(true)
+            .campaignId(campaignId)
+            // chatLid será null até receber resposta do cliente
+            .build();
+
+        ChatLidMapping saved = repository.save(campaignMapping);
+        log.info("📊 Mapping de campanha criado: conversationId={}", saved.getConversationId());
+
+        return saved;
+    }
+
+    /**
      * Atualiza mapping de campanha com chatLid quando cliente responde
      */
     @Transactional
@@ -169,6 +194,44 @@ public class ChatLidMappingService {
      */
     public List<ChatLidMapping> findCampaignMappings(UUID companyId) {
         return repository.findByFromCampaignTrueAndCompanyId(companyId);
+    }
+
+    /**
+     * Busca mappings de campanhas ativas com variações de telefone
+     */
+    public List<ChatLidMapping> findActiveCampaignMappingsWithVariations(String phone, UUID companyId) {
+        List<ChatLidMapping> mappings = new ArrayList<>();
+        String[] phoneVariations = phoneService.generatePhoneVariations(phone);
+        
+        for (String phoneVariation : phoneVariations) {
+            if (phoneVariation != null) {
+                List<ChatLidMapping> variationMappings = repository.findActiveCampaignMappingsByPhoneAndCompany(phoneVariation, companyId);
+                mappings.addAll(variationMappings);
+            }
+        }
+        
+        // Ordenar por data de criação (mais recente primeiro)
+        mappings.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return mappings;
+    }
+
+    /**
+     * Busca o mapping de campanha mais recente por telefone (com variações)
+     */
+    public Optional<ChatLidMapping> findMostRecentActiveCampaignMapping(String phone, UUID companyId) {
+        String[] phoneVariations = phoneService.generatePhoneVariations(phone);
+        
+        for (String phoneVariation : phoneVariations) {
+        log.debug("🔗 Buscando conversa usando findMostRecentActiveCampaignMapping - phone: {}", phoneVariation);
+            if (phoneVariation != null) {
+                Optional<ChatLidMapping> mapping = repository.findMostRecentCampaignMappingByPhone(phoneVariation, companyId);
+                if (mapping.isPresent()) {
+                    return mapping;
+                }
+            }
+        }
+        
+        return Optional.empty();
     }
 
     private void validateInput(String chatLid, String phone, UUID companyId) {

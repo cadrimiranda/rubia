@@ -65,6 +65,12 @@ public class ChatLidMapping {
     @Builder.Default
     private Boolean fromCampaign = false;
 
+    /**
+     * ID da campanha que originou este mapping (nullable para mappings não-campanha)
+     */
+    @Column(name = "campaign_id", columnDefinition = "uuid")
+    private UUID campaignId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

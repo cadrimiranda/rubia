@@ -330,7 +330,8 @@ public class CampaignMessagingService {
                         conversation.get().getId(),
                         customerPhone,
                         campaignContact.getCustomer().getCompany().getId(),
-                        null // instanceId será preenchido quando cliente responder
+                        null, // instanceId será preenchido quando cliente responder
+                        campaignContact.getCampaign().getId() // ID da campanha
                     );
                     log.info("🔗 Mapping de campanha criado para conversa: {}", conversation.get().getId());
                 } else {
