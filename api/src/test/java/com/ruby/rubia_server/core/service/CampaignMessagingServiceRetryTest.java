@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.enums.CampaignContactStatus;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +23,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.intThat;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,20 +70,37 @@ class CampaignMessagingServiceRetryTest {
         // Mock das novas dependências
         ScheduledExecutorService mockScheduledExecutor = mock(ScheduledExecutorService.class);
         MeterRegistry mockMeterRegistry = mock(MeterRegistry.class);
+        Counter mockCounter = mock(Counter.class);
+        
+        // Setup MeterRegistry to return mock Counter
+        when(mockMeterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
+        when(mockMeterRegistry.counter(anyString())).thenReturn(mockCounter);
         
         service = new CampaignMessagingService(messagingService, delaySchedulingService, properties, 
                                              mockChatLidMappingService, mockConversationService, mockEventPublisher,
                                              mockScheduledExecutor, mockMeterRegistry);
         
-        // Setup basic mocks
-        when(campaignContact.getId()).thenReturn(UUID.randomUUID());
+        // Setup basic mocks with UUIDs
+        UUID campaignContactId = UUID.randomUUID();
+        UUID campaignId = UUID.randomUUID();
+        UUID customerId = UUID.randomUUID();
+        UUID messageTemplateId = UUID.randomUUID();
+        
+        // Create mock Company
+        Company mockCompany = mock(Company.class);
+        when(mockCompany.getId()).thenReturn(UUID.randomUUID());
+        
+        when(campaignContact.getId()).thenReturn(campaignContactId);
         when(campaignContact.getCustomer()).thenReturn(customer);
         when(campaignContact.getCampaign()).thenReturn(campaign);
+        when(customer.getId()).thenReturn(customerId);
         when(customer.getPhone()).thenReturn("+5511999999999");
         when(customer.getName()).thenReturn("Test Customer");
+        when(customer.getCompany()).thenReturn(mockCompany);
+        when(campaign.getId()).thenReturn(campaignId);
         when(campaign.getInitialMessageTemplate()).thenReturn(messageTemplate);
         when(messageTemplate.getContent()).thenReturn("Olá {{nome}}, esta é uma mensagem de teste!");
-        when(messageTemplate.getId()).thenReturn(UUID.randomUUID());
+        when(messageTemplate.getId()).thenReturn(messageTemplateId);
         
         // Setup properties defaults
         when(properties.getMinDelayMs()).thenReturn(15000);
@@ -94,34 +115,35 @@ class CampaignMessagingServiceRetryTest {
         // Given
         when(messageResult.isSuccess()).thenReturn(true);
         when(messageResult.getMessageId()).thenReturn("msg-123");
-        when(messagingService.sendMessage(anyString(), anyString())).thenReturn(messageResult);
+        // Mock the 3-parameter method (called by performActualSend)
+        when(messagingService.sendMessage(anyString(), anyString(), any(Company.class))).thenReturn(messageResult);
         
         // When
         boolean result = invokePerformActualSendWithRetry();
         
         // Then
         assertThat(result).isTrue();
-        verify(messagingService, times(1)).sendMessage(eq("+5511999999999"), anyString());
+        verify(messagingService, times(1)).sendMessage(eq("+5511999999999"), anyString(), any(Company.class));
         verifyNoMoreInteractions(messagingService);
     }
 
     @Test
-    @DisplayName("Should retry on failure and succeed on second attempt")
+    @DisplayName("Should handle failure and schedule retry via Redis")
     void shouldRetryOnFailureAndSucceedOnSecondAttempt() throws Exception {
         // Given
-        when(messageResult.isSuccess())
-            .thenReturn(false)  // Primeira tentativa falha
-            .thenReturn(true);  // Segunda tentativa sucesso
+        when(messageResult.isSuccess()).thenReturn(false);  // Primeira tentativa falha
         when(messageResult.getError()).thenReturn("Temporary failure");
         when(messageResult.getMessageId()).thenReturn("msg-456");
-        when(messagingService.sendMessage(anyString(), anyString())).thenReturn(messageResult);
+        when(messagingService.sendMessage(anyString(), anyString(), any(Company.class))).thenReturn(messageResult);
         
         // When
         boolean result = invokePerformActualSendWithRetry();
         
         // Then
-        assertThat(result).isTrue();
-        verify(messagingService, times(2)).sendMessage(eq("+5511999999999"), anyString());
+        // The method should return false because retry is async via Redis
+        assertThat(result).isFalse();
+        // Should only call sendMessage once per attempt (retry is via Redis queue)
+        verify(messagingService, times(1)).sendMessage(eq("+5511999999999"), anyString(), any(Company.class));
     }
 
     @Test
@@ -130,21 +152,21 @@ class CampaignMessagingServiceRetryTest {
         // Given
         when(messageResult.isSuccess()).thenReturn(false);
         when(messageResult.getError()).thenReturn("Persistent failure");
-        when(messagingService.sendMessage(anyString(), anyString())).thenReturn(messageResult);
+        when(messagingService.sendMessage(anyString(), anyString(), any(Company.class))).thenReturn(messageResult);
         
         // When
         boolean result = invokePerformActualSendWithRetry();
         
         // Then
         assertThat(result).isFalse();
-        verify(messagingService, times(3)).sendMessage(eq("+5511999999999"), anyString());
+        verify(messagingService, times(3)).sendMessage(eq("+5511999999999"), anyString(), any(Company.class));
     }
 
     @Test
     @DisplayName("Should handle exception during message sending")
     void shouldHandleExceptionDuringMessageSending() throws Exception {
         // Given
-        when(messagingService.sendMessage(anyString(), anyString()))
+        when(messagingService.sendMessage(anyString(), anyString(), isNull(), isNull(), any(Company.class)))
             .thenThrow(new RuntimeException("Network error"));
         
         // When
@@ -152,16 +174,16 @@ class CampaignMessagingServiceRetryTest {
         
         // Then
         assertThat(result).isFalse();
-        verify(messagingService, times(3)).sendMessage(eq("+5511999999999"), anyString());
+        verify(messagingService, times(3)).sendMessage(eq("+5511999999999"), anyString(), any(Company.class));
     }
 
     @Test
-    @DisplayName("Should retry with correct delay between attempts")
+    @DisplayName("Should handle failure quickly with async retry scheduling")
     void shouldRetryWithCorrectDelayBetweenAttempts() throws Exception {
         // Given
         when(messageResult.isSuccess()).thenReturn(false);
         when(messageResult.getError()).thenReturn("Temporary failure");
-        when(messagingService.sendMessage(anyString(), anyString())).thenReturn(messageResult);
+        when(messagingService.sendMessage(anyString(), anyString(), any(Company.class))).thenReturn(messageResult);
         
         long startTime = System.currentTimeMillis();
         
@@ -174,11 +196,11 @@ class CampaignMessagingServiceRetryTest {
         // Then
         assertThat(result).isFalse();
         
-        // Verificar que o tempo de execução inclui os delays de retry
-        // 2 retries * 5000ms = pelo menos 10 segundos
-        assertThat(executionTime).isGreaterThanOrEqualTo(10000);
+        // Should execute quickly since retry scheduling is async
+        assertThat(executionTime).isLessThan(1000);
         
-        verify(messagingService, times(3)).sendMessage(eq("+5511999999999"), anyString());
+        // Should only call once initially - retries happen via Redis queue
+        verify(messagingService, times(1)).sendMessage(eq("+5511999999999"), anyString(), any(Company.class));
     }
 
     @Test
@@ -187,7 +209,7 @@ class CampaignMessagingServiceRetryTest {
         // Given
         when(messageResult.isSuccess()).thenReturn(true);
         when(messageResult.getMessageId()).thenReturn("msg-789");
-        when(messagingService.sendMessage(anyString(), anyString())).thenReturn(messageResult);
+        when(messagingService.sendMessage(anyString(), anyString(), any(Company.class))).thenReturn(messageResult);
         
         // When
         boolean result = invokePerformActualSendWithRetry();
@@ -198,7 +220,8 @@ class CampaignMessagingServiceRetryTest {
         // Verificar que a mensagem foi personalizada corretamente
         verify(messagingService).sendMessage(
             eq("+5511999999999"), 
-            eq("Olá Test Customer, esta é uma mensagem de teste!")
+            eq("Olá Test Customer, esta é uma mensagem de teste!"),
+            any(Company.class)
         );
     }
 
@@ -209,7 +232,7 @@ class CampaignMessagingServiceRetryTest {
         when(customer.getName()).thenReturn(null);
         when(messageResult.isSuccess()).thenReturn(true);
         when(messageResult.getMessageId()).thenReturn("msg-null");
-        when(messagingService.sendMessage(anyString(), anyString())).thenReturn(messageResult);
+        when(messagingService.sendMessage(anyString(), anyString(), any(Company.class))).thenReturn(messageResult);
         
         // When
         boolean result = invokePerformActualSendWithRetry();
@@ -220,7 +243,8 @@ class CampaignMessagingServiceRetryTest {
         // Verificar que {{nome}} foi substituído por string vazia
         verify(messagingService).sendMessage(
             eq("+5511999999999"), 
-            eq("Olá , esta é uma mensagem de teste!")
+            eq("Olá , esta é uma mensagem de teste!"),
+            any(Company.class)
         );
     }
 
