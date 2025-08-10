@@ -11,6 +11,8 @@ import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
 import com.ruby.rubia_server.core.entity.ChatLidMapping;
+
+import java.util.ArrayList;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.SenderType;
@@ -379,10 +381,20 @@ public class MessagingService {
             // Se não encontrou mapping por chatLid, procurar mappings de campanha por telefone
             logger.debug("🔍 Nenhum mapping encontrado por chatLid, buscando mappings de campanha por telefone");
             
-            List<ChatLidMapping> campaignMappings = chatLidMappingService.findMappingsByPhone(
-                customer.getPhone(), 
-                customer.getCompany().getId()
-            );
+            // Buscar com variações do telefone (com e sem 9º dígito)
+            String[] phoneVariations = phoneService.generatePhoneVariations(customer.getPhone());
+            List<ChatLidMapping> campaignMappings = new ArrayList<>();
+            
+            for (String phoneVariation : phoneVariations) {
+                if (phoneVariation != null) {
+                    List<ChatLidMapping> mappings = chatLidMappingService.findMappingsByPhone(
+                        phoneVariation, 
+                        customer.getCompany().getId()
+                    );
+                    campaignMappings.addAll(mappings);
+                    logger.debug("🔍 Buscando mappings para variação: {}, encontrados: {}", phoneVariation, mappings.size());
+                }
+            }
             
             // Procurar mapping de campanha sem chatLid (criado durante campanha)
             Optional<ChatLidMapping> campaignMapping = campaignMappings.stream()
