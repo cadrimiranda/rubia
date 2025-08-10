@@ -172,6 +172,50 @@ export const BloodCenterChat: React.FC = () => {
     return sortedMessages;
   }, [state.selectedDonor, state.messages, messagesCache]);
 
+  // Atualizar lastMessage dos donors quando novas mensagens chegam via WebSocket
+  useEffect(() => {
+    // Para cada conversa no messagesCache, atualizar o donor correspondente
+    Object.entries(messagesCache).forEach(([conversationId, cache]) => {
+      if (cache.messages.length === 0) return;
+
+      // Pegar a mensagem mais recente da conversa
+      const lastMessage = cache.messages[cache.messages.length - 1];
+      
+      // Encontrar o donor correspondente
+      const donorIndex = donors.findIndex(d => d.conversationId === conversationId);
+      
+      if (donorIndex >= 0) {
+        const currentDonor = donors[donorIndex];
+        
+        // Verificar se é uma mensagem nova (diferente da última conhecida)
+        const isNewMessage = !currentDonor.lastMessage || 
+          currentDonor.lastMessage !== lastMessage.content ||
+          !currentDonor.timestamp ||
+          new Date(lastMessage.timestamp).getTime() > new Date(`1970-01-01 ${currentDonor.timestamp}`).getTime();
+        
+        if (isNewMessage) {
+          const updatedDonor = {
+            ...currentDonor,
+            lastMessage: lastMessage.content || (lastMessage.messageType === 'audio' ? '🎵 Mensagem de áudio' : 'Anexo enviado'),
+            timestamp: lastMessage.timestamp instanceof Date 
+              ? lastMessage.timestamp.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+              : new Date(lastMessage.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            unread: !lastMessage.isFromUser ? (currentDonor.unread || 0) + 1 : currentDonor.unread || 0
+          };
+
+          setDonors(prevDonors => 
+            prevDonors.map(d => d.id === currentDonor.id ? updatedDonor : d)
+          );
+
+          // Se é o donor selecionado, também atualizar o estado
+          if (state.selectedDonor?.id === currentDonor.id) {
+            updateState({ selectedDonor: updatedDonor });
+          }
+        }
+      }
+    });
+  }, [messagesCache, donors, state.selectedDonor, updateState]);
+
   useEffect(() => {
     if (webSocket.isConnected) {
       // WebSocket connected
@@ -792,8 +836,22 @@ export const BloodCenterChat: React.FC = () => {
       setCurrentDraftMessage(draftMessage);
       if (draftMessage) {
       }
+
+      // Marcar mensagens como lidas quando o donor é selecionado
+      if (donor.unread && donor.unread > 0) {
+        const updatedDonor = { ...donor, unread: 0 };
+        setDonors(prevDonors => 
+          prevDonors.map(d => d.id === donor.id ? updatedDonor : d)
+        );
+        
+        // Se há conversationId, também marcar como lida no store
+        if (donor.conversationId) {
+          const store = useChatStore.getState();
+          store.markAsRead && store.markAsRead(donor.conversationId);
+        }
+      }
     },
-    [updateState]
+    [updateState, setDonors]
   );
 
   // Função reutilizável para carregar dados completos do customer e abrir modal (DRY)
