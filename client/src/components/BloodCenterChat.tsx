@@ -172,6 +172,49 @@ export const BloodCenterChat: React.FC = () => {
     return sortedMessages;
   }, [state.selectedDonor, state.messages, messagesCache]);
 
+
+  useEffect(() => {
+    if (webSocket.isConnected) {
+      // WebSocket connected
+    } else if (authService.isAuthenticated()) {
+      webSocket.connect();
+    }
+  }, [webSocket, webSocket.isConnected]);
+
+  // Carregar campanhas ativas da API
+  const loadCampaigns = React.useCallback(async () => {
+    try {
+      setIsCampaignsLoading(true);
+      const companyId = localStorage.getItem("auth_company_id");
+      if (!companyId) {
+        console.warn("Company ID não encontrado");
+        return;
+      }
+
+      const activeCampaigns = await campaignApi.getActiveCampaigns(companyId);
+      setCampaigns(activeCampaigns);
+    } catch (error) {
+      console.error("❌ Erro ao carregar campanhas:", error);
+      setCampaigns([]);
+    } finally {
+      setIsCampaignsLoading(false);
+    }
+  }, []);
+
+  // Carregar campanhas no mount
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
+
+  const updateState = React.useCallback(
+    (updates: Partial<ChatState>) => {
+      if (updates.messages !== undefined) {
+      }
+      setState((prev) => ({ ...prev, ...updates }));
+    },
+    [state.messages]
+  );
+
   // Atualizar lastMessage dos donors quando novas mensagens chegam via WebSocket
   useEffect(() => {
     // Para cada conversa no messagesCache, atualizar o donor correspondente
@@ -215,48 +258,6 @@ export const BloodCenterChat: React.FC = () => {
       }
     });
   }, [messagesCache, donors, state.selectedDonor, updateState]);
-
-  useEffect(() => {
-    if (webSocket.isConnected) {
-      // WebSocket connected
-    } else if (authService.isAuthenticated()) {
-      webSocket.connect();
-    }
-  }, [webSocket, webSocket.isConnected]);
-
-  // Carregar campanhas ativas da API
-  const loadCampaigns = React.useCallback(async () => {
-    try {
-      setIsCampaignsLoading(true);
-      const companyId = localStorage.getItem("auth_company_id");
-      if (!companyId) {
-        console.warn("Company ID não encontrado");
-        return;
-      }
-
-      const activeCampaigns = await campaignApi.getActiveCampaigns(companyId);
-      setCampaigns(activeCampaigns);
-    } catch (error) {
-      console.error("❌ Erro ao carregar campanhas:", error);
-      setCampaigns([]);
-    } finally {
-      setIsCampaignsLoading(false);
-    }
-  }, []);
-
-  // Carregar campanhas no mount
-  useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
-
-  const updateState = React.useCallback(
-    (updates: Partial<ChatState>) => {
-      if (updates.messages !== undefined) {
-      }
-      setState((prev) => ({ ...prev, ...updates }));
-    },
-    [state.messages]
-  );
 
   // Converter ConversationDTO em Donor (desabilitado para usar mock data)
   /*
