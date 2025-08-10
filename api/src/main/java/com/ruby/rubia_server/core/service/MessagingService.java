@@ -103,8 +103,7 @@ public class MessagingService {
     }
     
     public MessageResult sendMessage(String to, String message, UUID companyId, UUID userId, Company company) {
-        logger.info("📱 MessagingService.sendMessage chamado - to: {}, currentAdapter: {}", 
-                to, currentAdapter != null ? currentAdapter.getProviderName() : "null");
+        
         
         if (currentAdapter == null) {
             logger.error("❌ No messaging adapter configured");
@@ -117,15 +116,17 @@ public class MessagingService {
         }
         
         // Enviar mensagem
-        logger.info("📱 CHAMANDO currentAdapter.sendMessage - adapter: {}", currentAdapter.getProviderName());
+        
         MessageResult result;
         if (company != null && currentAdapter instanceof ZApiAdapter) {
             result = ((ZApiAdapter) currentAdapter).sendMessage(to, message, company);
         } else {
             result = currentAdapter.sendMessage(to, message);
         }
-        logger.info("📱 RESULTADO do adapter: success={}, messageId={}, error={}", 
-                result.isSuccess(), result.getMessageId(), result.getError());
+        // Log apenas falhas
+        if (!result.isSuccess()) {
+            logger.warn("❌ Falha no envio: {} → Erro: {}", to, result.getError());
+        }
         
         // Se mensagem enviada com sucesso, sincronizar com campanhas
         if (result.isSuccess()) {
@@ -212,8 +213,7 @@ public class MessagingService {
     
     public void processIncomingMessage(IncomingMessage incomingMessage) {
         try {
-            logger.debug("Processing message from: {} via {}", 
-                incomingMessage.getFrom(), incomingMessage.getProvider());
+            
             
             String fromNumber = phoneService.extractFromProvider(incomingMessage.getFrom());
             
@@ -247,7 +247,7 @@ public class MessagingService {
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
             
-            logger.info("Message processed: {} -> {}", incomingMessage.getFrom(), conversation.getId());
+            logger.info("📨 {} → Conversa {}", incomingMessage.getFrom(), conversation.getId());
             
         } catch (Exception e) {
             logger.error("Error processing incoming message: {}", e.getMessage(), e);
@@ -268,13 +268,13 @@ public class MessagingService {
             if (variation != null) {
                 Company company = findCompanyByWhatsAppInstance(variation);
                 if (company != null) {
-                    logger.info("Found company: {}", company.getName());
+                    
                     return company;
                 }
             }
         }
         
-        logger.warn("No company found for connectedPhone: {}", connectedPhone);
+        
         return null;
     }
 

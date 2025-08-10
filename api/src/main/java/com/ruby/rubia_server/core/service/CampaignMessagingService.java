@@ -139,14 +139,14 @@ public class CampaignMessagingService {
      * Executa o envio real da mensagem (sem Thread.sleep)
      */
     private boolean performActualSend(CampaignContact campaignContact) {
-        log.info("🚀 INICIANDO performActualSend para contato: {}", campaignContact.getId());
+        
         try {
             String customerPhone = campaignContact.getCustomer().getPhone();
-            log.info("🚀 Telefone do cliente: {}", customerPhone);
+            
             
             MessageTemplate template = campaignContact.getCampaign().getInitialMessageTemplate();
             String templateContent = template.getContent();
-            log.info("🚀 Template content length: {}", templateContent != null ? templateContent.length() : "null");
+            
             
             // Personalizar mensagem substituindo variáveis
             String personalizedMessage = personalizeMessage(templateContent, campaignContact);

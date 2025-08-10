@@ -33,16 +33,16 @@ public class ChatLidMappingService {
     public ChatLidMapping findOrCreateMapping(String chatLid, String phone, UUID companyId, UUID instanceId) {
         validateInput(chatLid, phone, companyId);
 
-        log.debug("🔗 Buscando mapping para chatLid: {}, phone: {}, company: {}", chatLid, phone, companyId);
+        
 
         // Primeiro tenta encontrar mapping existente
         Optional<ChatLidMapping> existingMapping = repository.findByChatLid(chatLid);
         if (existingMapping.isPresent()) {
-            log.debug("✅ Mapping encontrado para chatLid: {}", chatLid);
+            
             return existingMapping.get();
         }
 
-        log.debug("🔍 Mapping não encontrado, buscando conversa existente por telefone");
+        
 
         // Se não existe, busca conversa existente por telefone
         // Como não temos método direto, vamos usar uma abordagem alternativa
@@ -65,11 +65,11 @@ public class ChatLidMappingService {
      * Busca conversa pelo chatLid (principal método usado no webhook)
      */
     public Optional<Conversation> findConversationByChatLid(String chatLid) {
-        log.debug("🔍 Buscando conversa por chatLid: {}", chatLid);
+        
 
         return repository.findByChatLid(chatLid)
             .flatMap(mapping -> {
-                log.debug("✅ Mapping encontrado, buscando conversa: {}", mapping.getConversationId());
+                
                 // Como findById precisa de companyId, vamos buscar pela entidade
                 return Optional.ofNullable(conversationService.findById(mapping.getConversationId(), mapping.getCompanyId()))
                     .map(dto -> {
@@ -88,7 +88,7 @@ public class ChatLidMappingService {
      */
     @Transactional
     public ChatLidMapping createMappingForCampaign(UUID conversationId, String phone, UUID companyId, UUID instanceId) {
-        log.debug("📊 Criando mapping para campanha: conversationId={}, phone={}", conversationId, phone);
+        
 
         ChatLidMapping campaignMapping = ChatLidMapping.builder()
             .conversationId(conversationId)
@@ -110,7 +110,7 @@ public class ChatLidMappingService {
      */
     @Transactional
     public Optional<ChatLidMapping> updateMappingWithChatLid(UUID conversationId, String chatLid) {
-        log.debug("🔄 Atualizando mapping com chatLid: conversationId={}, chatLid={}", conversationId, chatLid);
+        
 
         return repository.findByConversationId(conversationId)
             .map(mapping -> {
