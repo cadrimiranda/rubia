@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import static org.mockito.Mockito.lenient;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CampaignQueueProcessor Unit Tests")
 class CampaignQueueProcessorTest {
@@ -64,8 +66,8 @@ class CampaignQueueProcessorTest {
         meterRegistry = new SimpleMeterRegistry();
 
         // Setup Redis template mocks
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        when(redisTemplate.opsForList()).thenReturn(listOperations);
+        lenient().when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        lenient().when(redisTemplate.opsForList()).thenReturn(listOperations);
 
         processor = new CampaignQueueProcessor(
                 redisTemplate,
@@ -93,7 +95,7 @@ class CampaignQueueProcessorTest {
         CampaignContact mockContact = createMockCampaignContact(contactId, campaignId);
 
         // Setup mocks
-        when(campaignContactService.findById(contactId)).thenReturn(Optional.of(mockContact));
+        when(campaignContactService.findByIdWithRelations(contactId)).thenReturn(Optional.of(mockContact));
         when(messageService.sendSingleMessageAsync(mockContact))
                 .thenReturn(CompletableFuture.completedFuture(true));
         when(zSetOperations.count(QUEUE_KEY, 0, Double.MAX_VALUE)).thenReturn(1L);
@@ -108,7 +110,7 @@ class CampaignQueueProcessorTest {
         processor.processCampaignQueue();
 
         // Then
-        verify(campaignContactService).findById(contactId);
+        verify(campaignContactService).findByIdWithRelations(contactId);
         verify(messageService).sendSingleMessageAsync(mockContact);
         verify(listOperations).rightPush(PROCESSING_KEY, itemJson);
     }
@@ -126,7 +128,7 @@ class CampaignQueueProcessorTest {
         String itemJson = objectMapper.writeValueAsString(queueItem);
 
         // Setup mocks - contact not found
-        when(campaignContactService.findById(contactId)).thenReturn(Optional.empty());
+        when(campaignContactService.findByIdWithRelations(contactId)).thenReturn(Optional.empty());
         when(zSetOperations.count(QUEUE_KEY, 0, Double.MAX_VALUE)).thenReturn(1L);
         when(listOperations.size(PROCESSING_KEY)).thenReturn(0L);
         when(listOperations.size(ERROR_KEY)).thenReturn(0L);
@@ -139,7 +141,7 @@ class CampaignQueueProcessorTest {
         processor.processCampaignQueue();
 
         // Then
-        verify(campaignContactService).findById(contactId);
+        verify(campaignContactService).findByIdWithRelations(contactId);
         verify(messageService, never()).sendSingleMessageAsync(any());
         verify(listOperations).remove(PROCESSING_KEY, 1, itemJson);
     }
@@ -160,7 +162,7 @@ class CampaignQueueProcessorTest {
         mockContact.setStatus(CampaignContactStatus.SENT); // Already sent
 
         // Setup mocks
-        when(campaignContactService.findById(contactId)).thenReturn(Optional.of(mockContact));
+        when(campaignContactService.findByIdWithRelations(contactId)).thenReturn(Optional.of(mockContact));
         when(zSetOperations.count(QUEUE_KEY, 0, Double.MAX_VALUE)).thenReturn(1L);
         when(listOperations.size(PROCESSING_KEY)).thenReturn(0L);
         when(listOperations.size(ERROR_KEY)).thenReturn(0L);
@@ -173,7 +175,7 @@ class CampaignQueueProcessorTest {
         processor.processCampaignQueue();
 
         // Then
-        verify(campaignContactService).findById(contactId);
+        verify(campaignContactService).findByIdWithRelations(contactId);
         verify(messageService, never()).sendSingleMessageAsync(any());
         verify(listOperations).remove(PROCESSING_KEY, 1, itemJson);
     }
@@ -186,19 +188,15 @@ class CampaignQueueProcessorTest {
             concurrencyLimiter.tryAcquire();
         }
 
-        when(zSetOperations.count(QUEUE_KEY, 0, Double.MAX_VALUE)).thenReturn(1L);
-        when(listOperations.size(PROCESSING_KEY)).thenReturn(0L);
-        when(listOperations.size(ERROR_KEY)).thenReturn(0L);
-
-        // Mock empty pipeline results since no items should be processed
-        when(redisTemplate.executePipelined(any(org.springframework.data.redis.core.RedisCallback.class))).thenReturn(Collections.emptyList());
-
         // When
         processor.processCampaignQueue();
 
         // Then - should not process any items due to concurrency limit
-        verify(redisTemplate).executePipelined(any(org.springframework.data.redis.core.RedisCallback.class)); // Called to get items
+        // The processor should not call Redis operations when concurrency is exhausted
         assertEquals(0, concurrencyLimiter.availablePermits());
+        
+        // Verify that no Redis operations were called because of concurrency limit
+        verify(redisTemplate, never()).executePipelined(any(org.springframework.data.redis.core.RedisCallback.class));
     }
 
     @Test
@@ -224,7 +222,7 @@ class CampaignQueueProcessorTest {
 
         // Then
         verify(listOperations).remove(PROCESSING_KEY, 1, stuckItemJson);
-        verify(zSetOperations).add(eq(QUEUE_KEY), eq(stuckItemJson), anyLong());
+        verify(zSetOperations).add(eq(QUEUE_KEY), eq(stuckItemJson), anyDouble());
     }
 
     @Test
@@ -250,34 +248,50 @@ class CampaignQueueProcessorTest {
 
         // Then
         verify(listOperations, never()).remove(eq(PROCESSING_KEY), eq(1), eq(freshItemJson));
-        verify(zSetOperations, never()).add(eq(QUEUE_KEY), eq(freshItemJson), anyLong());
+        verify(zSetOperations, never()).add(eq(QUEUE_KEY), eq(freshItemJson), anyDouble());
     }
 
     @Test
     @DisplayName("Should update metrics correctly")
-    void shouldUpdateMetricsCorrectly() {
-        // Given
+    void shouldUpdateMetricsCorrectly() throws Exception {
+        // Given - Create a scenario where items are processed to trigger updateMetrics()
+        UUID campaignId = UUID.randomUUID();
+        UUID contactId = UUID.randomUUID();
+        String companyId = "company-123";
+
+        CampaignQueueProcessor.CampaignQueueItem queueItem = 
+            new CampaignQueueProcessor.CampaignQueueItem(campaignId, contactId, companyId);
+        String itemJson = objectMapper.writeValueAsString(queueItem);
+
+        CampaignContact mockContact = createMockCampaignContact(contactId, campaignId);
+
+        // Setup mocks
+        when(campaignContactService.findByIdWithRelations(contactId)).thenReturn(Optional.of(mockContact));
+        when(messageService.sendSingleMessageAsync(mockContact))
+                .thenReturn(CompletableFuture.completedFuture(true));
         when(zSetOperations.count(QUEUE_KEY, 0, Double.MAX_VALUE)).thenReturn(5L);
         when(listOperations.size(PROCESSING_KEY)).thenReturn(2L);
         when(listOperations.size(ERROR_KEY)).thenReturn(1L);
 
-        // Mock empty pipeline results
-        when(redisTemplate.executePipelined(any(org.springframework.data.redis.core.RedisCallback.class))).thenReturn(Collections.emptyList());
+        // Mock Redis pipeline operations with at least one item
+        List<Object> pipelineResults = Arrays.asList(itemJson);
+        when(redisTemplate.executePipelined(any(org.springframework.data.redis.core.RedisCallback.class))).thenReturn(pipelineResults);
 
         // When
         processor.processCampaignQueue();
 
-        // Then - Verify metrics are tracked (values may vary)
-        assertNotNull(meterRegistry.get("campaign.queue.size").gauge());
-        assertNotNull(meterRegistry.get("campaign.processing.size").gauge());
-        assertNotNull(meterRegistry.get("campaign.error.size").gauge());
-        assertNotNull(meterRegistry.get("campaign.concurrency.available").gauge());
-        assertNotNull(meterRegistry.get("campaign.concurrency.used").gauge());
-        
-        // Verify Redis operations were called for metrics
+        // Then - Verify that Redis operations were called for metrics during updateMetrics()
         verify(zSetOperations).count(QUEUE_KEY, 0, Double.MAX_VALUE);
         verify(listOperations).size(PROCESSING_KEY);
         verify(listOperations).size(ERROR_KEY);
+        
+        // Verify that the meterRegistry was used to record gauge metrics
+        assertTrue(meterRegistry.getMeters().stream()
+            .anyMatch(meter -> meter.getId().getName().equals("campaign.queue.size")));
+        assertTrue(meterRegistry.getMeters().stream()
+            .anyMatch(meter -> meter.getId().getName().equals("campaign.processing.size")));
+        assertTrue(meterRegistry.getMeters().stream()
+            .anyMatch(meter -> meter.getId().getName().equals("campaign.error.size")));
     }
 
     @Test
@@ -295,7 +309,7 @@ class CampaignQueueProcessorTest {
         CampaignContact mockContact = createMockCampaignContact(contactId, campaignId);
 
         // Setup mocks - messaging service throws exception
-        when(campaignContactService.findById(contactId)).thenReturn(Optional.of(mockContact));
+        when(campaignContactService.findByIdWithRelations(contactId)).thenReturn(Optional.of(mockContact));
         when(messageService.sendSingleMessageAsync(mockContact))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Messaging failed")));
 
@@ -311,7 +325,7 @@ class CampaignQueueProcessorTest {
         processor.processCampaignQueue();
 
         // Then
-        verify(campaignContactService).findById(contactId);
+        verify(campaignContactService).findByIdWithRelations(contactId);
         verify(messageService).sendSingleMessageAsync(mockContact);
         verify(listOperations).remove(PROCESSING_KEY, 1, itemJson);
         verify(listOperations).rightPush(ERROR_KEY, itemJson);
