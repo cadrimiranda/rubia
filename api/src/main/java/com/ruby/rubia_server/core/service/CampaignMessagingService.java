@@ -56,29 +56,21 @@ public class CampaignMessagingService {
         log.debug("📅 Agendando envio para {} com delay de {}ms", 
                 campaignContact.getCustomer().getPhone(), initialDelay);
 
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
-        
-        ScheduledFuture<?> scheduledTask = scheduledExecutor.schedule(() -> {
-            sendWithRetry(campaignContact, 1)
-                .whenComplete((result, throwable) -> {
-                    if (throwable != null) {
-                        future.completeExceptionally(throwable);
-                        recordMetrics(campaignContact, false, throwable);
-                    } else {
-                        future.complete(result);
-                        recordMetrics(campaignContact, result, null);
-                    }
-                });
-        }, initialDelay, TimeUnit.MILLISECONDS);
-        
-        // Permite cancelamento se necessário
-        future.whenComplete((r, t) -> {
-            if (future.isCancelled()) {
-                scheduledTask.cancel(false);
+        // Usar o delaySchedulingService para agendar o envio
+        return delaySchedulingService.scheduleMessageSend(
+            campaignContact,
+            initialDelay,
+            () -> {
+                try {
+                    boolean result = sendWithRetry(campaignContact, 1).join();
+                    recordMetrics(campaignContact, result, null);
+                    return result;
+                } catch (Exception e) {
+                    recordMetrics(campaignContact, false, e);
+                    throw e;
+                }
             }
-        });
-        
-        return future;
+        );
     }
 
 
@@ -392,6 +384,16 @@ public class CampaignMessagingService {
      * Registra métricas de processamento
      */
     private void recordMetrics(CampaignContact contact, boolean success, Throwable error) {
+        if (contact == null) {
+            meterRegistry.counter("campaign.messages.total",
+                "campaign_id", "unknown",
+                "company_id", "unknown",
+                "status", success ? "success" : "failed",
+                "error", error != null ? error.getClass().getSimpleName() : "none"
+            ).increment();
+            return;
+        }
+        
         String campaignId = contact.getCampaign() != null ? 
             contact.getCampaign().getId().toString() : "unknown";
         String companyId = contact.getCustomer() != null && contact.getCustomer().getCompany() != null ?
