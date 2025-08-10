@@ -17,7 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(TestRedisContainerConfiguration.class)
+@Import({TestRedisContainerConfiguration.class, MockAdapterTestConfiguration.class})
 public abstract class AbstractIntegrationTest {
 
     @Container

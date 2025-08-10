@@ -41,6 +41,21 @@ class CampaignMessagingServiceTest {
     @Mock
     private CampaignMessagingProperties properties;
 
+    @Mock
+    private ChatLidMappingService chatLidMappingService;
+
+    @Mock
+    private ConversationService conversationService;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private java.util.concurrent.ScheduledExecutorService scheduledExecutor;
+
+    @Mock
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
     @InjectMocks
     private CampaignMessagingService campaignMessagingService;
 
@@ -56,6 +71,12 @@ class CampaignMessagingServiceTest {
         when(properties.getMinDelayMs()).thenReturn(30000);
         when(properties.getMaxDelayMs()).thenReturn(60000);
         when(properties.getMessageTimeout()).thenReturn(Duration.ofSeconds(30));
+        
+        // Mock MeterRegistry
+        io.micrometer.core.instrument.Counter mockCounter = mock(io.micrometer.core.instrument.Counter.class);
+        io.micrometer.core.instrument.Timer mockTimer = mock(io.micrometer.core.instrument.Timer.class);
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
+        when(meterRegistry.timer(anyString(), any(String[].class))).thenReturn(mockTimer);
         company = new Company();
         company.setId(UUID.randomUUID());
         company.setName("Test Company");

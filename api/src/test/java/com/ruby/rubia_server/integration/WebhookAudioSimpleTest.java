@@ -1,33 +1,55 @@
 package com.ruby.rubia_server.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ruby.rubia_server.config.AbstractIntegrationTest;
+import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
+import com.ruby.rubia_server.core.entity.IncomingMessage;
+import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.client.RestTemplate;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.HashMap;
+import java.util.Map;
 
-@AutoConfigureMockMvc
-@TestPropertySource(properties = {
-    "messaging.provider=zapi"
-})
-class WebhookAudioSimpleTest extends AbstractIntegrationTest {
+import static org.assertj.core.api.Assertions.assertThat;
 
-    @Autowired
-    private MockMvc mockMvc;
+@ExtendWith(MockitoExtension.class)
+class WebhookAudioSimpleTest {
 
-    @Autowired
+    private ZApiAdapter zApiAdapter;
     private ObjectMapper objectMapper;
+    
+    @Mock
+    private RestTemplate restTemplate;
+    
+    @Mock
+    private WhatsAppInstanceService whatsAppInstanceService;
+    
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+    
+    @Mock
+    private WhatsAppInstanceValidator instanceValidator;
+    
+    @Mock
+    private ZApiUrlFactory urlFactory;
+
+    @BeforeEach
+    void setUp() {
+        PhoneService phoneService = new PhoneService();
+        zApiAdapter = new ZApiAdapter(restTemplate, phoneService, whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
+        objectMapper = new ObjectMapper();
+    }
 
     @Test
-    @Disabled("Database constraint issues in test environment - audio webhook works in production")
-    void shouldAcceptRealZApiAudioWebhook() throws Exception {
+    void shouldParseRealZApiAudioWebhook() throws Exception {
         // Real Z-API audio payload that you provided
         String realAudioPayload = """
             {
@@ -63,13 +85,22 @@ class WebhookAudioSimpleTest extends AbstractIntegrationTest {
             }
             """;
 
-        // Test that webhook accepts and processes the real audio payload
-        mockMvc.perform(post("/api/messaging/webhook/zapi")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(realAudioPayload))
-                .andExpect(status().isOk())
-                .andExpect(content().string("OK"));
+        // Parse the JSON payload
+        Map<String, Object> webhookPayload = objectMapper.readValue(realAudioPayload, Map.class);
         
-        System.out.println("✅ Real Z-API audio webhook processed successfully!");
+        // Test that ZApiAdapter can parse the real audio payload
+        IncomingMessage result = zApiAdapter.parseIncomingMessage(webhookPayload);
+        
+        // Assert that the audio message was parsed correctly
+        assertThat(result).isNotNull();
+        assertThat(result.getMessageId()).isEqualTo("3A8BB653A45850550DE4");
+        assertThat(result.getFrom()).isEqualTo("554891095462");
+        assertThat(result.getTo()).isEqualTo("554891208536");
+        assertThat(result.isFromMe()).isFalse();
+        assertThat(result.getSenderName()).isEqualTo("Débora Reitembach");
+        assertThat(result.getProvider()).isEqualTo("z-api");
+        assertThat(result.getMediaType()).isEqualTo("audio");
+        
+        System.out.println("✅ Real Z-API audio webhook parsed successfully!");
     }
 }

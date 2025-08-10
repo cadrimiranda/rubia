@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.ruby.rubia_server.core.config.CampaignMessagingProperties;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Customer;
@@ -31,6 +32,9 @@ class CampaignDelaySchedulingServiceTest {
     @Mock
     private TaskScheduler taskScheduler;
 
+    @Mock
+    private CampaignMessagingProperties properties;
+
     @InjectMocks
     private CampaignDelaySchedulingService schedulingService;
 
@@ -49,6 +53,11 @@ class CampaignDelaySchedulingServiceTest {
         testContact.setId(UUID.randomUUID());
         testContact.setCampaign(campaign);
         testContact.setCustomer(customer);
+
+        // Mock CampaignMessagingProperties
+        when(properties.isBusinessHoursOnly()).thenReturn(false);
+        when(properties.getBusinessStartHour()).thenReturn(9);
+        when(properties.getBusinessEndHour()).thenReturn(18);
     }
 
     @Test

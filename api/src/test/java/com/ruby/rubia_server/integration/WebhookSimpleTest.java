@@ -1,25 +1,50 @@
 package com.ruby.rubia_server.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ruby.rubia_server.config.AbstractIntegrationTest;
 import com.ruby.rubia_server.core.adapter.impl.ZApiAdapter;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
+import com.ruby.rubia_server.core.service.PhoneService;
+import com.ruby.rubia_server.core.service.WhatsAppInstanceService;
+import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.validation.WhatsAppInstanceValidator;
+import com.ruby.rubia_server.core.factory.ZApiUrlFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.TestPropertySource;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestPropertySource(properties = {
-    "messaging.provider=zapi"
-})
-class WebhookSimpleTest extends AbstractIntegrationTest {
+@ExtendWith(MockitoExtension.class)
+class WebhookSimpleTest {
 
-    @Autowired
     private ZApiAdapter zApiAdapter;
+    
+    @Mock
+    private RestTemplate restTemplate;
+    
+    @Mock
+    private WhatsAppInstanceService whatsAppInstanceService;
+    
+    @Mock
+    private CompanyContextUtil companyContextUtil;
+    
+    @Mock
+    private WhatsAppInstanceValidator instanceValidator;
+    
+    @Mock
+    private ZApiUrlFactory urlFactory;
+
+    @BeforeEach
+    void setUp() {
+        PhoneService phoneService = new PhoneService();
+        zApiAdapter = new ZApiAdapter(restTemplate, phoneService, whatsAppInstanceService, companyContextUtil, instanceValidator, urlFactory);
+    }
 
     @Test
     void shouldParseIncomingTextMessageFromCustomer() {

@@ -20,7 +20,7 @@ public class ZApiUrlFactory {
 
     private final String baseUrl;
 
-    public ZApiUrlFactory(@Value("${zapi.base-url:https://api.z-api.io}") String baseUrl) {
+    public ZApiUrlFactory(@Value("${z-api.base-url:https://api.z-api.io}") String baseUrl) {
         this.baseUrl = baseUrl;
         log.info("ZApiUrlFactory initialized with base URL: {}", baseUrl);
     }
