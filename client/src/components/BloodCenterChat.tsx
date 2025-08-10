@@ -248,8 +248,11 @@ export const BloodCenterChat: React.FC = () => {
               unread: !lastMessage.isFromUser ? (currentDonor.unread || 0) + 1 : currentDonor.unread || 0
             };
 
-            // Retornar array atualizado
-            return prevDonors.map(d => d.id === currentDonor.id ? updatedDonor : d);
+            // Remove the conversation from its current position
+            const otherDonors = prevDonors.filter(d => d.id !== currentDonor.id);
+            
+            // Place the updated conversation at the beginning of the array
+            return [updatedDonor, ...otherDonors];
           }
         }
         
@@ -262,7 +265,7 @@ export const BloodCenterChat: React.FC = () => {
   // Atualizar selectedDonor quando o donor correspondente na lista muda
   useEffect(() => {
     if (state.selectedDonor) {
-      const updatedDonor = donors.find(d => d.id === state.selectedDonor.id);
+      const updatedDonor = donors.find(d => d.id === state.selectedDonor!.id);
       if (updatedDonor && (
         updatedDonor.lastMessage !== state.selectedDonor.lastMessage ||
         updatedDonor.timestamp !== state.selectedDonor.timestamp ||

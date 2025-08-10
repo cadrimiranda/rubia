@@ -759,6 +759,9 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
           });
         }
       }
+
+      // Trigger conversation reordering by updating the last message
+      get().updateConversationLastMessage(conversationId, message);
     },
 
     updateMessageStatus: (messageId: string, status: string) => {
@@ -797,22 +800,34 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
       message: Message
     ) => {
       const state = get();
-      const updatedChats = state.chats.map((chat) =>
-        chat.id === conversationId
-          ? { ...chat, lastMessage: message, updatedAt: new Date() }
-          : chat
-      );
-
-      set({ chats: updatedChats });
-
-      if (state.activeChat?.id === conversationId) {
-        set({
-          activeChat: {
-            ...state.activeChat,
-            lastMessage: message,
-            updatedAt: new Date(),
-          },
-        });
+      const targetChat = state.chats.find((chat) => chat.id === conversationId);
+      
+      if (targetChat) {
+        // Remove the conversation from its current position
+        const otherChats = state.chats.filter((chat) => chat.id !== conversationId);
+        
+        // Update the conversation with new message and timestamp
+        const updatedChat = {
+          ...targetChat,
+          lastMessage: message,
+          updatedAt: new Date(),
+          unreadCount: state.activeChat?.id === conversationId ? targetChat.unreadCount : (targetChat.unreadCount || 0) + 1
+        };
+        
+        // Place the updated conversation at the beginning of the array
+        const reorderedChats = [updatedChat, ...otherChats];
+        
+        set({ chats: reorderedChats });
+        
+        if (state.activeChat?.id === conversationId) {
+          set({
+            activeChat: {
+              ...state.activeChat,
+              lastMessage: message,
+              updatedAt: new Date(),
+            },
+          });
+        }
       }
     },
 
