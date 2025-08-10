@@ -740,4 +740,44 @@ public class SecureCampaignQueueService {
             log.error("❌ Erro durante limpeza da fila: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Adiciona um contato específico de volta à fila para retry
+     * Usado quando uma mensagem falha e precisa ser reprocessada
+     */
+    public void addContactForRetry(UUID campaignId, UUID contactId, String companyId) {
+        log.info("🔄 Adicionando contato {} da campanha {} para retry (empresa={})", 
+                contactId, campaignId, companyId);
+        
+        try {
+            // Validar permissões
+            if (!validateCampaignAccess(campaignId, companyId)) {
+                throw new SecurityException("Acesso negado à campanha " + campaignId);
+            }
+
+            // Criar item para a fila
+            SecureCampaignQueueItem item = new SecureCampaignQueueItem();
+            item.setCampaignId(campaignId);
+            item.setCampaignContactId(contactId);
+            item.setCompanyId(companyId);
+            item.setCreatedBy("system-retry");
+            item.setScheduledTime(LocalDateTime.now()); // Processar imediatamente
+
+            // Serializar item
+            String itemJson = objectMapper.writeValueAsString(item);
+            
+            // Adicionar à fila Redis com timestamp atual (processar imediatamente)
+            long score = System.currentTimeMillis();
+            redisTemplate.opsForZSet().add(QUEUE_KEY, itemJson, score);
+
+            log.info("✅ Contato {} adicionado à fila Redis para retry imediato", contactId);
+            
+        } catch (SecurityException e) {
+            // Re-lançar SecurityException sem wrapping
+            throw e;
+        } catch (Exception e) {
+            log.error("❌ Erro ao adicionar contato {} para retry: {}", contactId, e.getMessage(), e);
+            throw new RuntimeException("Erro ao adicionar contato para retry: " + e.getMessage(), e);
+        }
+    }
 }

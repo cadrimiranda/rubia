@@ -24,6 +24,7 @@ public class CampaignMessagingService {
     private final CampaignMessagingProperties properties;
     private final ChatLidMappingService chatLidMappingService;
     private final ConversationService conversationService;
+    private final SecureCampaignQueueService secureCampaignQueueService;
 
     /**
      * Envia uma única mensagem para um contato da campanha de forma assíncrona
@@ -117,16 +118,13 @@ public class CampaignMessagingService {
             }
             
             if (attempt < maxRetries) {
-                log.warn("Tentativa {} falhou para contato {}. Tentando novamente em {}ms", 
+                log.warn("Tentativa {} falhou para contato {}. Re-adicionando à fila Redis para retry em {}ms", 
                         attempt, campaignContact.getId(), retryDelay);
                 
-                try {
-                    Thread.sleep(retryDelay);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.error("Retry interrompido para contato {}", campaignContact.getId());
-                    return false;
-                }
+                // Re-adicionar à fila Redis com delay para retry não-bloqueante
+                // Isso é melhor que Thread.sleep() pois não bloqueia threads
+                reAddToRedisForRetry(campaignContact, retryDelay);
+                return false; // Falha atual, mas será retentado via Redis
             }
         }
         
@@ -243,6 +241,43 @@ public class CampaignMessagingService {
             // Não falhar o envio da campanha se mapping falhar
             log.warn("Erro ao criar mapping de campanha para contato {}: {}", 
                     campaignContact.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Re-adiciona contato à fila Redis para retry com delay
+     * Solução não-bloqueante para retry sem usar Thread.sleep()
+     */
+    private void reAddToRedisForRetry(CampaignContact campaignContact, int retryDelayMs) {
+        try {
+            // Re-adicionar à fila Redis com delay
+            // O SecureCampaignQueueService processará novamente após o delay
+            log.info("🔄 Re-adicionando contato {} à fila Redis para retry em {}ms", 
+                    campaignContact.getId(), retryDelayMs);
+            
+            // Adicionar com delay usando agendamento
+            delaySchedulingService.scheduleTask(
+                campaignContact, 
+                retryDelayMs, 
+                () -> {
+                    try {
+                        secureCampaignQueueService.addContactForRetry(
+                            campaignContact.getCampaign().getId(),
+                            campaignContact.getId(),
+                            campaignContact.getCustomer().getCompany().getId().toString()
+                        );
+                        log.info("✅ Contato {} re-adicionado à fila Redis para retry", 
+                                campaignContact.getId());
+                    } catch (Exception e) {
+                        log.error("❌ Erro ao re-adicionar contato {} à fila Redis: {}", 
+                                campaignContact.getId(), e.getMessage(), e);
+                    }
+                }
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ Erro no agendamento de retry para contato {}: {}", 
+                    campaignContact.getId(), e.getMessage(), e);
         }
     }
 }

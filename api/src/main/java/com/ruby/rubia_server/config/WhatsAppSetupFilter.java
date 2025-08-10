@@ -45,11 +45,8 @@ public class WhatsAppSetupFilter extends OncePerRequestFilter {
                                   FilterChain filterChain) throws ServletException, IOException {
         
         String requestURI = request.getRequestURI();
-        log.debug("Processing WhatsApp setup filter for URI: {}", requestURI);
-
         // Skip filter for excluded paths
         if (shouldSkipFilter(requestURI)) {
-            log.debug("Skipping WhatsApp setup filter for excluded path: {}", requestURI);
             filterChain.doFilter(request, response);
             return;
         }
@@ -89,8 +86,6 @@ public class WhatsAppSetupFilter extends OncePerRequestFilter {
             
             // Check if company needs WhatsApp setup
             if (!whatsappInstanceService.hasConfiguredInstance(company)) {
-                log.info("Company {} requires WhatsApp setup, redirecting", company.getSlug());
-                
                 // Return 428 Precondition Required with setup requirement
                 response.setStatus(HttpStatus.PRECONDITION_REQUIRED.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);

@@ -37,8 +37,6 @@ public class ZApiConnectionMonitorService {
 
     @Async
     public CompletableFuture<Void> handleWebhookDisconnection(String instanceId, Map<String, Object> webhookData) {
-        log.info("Processing disconnection webhook for instance: {}", instanceId);
-        
         Optional<WhatsAppInstance> instanceOpt = whatsAppInstanceRepository.findByInstanceId(instanceId);
         
         if (instanceOpt.isEmpty()) {
@@ -58,14 +56,11 @@ public class ZApiConnectionMonitorService {
         );
         notifyStatusChange(instance, "DISCONNECTED", statusData);
 
-        log.info("Instance {} disconnection webhook processed", instanceId);
         return CompletableFuture.completedFuture(null);
     }
 
     @Async
     public CompletableFuture<Void> handleWebhookConnection(String instanceId, Map<String, Object> webhookData) {
-        log.info("Processing connection webhook for instance: {}", instanceId);
-        
         Optional<WhatsAppInstance> instanceOpt = whatsAppInstanceRepository.findByInstanceId(instanceId);
         
         if (instanceOpt.isEmpty()) {
@@ -84,14 +79,11 @@ public class ZApiConnectionMonitorService {
         );
         notifyStatusChange(instance, "CONNECTED", statusData);
 
-        log.info("Instance {} connection webhook processed", instanceId);
         return CompletableFuture.completedFuture(null);
     }
 
     @Async
     public CompletableFuture<Void> handleStatusUpdate(String instanceId, Map<String, Object> webhookData) {
-        log.info("Processing status update webhook for instance: {}", instanceId);
-        
         Optional<WhatsAppInstance> instanceOpt = whatsAppInstanceRepository.findByInstanceId(instanceId);
         
         if (instanceOpt.isEmpty()) {
@@ -124,9 +116,6 @@ public class ZApiConnectionMonitorService {
         headers.set("client-token", clientToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        log.info("🔍 Checking Z-API status for instance {} at URL: {}", instanceId, url);
-        log.debug("🔍 Using client token: {}...", clientToken != null ? clientToken.substring(0, Math.min(10, clientToken.length())) : "null");
-
         try {
             org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
             
@@ -137,13 +126,8 @@ public class ZApiConnectionMonitorService {
                 Map.class
             );
 
-            Map<String, Object> result = response.getBody();
-            log.info("✅ Z-API response for instance {}: {}", instanceId, result);
-            
-            return result;
-            
+            return response.getBody();
         } catch (Exception e) {
-            log.error("❌ Error checking status for instance {}: {}", instanceId, e.getMessage(), e);
             return Map.of(
                 "connected", false,
                 "error", "Failed to check status: " + e.getMessage(),
@@ -153,13 +137,7 @@ public class ZApiConnectionMonitorService {
     }
 
     public Map<String, Object> getInstanceStatus(WhatsAppInstance instance) {
-        log.info("🔄 Getting real-time status for instance {}", instance.getInstanceId());
-            
-        Map<String, Object> statusResult = checkInstanceStatus(instance.getInstanceId(), instance.getAccessToken());
-        
-        log.info("📊 Z-API status result for instance {}: {}", instance.getInstanceId(), statusResult);
-        
-        return statusResult;
+        return checkInstanceStatus(instance.getInstanceId(), instance.getAccessToken());
     }
     
     public Map<String, Object> getInstanceStatus(String instanceId) {
@@ -182,8 +160,6 @@ public class ZApiConnectionMonitorService {
         List<WhatsAppInstance> activeInstances = whatsAppInstanceRepository
             .findByIsActiveTrueAndInstanceIdIsNotNullAndAccessTokenIsNotNull();
 
-        log.info("🔄 Starting periodic status notification for {} active instances", activeInstances.size());
-        
         if (activeInstances.isEmpty()) {
             log.info("📭 No active instances found for periodic notification");
             return;
@@ -196,16 +172,12 @@ public class ZApiConnectionMonitorService {
                 String status = connected != null && connected ? "CONNECTED" : "DISCONNECTED";
                 
                 notifyStatusChange(instance, status, currentStatus);
-                
-                log.debug("🎯 Notified status for instance: {} - {}", 
-                    instance.getInstanceId(), status);
             } catch (Exception e) {
                 log.error("Error checking status for instance {}: {}", 
                     instance.getInstanceId(), e.getMessage());
             }
         }
         
-        log.info("✅ Periodic status notification completed");
     }
 
     private void notifyStatusChange(WhatsAppInstance instance, String status, Map<String, Object> statusData) {
@@ -222,11 +194,7 @@ public class ZApiConnectionMonitorService {
 
             // Send to company-specific channel
             String channel = "company-" + instance.getCompany().getId();
-            log.info("📡 Sending WebSocket notification to channel {}: instanceId={}, status={}, statusData={}", 
-                channel, instance.getInstanceId(), status, statusData);
             webSocketNotificationService.sendToChannel(channel, notification);
-            log.info("✅ WebSocket notification sent successfully for instance {}", instance.getInstanceId());
-            
         } catch (Exception e) {
             log.error("❌ Error sending WebSocket notification for instance status change: {}", e.getMessage(), e);
         }
@@ -272,7 +240,6 @@ public class ZApiConnectionMonitorService {
                 Map.class
             );
 
-            log.info("Configured {} webhook for instance {}: {}", webhookType, instanceId, webhookUrl);
             return response.getStatusCode().is2xxSuccessful();
             
         } catch (Exception e) {

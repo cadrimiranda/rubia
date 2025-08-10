@@ -66,10 +66,11 @@ class CampaignOptimizationIntegrationTest {
         // Mock the new dependencies
         ChatLidMappingService mockChatLidMappingService = mock(ChatLidMappingService.class);
         ConversationService mockConversationService = mock(ConversationService.class);
+        SecureCampaignQueueService mockSecureCampaignQueueService = mock(SecureCampaignQueueService.class);
         
         campaignMessagingService = new CampaignMessagingService(
             messagingService, delaySchedulingService, properties, 
-            mockChatLidMappingService, mockConversationService);
+            mockChatLidMappingService, mockConversationService, mockSecureCampaignQueueService);
     }
 
     @Test

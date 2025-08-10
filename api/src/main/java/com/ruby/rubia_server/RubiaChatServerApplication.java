@@ -19,13 +19,4 @@ public class RubiaChatServerApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RubiaChatServerApplication.class, args);
 	}
-
-	@EventListener(ApplicationReadyEvent.class)
-	public void onApplicationReady() {
-		log.info("🚀 === RUBIA CHAT SERVER STARTED ===");
-		log.info("🚀 Server is ready to receive requests");
-		log.info("🚀 Z-API webhook endpoint: /api/messaging/webhook/zapi");
-		log.info("🚀 Test endpoint: /api/messaging/webhook/zapi/test");
-		log.info("🚀 === DEBUG MODE ENABLED ===");
-	}
 }
