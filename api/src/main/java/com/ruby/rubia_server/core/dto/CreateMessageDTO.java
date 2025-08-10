@@ -54,4 +54,6 @@ public class CreateMessageDTO {
     private MessageStatus status = MessageStatus.SENT;
     
     private UUID messageTemplateId;
+    
+    private UUID campaignContactId;
 }

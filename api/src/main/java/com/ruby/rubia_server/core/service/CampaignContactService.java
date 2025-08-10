@@ -66,6 +66,12 @@ public class CampaignContactService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<CampaignContact> findByIdWithRelations(UUID id) {
+        log.debug("Finding CampaignContact with Customer, Campaign, and MessageTemplate by id: {}", id);
+        return campaignContactRepository.findByIdWithRelations(id);
+    }
+
+    @Transactional(readOnly = true)
     public Page<CampaignContact> findAll(Pageable pageable) {
         log.debug("Finding all CampaignContacts with pageable: {}", pageable);
         return campaignContactRepository.findAll(pageable);
@@ -99,6 +105,25 @@ public class CampaignContactService {
     public List<CampaignContact> findByCustomerIdAndStatus(UUID customerId, CampaignContactStatus status) {
         log.debug("Finding CampaignContacts by customer id: {} and status: {}", customerId, status);
         return campaignContactRepository.findByCustomerIdAndStatus(customerId, status);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CampaignContact> findPendingByCustomerPhone(String customerPhone) {
+        log.debug("Finding pending CampaignContacts by customer phone: {}", customerPhone);
+        return campaignContactRepository.findByCustomer_PhoneAndStatus(customerPhone, CampaignContactStatus.PENDING);
+    }
+
+    @Transactional
+    public void markAsSentByCustomerPhone(String customerPhone, String reason) {
+        log.debug("Marking CampaignContacts as SENT for phone: {} (reason: {})", customerPhone, reason);
+        List<CampaignContact> pendingContacts = findPendingByCustomerPhone(customerPhone);
+        
+        for (CampaignContact contact : pendingContacts) {
+            contact.setStatus(CampaignContactStatus.SENT);
+            contact.setMessageSentAt(LocalDateTime.now());
+            campaignContactRepository.save(contact);
+            log.info("Marked CampaignContact {} as SENT due to manual sending", contact.getId());
+        }
     }
 
     @Transactional

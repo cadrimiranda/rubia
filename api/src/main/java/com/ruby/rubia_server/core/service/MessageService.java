@@ -13,6 +13,7 @@ import com.ruby.rubia_server.core.enums.MediaType;
 import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.core.repository.CampaignContactRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.repository.MessageTemplateRepository;
@@ -43,15 +44,16 @@ public class MessageService {
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
     private final MessageTemplateRepository messageTemplateRepository;
+    private final CampaignContactRepository campaignContactRepository;
     private final ConversationMediaService conversationMediaService;
     
     public boolean hasDraftMessage(UUID conversationId) {
-        log.debug("Checking if conversation {} has draft messages", conversationId);
+        
         return messageRepository.existsByConversationIdAndStatus(conversationId, MessageStatus.DRAFT);
     }
 
     public MessageDTO create(CreateMessageDTO createDTO) {
-        log.info("Creating message for conversation: {}", createDTO.getConversationId());
+        
         
         Conversation conversation = conversationRepository.findById(createDTO.getConversationId())
                 .orElseThrow(() -> new IllegalArgumentException("Conversa não encontrada"));
@@ -66,8 +68,7 @@ public class MessageService {
         if (createDTO.getExternalMessageId() != null) {
             Optional<Message> existingMessage = messageRepository.findByExternalMessageId(createDTO.getExternalMessageId());
             if (existingMessage.isPresent()) {
-                log.info("Message with external ID {} already exists, returning existing message", 
-                    createDTO.getExternalMessageId());
+                
                 
                 User existingSender = null;
                 if (existingMessage.get().getSenderType() == SenderType.AGENT && existingMessage.get().getSenderId() != null) {
@@ -81,6 +82,13 @@ public class MessageService {
         if (createDTO.getMessageTemplateId() != null) {
             messageTemplate = messageTemplateRepository.findById(createDTO.getMessageTemplateId())
                     .orElseThrow(() -> new IllegalArgumentException("Template de mensagem não encontrado"));
+        }
+        
+        // Get CampaignContact if provided
+        com.ruby.rubia_server.core.entity.CampaignContact campaignContact = null;
+        if (createDTO.getCampaignContactId() != null) {
+            campaignContact = campaignContactRepository.findById(createDTO.getCampaignContactId())
+                    .orElseThrow(() -> new IllegalArgumentException("CampaignContact não encontrado"));
         }
         
         // Create ConversationMedia if this is a media message
@@ -106,8 +114,7 @@ public class MessageService {
             }
             
             media = conversationMediaService.create(mediaDTO);
-            log.info("Created ConversationMedia with id: {} for media URL: {}", 
-                media.getId(), createDTO.getMediaUrl());
+            
         }
         
         Message message = Message.builder()
@@ -120,11 +127,12 @@ public class MessageService {
                 .aiConfidence(createDTO.getAiConfidence())
                 .status(createDTO.getStatus())
                 .messageTemplate(messageTemplate)
+                .campaignContact(campaignContact)
                 .media(media)
                 .build();
         
         Message saved = messageRepository.save(message);
-        log.info("Message created successfully with id: {}", saved.getId());
+        
         
         return toDTO(saved, sender);
     }
@@ -141,8 +149,7 @@ public class MessageService {
     }
     
     public MessageDTO createFromIncomingMessage(IncomingMessage incomingMessage, UUID conversationId) {
-        log.info("Creating message from incoming message for conversation: {} (isFromMe: {}, mediaType: {})", 
-            conversationId, incomingMessage.isFromMe(), incomingMessage.getMediaType());
+        
         
         // Determine sender type based on whether message is from us or customer
         SenderType senderType = incomingMessage.isFromMe() ? SenderType.AGENT : SenderType.CUSTOMER;
@@ -175,7 +182,7 @@ public class MessageService {
     
     @Transactional(readOnly = true)
     public MessageDTO findById(UUID id) {
-        log.debug("Finding message by id: {}", id);
+        
         
         Message message = messageRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
@@ -190,7 +197,7 @@ public class MessageService {
     
     @Transactional(readOnly = true)
     public List<MessageDTO> findByConversation(UUID conversationId) {
-        log.debug("Finding messages by conversation: {}", conversationId);
+        
         
         List<Message> messages = messageRepository.findByConversationIdOrderedByCreatedAt(conversationId);
         return messages.stream()
@@ -206,7 +213,7 @@ public class MessageService {
     
     @Transactional(readOnly = true)
     public Page<MessageDTO> findByConversationWithPagination(UUID conversationId, Pageable pageable) {
-        log.debug("Finding messages by conversation with pagination: {}", conversationId);
+        
         
         return messageRepository.findByConversationIdOrderedByCreatedAtDesc(conversationId, pageable)
                 .map(message -> {
@@ -220,7 +227,7 @@ public class MessageService {
     
     @Transactional(readOnly = true)
     public MessageDTO findByExternalMessageId(String externalMessageId) {
-        log.debug("Finding message by external ID: {}", externalMessageId);
+        
         
         Message message = messageRepository.findByExternalMessageId(externalMessageId)
                 .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
@@ -235,7 +242,7 @@ public class MessageService {
     
     @Transactional(readOnly = true)
     public List<MessageDTO> searchInContent(String searchTerm) {
-        log.debug("Searching messages by content: {}", searchTerm);
+        
         
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return List.of();
@@ -255,7 +262,7 @@ public class MessageService {
     
     @Transactional(readOnly = true)
     public List<MessageDTO> searchInConversation(UUID conversationId, String searchTerm) {
-        log.debug("Searching messages in conversation: {} with term: {}", conversationId, searchTerm);
+        
         
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return findByConversation(conversationId);
@@ -274,7 +281,7 @@ public class MessageService {
     }
     
     public MessageDTO update(UUID id, UpdateMessageDTO updateDTO) {
-        log.info("Updating message with id: {}", id);
+        
         
         Message message = messageRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
@@ -311,7 +318,7 @@ public class MessageService {
         }
         
         Message updated = messageRepository.save(message);
-        log.info("Message updated successfully");
+        
         
         User sender = null;
         if (updated.getSenderType() == SenderType.AGENT && updated.getSenderId() != null) {
@@ -322,7 +329,7 @@ public class MessageService {
     }
     
     public MessageDTO markAsDelivered(UUID id) {
-        log.info("Marking message as delivered: {}", id);
+        
         
         Message message = messageRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
@@ -331,7 +338,7 @@ public class MessageService {
         message.setDeliveredAt(LocalDateTime.now());
         
         Message updated = messageRepository.save(message);
-        log.info("Message marked as delivered successfully");
+        
         
         User sender = null;
         if (updated.getSenderType() == SenderType.AGENT && updated.getSenderId() != null) {
@@ -342,7 +349,7 @@ public class MessageService {
     }
     
     public MessageDTO markAsRead(UUID id) {
-        log.info("Marking message as read: {}", id);
+        
         
         Message message = messageRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
@@ -355,7 +362,7 @@ public class MessageService {
         }
         
         Message updated = messageRepository.save(message);
-        log.info("Message marked as read successfully");
+        
         
         User sender = null;
         if (updated.getSenderType() == SenderType.AGENT && updated.getSenderId() != null) {
@@ -366,7 +373,7 @@ public class MessageService {
     }
     
     public void markConversationMessagesAsRead(UUID conversationId) {
-        log.info("Marking all unread customer messages as read for conversation: {}", conversationId);
+        
         
         List<Message> unreadMessages = messageRepository.findUnreadCustomerMessages(conversationId);
         
@@ -379,18 +386,18 @@ public class MessageService {
         }
         
         messageRepository.saveAll(unreadMessages);
-        log.info("Marked {} messages as read", unreadMessages.size());
+        
     }
     
     public void delete(UUID id) {
-        log.info("Deleting message with id: {}", id);
+        
         
         if (!messageRepository.existsById(id)) {
             throw new IllegalArgumentException("Mensagem não encontrada");
         }
         
         messageRepository.deleteById(id);
-        log.info("Message deleted successfully");
+        
     }
     
     @Transactional(readOnly = true)
@@ -404,17 +411,17 @@ public class MessageService {
     }
     
     public void deleteAllByCompany(UUID companyId) {
-        log.info("Deleting all messages for company: {}", companyId);
+        
         
         List<Message> messages = messageRepository.findByConversationCompanyId(companyId);
         messageRepository.deleteAll(messages);
         
-        log.info("Deleted {} messages for company: {}", messages.size(), companyId);
+        
     }
     
     @Transactional(readOnly = true)
     public List<MessageDTO> findByConversationAndStatus(UUID conversationId, MessageStatus status) {
-        log.debug("Finding messages by conversation: {} and status: {}", conversationId, status);
+        
         
         List<Message> messages = messageRepository.findByConversationIdAndStatus(conversationId, status);
         return messages.stream()

@@ -47,7 +47,7 @@ public class Campaign implements BaseEntity {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "campaign_status", nullable = false)
     @Builder.Default
-    private CampaignStatus status = CampaignStatus.DRAFT;
+    private CampaignStatus status = CampaignStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_user_id")

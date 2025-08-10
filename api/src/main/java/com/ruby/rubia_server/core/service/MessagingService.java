@@ -10,6 +10,9 @@ import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.entity.Company;
 import com.ruby.rubia_server.core.entity.WhatsAppInstance;
+import com.ruby.rubia_server.core.entity.ChatLidMapping;
+
+import java.util.ArrayList;
 import com.ruby.rubia_server.core.enums.ConversationStatus;
 import com.ruby.rubia_server.core.enums.Channel;
 import com.ruby.rubia_server.core.enums.SenderType;
@@ -18,6 +21,7 @@ import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.repository.CompanyRepository;
 import com.ruby.rubia_server.core.repository.WhatsAppInstanceRepository;
+import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.service.CustomerService;
 import com.ruby.rubia_server.core.service.ConversationService;
 import com.ruby.rubia_server.core.service.MessageService;
@@ -67,7 +71,16 @@ public class MessagingService {
     private WebSocketNotificationService webSocketNotificationService;
     
     @Autowired
+    private CampaignContactService campaignContactService;
+    
+    @Autowired
+    private MessageRepository messageRepository;
+    
+    @Autowired
     private PhoneService phoneService;
+    
+    @Autowired
+    private ChatLidMappingService chatLidMappingService;
     
     @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
@@ -83,9 +96,19 @@ public class MessagingService {
         return sendMessage(to, message, null, null);
     }
     
+    public MessageResult sendMessage(String to, String message, Company company) {
+        return sendMessage(to, message, null, null, company);
+    }
+    
     public MessageResult sendMessage(String to, String message, UUID companyId, UUID userId) {
+        return sendMessage(to, message, companyId, userId, null);
+    }
+    
+    public MessageResult sendMessage(String to, String message, UUID companyId, UUID userId, Company company) {
+        
+        
         if (currentAdapter == null) {
-            logger.error("No messaging adapter configured");
+            logger.error("❌ No messaging adapter configured");
             return MessageResult.error("No adapter available", "none");
         }
         
@@ -94,7 +117,25 @@ public class MessagingService {
             fromNumber = getUserWhatsappNumber(userId, companyId);
         }
         
-        return currentAdapter.sendMessage(to, message);
+        // Enviar mensagem
+        
+        MessageResult result;
+        if (company != null && currentAdapter instanceof ZApiAdapter) {
+            result = ((ZApiAdapter) currentAdapter).sendMessage(to, message, company);
+        } else {
+            result = currentAdapter.sendMessage(to, message);
+        }
+        // Log apenas falhas
+        if (!result.isSuccess()) {
+            logger.warn("❌ Falha no envio: {} → Erro: {}", to, result.getError());
+        }
+        
+        // Se mensagem enviada com sucesso, sincronizar com campanhas
+        if (result.isSuccess()) {
+            syncWithCampaigns(to, "Manual sending via MessagingService");
+        }
+        
+        return result;
     }
     
     public MessageResult sendMediaMessage(String to, String mediaUrl, String caption) {
@@ -112,7 +153,15 @@ public class MessagingService {
             fromNumber = getUserWhatsappNumber(userId, companyId);
         }
         
-        return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+        // Enviar mensagem de mídia
+        MessageResult result = currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+        
+        // Se mensagem enviada com sucesso, sincronizar com campanhas
+        if (result.isSuccess()) {
+            syncWithCampaigns(to, "Manual media sending via MessagingService");
+        }
+        
+        return result;
     }
     
     public IncomingMessage parseIncomingMessage(Object webhookPayload) {
@@ -166,8 +215,7 @@ public class MessagingService {
     
     public void processIncomingMessage(IncomingMessage incomingMessage) {
         try {
-            logger.debug("Processing message from: {} via {}", 
-                incomingMessage.getFrom(), incomingMessage.getProvider());
+            
             
             String fromNumber = phoneService.extractFromProvider(incomingMessage.getFrom());
             
@@ -201,7 +249,7 @@ public class MessagingService {
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
             
-            logger.info("Message processed: {} -> {}", incomingMessage.getFrom(), conversation.getId());
+            logger.info("📨 {} → Conversa {}", incomingMessage.getFrom(), conversation.getId());
             
         } catch (Exception e) {
             logger.error("Error processing incoming message: {}", e.getMessage(), e);
@@ -222,13 +270,13 @@ public class MessagingService {
             if (variation != null) {
                 Company company = findCompanyByWhatsAppInstance(variation);
                 if (company != null) {
-                    logger.info("Found company: {}", company.getName());
+                    
                     return company;
                 }
             }
         }
         
-        logger.warn("No company found for connectedPhone: {}", connectedPhone);
+        
         return null;
     }
 
@@ -314,18 +362,145 @@ public class MessagingService {
     }
     
     private ConversationDTO findOrCreateConversationByChatLid(String chatLid, Customer customer) {
-        logger.debug("Looking for conversation with chatLid: {} for customer: {}", chatLid, customer.getId());
+        logger.debug("🔗 Buscando conversa usando ChatLidMappingService - chatLid: {}, customer: {}, phone: {}", chatLid, customer.getId(), customer.getPhone());
         
-        // First, try to find conversation by chatLid if provided
-        if (chatLid != null && !chatLid.trim().isEmpty()) {
-            Optional<ConversationDTO> conversationByChatLid = conversationService.findByChatLid(chatLid);
-            if (conversationByChatLid.isPresent()) {
-                logger.debug("Found existing conversation by chatLid: {}", conversationByChatLid.get().getId());
-                return conversationByChatLid.get();
-            }
+        if (chatLid == null || chatLid.trim().isEmpty()) {
+            logger.debug("ChatLid vazio, usando método tradicional");
+            return findOrCreateConversationTraditional(customer);
         }
-        
-        // Fallback to existing logic: find by customer and company
+
+        try {
+            // Usar ChatLidMappingService para encontrar ou criar conversa
+            Optional<Conversation> conversation = chatLidMappingService.findConversationByChatLid(chatLid);
+            
+            if (conversation.isPresent()) {
+                logger.debug("✅ Conversa encontrada via mapping: {}", conversation.get().getId());
+                return conversationService.findById(conversation.get().getId(), customer.getCompany().getId());
+            }
+
+            // Se não encontrou mapping por chatLid, priorizar campanhas ativas mais recentes
+            logger.debug("🔍 Nenhum mapping encontrado por chatLid, buscando campanhas ativas por telefone");
+            
+            // Buscar mapping de campanha ativa mais recente (com variações de telefone)
+            Optional<ChatLidMapping> campaignMapping = chatLidMappingService.findMostRecentActiveCampaignMapping(
+                customer.getPhone(), 
+                customer.getCompany().getId()
+            );
+
+            if (campaignMapping.isPresent()) {
+                logger.info("✅ Campanha ativa encontrada: campaignId={}, conversationId={}", 
+                    campaignMapping.get().getCampaignId(), campaignMapping.get().getConversationId());
+            } else {
+                // Fallback: buscar qualquer mapping de campanha sem chatLid
+                logger.debug("🔍 Nenhuma campanha ativa encontrada, buscando mappings de campanha legacy");
+                
+                String[] phoneVariations = phoneService.generatePhoneVariations(customer.getPhone());
+                List<ChatLidMapping> legacyMappings = new ArrayList<>();
+                
+                for (String phoneVariation : phoneVariations) {
+                    if (phoneVariation != null) {
+                        List<ChatLidMapping> mappings = chatLidMappingService.findMappingsByPhone(
+                            phoneVariation, 
+                            customer.getCompany().getId()
+                        );
+                        legacyMappings.addAll(mappings);
+                        logger.debug("🔍 Buscando mappings legacy para variação: {}, encontrados: {}", phoneVariation, mappings.size());
+                    }
+                }
+                
+                campaignMapping = legacyMappings.stream()
+                    .filter(mapping -> mapping.getChatLid() == null && mapping.getFromCampaign())
+                    .findFirst();
+            }
+                
+            if (campaignMapping.isPresent()) {
+                logger.info("✅ Mapping de campanha encontrado: {}, verificando se conversa está ativa", campaignMapping.get().getConversationId());
+                
+                // Buscar conversa da campanha
+                ConversationDTO campaignConversation = conversationService.findById(
+                    campaignMapping.get().getConversationId(), 
+                    customer.getCompany().getId()
+                );
+                
+                if (campaignConversation != null) {
+                    // Verificar se conversa está ativa (não finalizada)
+                    boolean isActive = campaignConversation.getStatus() == ConversationStatus.ENTRADA || 
+                                     campaignConversation.getStatus() == ConversationStatus.ESPERANDO;
+                    
+                    if (isActive) {
+                        logger.info("✅ Conversa de campanha ativa reutilizada: {} (status: {})", 
+                            campaignConversation.getId(), campaignConversation.getStatus());
+                        
+                        // Atualizar mapping com chatLid
+                        chatLidMappingService.updateMappingWithChatLid(campaignMapping.get().getConversationId(), chatLid);
+                        
+                        return campaignConversation;
+                    } else {
+                        logger.debug("Conversa de campanha encontrada mas está finalizada (status: {}), criando nova conversa", 
+                            campaignConversation.getStatus());
+                    }
+                } else {
+                    logger.warn("Mapping encontrado mas conversa não existe: {}", campaignMapping.get().getConversationId());
+                }
+            }
+            
+            // Se não encontrou mapping de campanha, buscar conversa mais recente por customer
+            logger.debug("🔍 Nenhum mapping de campanha encontrado, buscando conversa recente por customer");
+            
+            List<ConversationDTO> customerConversations = conversationService
+                .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
+            
+            Optional<ConversationDTO> recentConversation = customerConversations.stream()
+                .findFirst(); // Primeira conversa como fallback
+            
+            if (recentConversation.isPresent()) {
+                logger.info("✅ Conversa recente encontrada: {}, criando mapping", recentConversation.get().getId());
+                
+                // Criar mapping para a conversa existente
+                UUID instanceId = getCurrentWhatsAppInstanceId(customer.getCompany());
+                chatLidMappingService.findOrCreateMapping(
+                    chatLid, 
+                    customer.getPhone(), 
+                    customer.getCompany().getId(), 
+                    instanceId
+                );
+                
+                return recentConversation.get();
+            }
+
+            // Nenhuma conversa encontrada, criar nova
+            logger.info("📞 Criando nova conversa para chatLid: {} e customer: {}", chatLid, customer.getId());
+            
+            CreateConversationDTO createDTO = CreateConversationDTO.builder()
+                .customerId(customer.getId())
+                .channel(Channel.WHATSAPP)
+                .status(ConversationStatus.ENTRADA)
+                .priority(1)
+                .chatLid(chatLid)
+                .build();
+
+            ConversationDTO newConversation = conversationService.create(createDTO, customer.getCompany().getId());
+            
+            // Criar mapping para nova conversa
+            UUID instanceId = getCurrentWhatsAppInstanceId(customer.getCompany());
+            chatLidMappingService.findOrCreateMapping(
+                chatLid, 
+                customer.getPhone(), 
+                customer.getCompany().getId(), 
+                instanceId
+            );
+            
+            logger.info("🔗 Mapping criado para nova conversa: {}", newConversation.getId());
+            return newConversation;
+
+        } catch (Exception e) {
+            logger.error("❌ Erro ao usar ChatLidMappingService, usando método tradicional: {}", e.getMessage());
+            return findOrCreateConversationTraditional(customer);
+        }
+    }
+
+    private ConversationDTO findOrCreateConversationTraditional(Customer customer) {
+        // Fallback para método tradicional quando chatLid não está disponível
         List<ConversationDTO> customerConversations = conversationService
             .findByCustomerAndCompany(customer.getId(), customer.getCompany().getId());
         
@@ -342,28 +517,29 @@ public class MessagingService {
         
         if (existingConversation.isPresent()) {
             logger.debug("Using existing WhatsApp conversation: {}", existingConversation.get().getId());
-            // Update the conversation with chatLid if it doesn't have one
-            ConversationDTO conversation = existingConversation.get();
-            if (chatLid != null && !chatLid.trim().isEmpty() && conversation.getChatLid() == null) {
-                logger.info("Updating conversation {} with chatLid: {}", conversation.getId(), chatLid);
-                conversationService.updateChatLid(conversation.getId(), chatLid);
-                conversation.setChatLid(chatLid);
-            }
-            return conversation;
+            return existingConversation.get();
         }
         
         // No active conversation found, create a new one
-        logger.info("Creating new conversation for customer: {} with chatLid: {}", customer.getId(), chatLid);
+        logger.info("Creating new conversation for customer: {}", customer.getId());
         
         CreateConversationDTO createDTO = CreateConversationDTO.builder()
             .customerId(customer.getId())
             .channel(Channel.WHATSAPP)
             .status(ConversationStatus.ENTRADA)
             .priority(1)
-            .chatLid(chatLid)
             .build();
         
         return conversationService.create(createDTO, customer.getCompany().getId());
+    }
+
+    private UUID getCurrentWhatsAppInstanceId(Company company) {
+        // Buscar instância ativa da empresa
+        return whatsAppInstanceRepository.findByCompanyAndIsActiveTrue(company)
+            .stream()
+            .findFirst()
+            .map(WhatsAppInstance::getId)
+            .orElse(null);
     }
 
     private ConversationDTO findOrCreateConversation(Customer customer) {
@@ -431,5 +607,63 @@ public class MessagingService {
 
     public MessageResult sendMediaByUrl(String to, String mediaUrl, String caption) {
         return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+    }
+
+    /**
+     * Sincroniza envio manual com campanhas ativas
+     * Marca mensagens DRAFT específicas como SENT e atualiza CampaignContact
+     * OTIMIZADO: Busca direta por ID ao invés de por telefone
+     */
+    private void syncWithCampaigns(String customerPhone, String reason) {
+        try {
+            // Normalizar telefone
+            String normalizedPhone = phoneService.normalize(customerPhone);
+            
+            // Buscar campanhas pendentes para este telefone (mantido como fallback)
+            List<com.ruby.rubia_server.core.entity.CampaignContact> pendingContacts = 
+                campaignContactService.findPendingByCustomerPhone(normalizedPhone);
+            
+            if (!pendingContacts.isEmpty()) {
+                logger.info("Found {} pending campaign contacts for phone {}. Updating DRAFT messages to SENT.", 
+                    pendingContacts.size(), normalizedPhone);
+                
+                int updatedMessages = 0;
+                
+                for (com.ruby.rubia_server.core.entity.CampaignContact contact : pendingContacts) {
+                    // OTIMIZAÇÃO: Buscar mensagem DRAFT diretamente pelo CampaignContact ID
+                    Optional<com.ruby.rubia_server.core.entity.Message> draftMessage = 
+                        messageRepository.findByCampaignContactIdAndStatus(contact.getId(), 
+                            com.ruby.rubia_server.core.enums.MessageStatus.DRAFT);
+                    
+                    if (draftMessage.isPresent()) {
+                        // Atualizar mensagem para SENT
+                        com.ruby.rubia_server.core.entity.Message message = draftMessage.get();
+                        message.setStatus(com.ruby.rubia_server.core.enums.MessageStatus.SENT);
+                        messageRepository.save(message);
+                        
+                        // Atualizar CampaignContact
+                        contact.setStatus(com.ruby.rubia_server.core.enums.CampaignContactStatus.SENT);
+                        contact.setMessageSentAt(java.time.LocalDateTime.now());
+                        // campaignContactService salva automaticamente (gerenciado)
+                        
+                        updatedMessages++;
+                        
+                        logger.debug("Updated DRAFT message {} to SENT for CampaignContact {}", 
+                            message.getId(), contact.getId());
+                    }
+                }
+                
+                logger.info("Successfully synchronized {} DRAFT messages with campaign contacts (reason: {})", 
+                    updatedMessages, reason);
+                    
+            } else {
+                logger.debug("No pending campaign contacts found for phone {}", normalizedPhone);
+            }
+            
+        } catch (Exception e) {
+            // Log erro mas não falha o envio principal
+            logger.error("Error synchronizing manual message sending with campaigns for phone {}: {}", 
+                customerPhone, e.getMessage(), e);
+        }
     }
 }

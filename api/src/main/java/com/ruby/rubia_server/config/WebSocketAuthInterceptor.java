@@ -32,10 +32,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            log.info("=== WEBSOCKET CONNECTION ATTEMPT ===");
             String token = accessor.getFirstNativeHeader("Authorization");
-            log.info("Authorization header present: {}", token != null);
-            log.info("Token value: {}", token != null ? token.substring(0, Math.min(30, token.length())) + "..." : "null");
             
             if (token != null && token.startsWith("Bearer ")) {
                 try {
@@ -70,8 +67,6 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                                 new UsernamePasswordAuthenticationToken(principal, null, userDetails.getAuthorities());
                             
                             accessor.setUser(authToken);
-                            log.info("✅ WebSocket connection authenticated for user: {} (principal name: {})", 
-                                    username, principal.getName());
                         } else {
                             log.warn("❌ User not found in database: {}", username);
                         }

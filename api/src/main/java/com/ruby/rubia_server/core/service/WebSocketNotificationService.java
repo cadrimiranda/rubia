@@ -28,8 +28,7 @@ public class WebSocketNotificationService {
                     .build();
 
             sendToCompanyUsers(conversation.getCompanyId(), "/topic/messages", notification);
-            log.info("Sent new message notification for conversation {} to company {}", 
-                    conversation.getId(), conversation.getCompanyId());
+            
         } catch (Exception e) {
             log.error("Error sending new message notification: {}", e.getMessage(), e);
         }
@@ -43,8 +42,7 @@ public class WebSocketNotificationService {
                     .build();
 
             sendToCompanyUsers(conversation.getCompanyId(), "/topic/conversations", notification);
-            log.info("Sent conversation update notification for conversation {} to company {}", 
-                    conversation.getId(), conversation.getCompanyId());
+            
         } catch (Exception e) {
             log.error("Error sending conversation update notification: {}", e.getMessage(), e);
         }
@@ -60,8 +58,7 @@ public class WebSocketNotificationService {
                     .build();
 
             sendToCompanyUsers(companyId, "/topic/typing", notification);
-            log.debug("Sent typing notification for conversation {} by user {}", 
-                    conversationId, userName);
+            
         } catch (Exception e) {
             log.error("Error sending typing notification: {}", e.getMessage(), e);
         }
@@ -88,16 +85,14 @@ public class WebSocketNotificationService {
                 // The principal name should be the user's unique identifier that was set during authentication
                 // The WebSocketUserPrincipal.getName() returns the userId as string
                 String principalName = session.getUserId().toString();
-                log.info("📡 Sending message to userId: {} (user: {}, destination: {})", 
-                        principalName, session.getUsername(), destination);
+                
                 
                 messagingTemplate.convertAndSendToUser(
                         principalName, 
                         destination, 
                         notification
                 );
-                log.info("✅ Message sent to principal: {} (user: {})", 
-                        principalName, session.getUsername());
+                
             } catch (Exception e) {
                 log.error("❌ Failed to send notification to user {}: {}", 
                         session.getUsername(), e.getMessage(), e);
@@ -107,20 +102,20 @@ public class WebSocketNotificationService {
 
     public void sendToChannel(String channel, Map<String, Object> notification) {
         try {
-            log.info("📬 sendToChannel called - channel: {}, notification: {}", channel, notification);
+            
             
             // For company-specific channels, extract the company ID
             if (channel.startsWith("company-")) {
                 String companyIdStr = channel.substring("company-".length());
                 UUID companyId = UUID.fromString(companyIdStr);
-                log.info("🏢 Sending to company users: companyId={}, destination=/topic/instance-status", companyId);
+                
                 sendToCompanyUsers(companyId, "/topic/instance-status", notification);
-                log.info("✅ Sent notification to channel {} (company {})", channel, companyId);
+                
             } else {
                 // For other channels, send as broadcast
-                log.info("📢 Sending broadcast to /topic/{}", channel);
+                
                 messagingTemplate.convertAndSend("/topic/" + channel, notification);
-                log.info("✅ Sent broadcast notification to channel {}", channel);
+                
             }
         } catch (Exception e) {
             log.error("❌ Error sending notification to channel {}: {}", channel, e.getMessage(), e);

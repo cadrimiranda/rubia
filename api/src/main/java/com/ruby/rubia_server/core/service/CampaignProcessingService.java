@@ -1,5 +1,6 @@
 package com.ruby.rubia_server.core.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruby.rubia_server.core.entity.Campaign;
 import com.ruby.rubia_server.core.entity.CampaignContact;
 import com.ruby.rubia_server.core.entity.Customer;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -47,6 +49,11 @@ public class CampaignProcessingService {
     private final MessageTemplateService messageTemplateService;
     private final ConversationService conversationService;
     private final MessageService messageService;
+    private final CampaignMessagingService campaignMessagingService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
+    
+    private static final String QUEUE_KEY = "rubia:campaign:queue";
 
     public static class CampaignProcessingResult {
         private final Campaign campaign;
@@ -201,7 +208,69 @@ public class CampaignProcessingService {
         log.info("Campanha {} criada com {} contatos. Processados: {}, Criados: {}, Duplicados: {}", 
                 campaignName, created, processed, created, duplicates);
 
+        // Adicionar campanha à fila segura de processamento se houver contatos criados
+        if (created > 0) {
+            log.info("Adicionando campanha {} à fila segura com {} contatos", 
+                    campaign.getId(), created);
+            
+            try {
+                // Adicionar contatos pendentes diretamente à fila do CampaignQueueProcessor
+                enqueueCampaignContacts(campaign, companyId.toString());
+            } catch (Exception e) {
+                log.error("Erro ao adicionar campanha {} à fila: {}", 
+                        campaign.getId(), e.getMessage());
+                throw new RuntimeException("Falha ao adicionar campanha à fila de processamento", e);
+            }
+        }
+
         return new CampaignProcessingResult(campaign, campaignContacts, errors, processed, created, duplicates);
+    }
+
+    /**
+     * Adiciona contatos de campanha pendentes diretamente à fila do CampaignQueueProcessor
+     */
+    private void enqueueCampaignContacts(Campaign campaign, String companyId) {
+        log.info("🔄 Enfileirando contatos da campanha {} para processamento", campaign.getId());
+        
+        // Buscar contatos pendentes da campanha
+        List<CampaignContact> pendingContacts = campaignContactService
+            .findByCampaignIdAndStatus(campaign.getId(), CampaignContactStatus.PENDING);
+        
+        if (pendingContacts.isEmpty()) {
+            log.info("Nenhum contato pendente para campanha {}", campaign.getId());
+            return;
+        }
+        
+        int enqueued = 0;
+        long baseTimestamp = System.currentTimeMillis();
+        
+        for (int i = 0; i < pendingContacts.size(); i++) {
+            CampaignContact contact = pendingContacts.get(i);
+            
+            try {
+                // Criar item da fila
+                CampaignQueueProcessor.CampaignQueueItem queueItem = 
+                    new CampaignQueueProcessor.CampaignQueueItem(
+                        campaign.getId(),
+                        contact.getId(),
+                        companyId
+                    );
+                
+                // Serializar para JSON
+                String itemJson = objectMapper.writeValueAsString(queueItem);
+                
+                // Adicionar à fila Redis com timestamp escalonado para evitar picos
+                long timestamp = baseTimestamp + (i * 1000); // 1 segundo de intervalo entre cada
+                redisTemplate.opsForZSet().add(QUEUE_KEY, itemJson, timestamp);
+                
+                enqueued++;
+                
+            } catch (Exception e) {
+                log.error("❌ Erro ao enfileirar contato {}: {}", contact.getId(), e.getMessage());
+            }
+        }
+        
+        log.info("✅ {} contatos da campanha {} adicionados à fila", enqueued, campaign.getId());
     }
 
     private List<MessageTemplate> validateTemplates(List<UUID> templateIds, UUID companyId) {
@@ -570,14 +639,18 @@ public class CampaignProcessingService {
         boolean hasDraftMessage = messageService.hasDraftMessage(conversation.getId());
         
         if (!hasDraftMessage) {
-            // Criar Mensagem DRAFT com o template selecionado
+            // Personalizar o conteúdo do template antes de criar a mensagem DRAFT
+            String personalizedContent = personalizeTemplateContent(selectedTemplate.getContent(), customerDTO);
+            
+            // Criar Mensagem DRAFT com o template personalizado
             CreateMessageDTO messageDTO = CreateMessageDTO.builder()
                 .conversationId(conversation.getId())
                 .companyId(companyId) // Necessário para validações
-                .content(selectedTemplate.getContent()) // Conteúdo do template
+                .content(personalizedContent) // Conteúdo do template personalizado
                 .senderType(SenderType.AGENT) // Será enviado pelo agente
                 .status(MessageStatus.DRAFT) // Status DRAFT
                 .messageTemplateId(selectedTemplate.getId()) // Referência ao template
+                .campaignContactId(campaignContact.getId()) // Relacionamento direto
                 .build();
             
             messageService.create(messageDTO);
@@ -587,5 +660,20 @@ public class CampaignProcessingService {
                  conversation.getId(), customerDTO.getName(), campaign.getName());
         
         return campaignContact;
+    }
+
+    /**
+     * Personaliza o conteúdo do template substituindo variáveis pelos dados do cliente
+     */
+    private String personalizeTemplateContent(String template, CustomerDTO customer) {
+        String message = template;
+        
+        if (customer != null && customer.getName() != null) {
+            message = message.replace("{{nome}}", customer.getName());
+        } else {
+            message = message.replace("{{nome}}", "");
+        }
+        
+        return message;
     }
 }

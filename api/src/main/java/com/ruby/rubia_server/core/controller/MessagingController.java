@@ -119,13 +119,6 @@ public class MessagingController {
                 return ResponseEntity.ok("MessageStatusCallback ignored");
             }
             
-            // Ignore all ReceivedCallback messages (revocations, profile updates, etc.)
-            if ("ReceivedCallback".equals(type)) {
-                String notification = (String) payload.get("notification");
-                log.debug("Ignoring ReceivedCallback ({}) for instance: {}", notification, payload.get("instanceId"));
-                return ResponseEntity.ok("ReceivedCallback ignored");
-            }
-            
             // Handle connection/disconnection callbacks
             String instanceId = (String) payload.get("instanceId");
             Boolean disconnected = (Boolean) payload.get("disconnected");

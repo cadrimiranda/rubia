@@ -27,9 +27,9 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
   
-  # Disable Redis and RabbitMQ for now (uncomment to enable)
+  # Disable RabbitMQ for now (uncomment to enable)
   autoconfigure:
-    exclude: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+    exclude: org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
   
   # File Upload Configuration
   servlet:
