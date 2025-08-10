@@ -49,6 +49,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   maxFileSizeMB = 16,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -67,6 +68,21 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   // Validação de MIME types para áudio
   const ALLOWED_AUDIO_MIME_TYPES = ['audio/wav', 'audio/mp3', 'audio/ogg', 'audio/webm'];
   const MAX_RECORDING_TIME_SECONDS = Math.floor(maxRecordingTimeMs / 1000);
+
+  const adjustTextareaHeight = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const minHeight = 40;
+      const maxHeight = 200;
+      const height = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+      textareaRef.current.style.height = `${height}px`;
+    }
+  }, []);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [messageInput, adjustTextareaHeight]);
 
   const showAudioError = useCallback((error: string) => {
     setAudioError(error);
@@ -383,6 +399,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
         <div className="flex-1 relative">
           <textarea
+            ref={textareaRef}
             value={messageInput}
             onChange={(e) => onMessageChange(e.target.value)}
             onKeyPress={onKeyPress}
@@ -392,8 +409,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 : "Digite sua mensagem..."
             }
             rows={1}
-            className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            style={{ minHeight: "40px", maxHeight: "120px" }}
+            className="w-full resize-y border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent overflow-auto"
+            style={{ minHeight: "40px", maxHeight: "300px" }}
           />
 
           {onEnhanceMessage && messageInput.trim() && (
