@@ -40,6 +40,7 @@ import { Modal, Alert, Button } from "antd";
 import { QrcodeOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { whatsappSetupApi } from "../api/services/whatsappSetupApi";
 import ZApiActivation from "./ZApiActivation";
+import { useNotifications } from "../hooks/useNotifications";
 
 interface NewContactData {
   name: string;
@@ -135,6 +136,9 @@ export const BloodCenterChat: React.FC = () => {
 
   // Chat store para mensagens em tempo real
   const { messagesCache } = useChatStore();
+
+  // Notifications hook
+  const { removeNotification } = useNotifications();
 
   // Combinar mensagens locais (enviadas) com mensagens do WebSocket (recebidas)
   const activeMessages = React.useMemo(() => {
@@ -862,14 +866,15 @@ export const BloodCenterChat: React.FC = () => {
           prevDonors.map(d => d.id === donor.id ? updatedDonor : d)
         );
         
-        // Se há conversationId, também marcar como lida no store
-        if (donor.conversationId) {
-          const store = useChatStore.getState();
-          store.markAsRead && store.markAsRead(donor.conversationId);
-        }
+        // API de notificações já cuida de marcar como lida via removeNotification abaixo
+      }
+
+      // Remover notificações persistentes quando uma conversa é visualizada
+      if (donor.conversationId) {
+        removeNotification(donor.conversationId);
       }
     },
-    [updateState, setDonors]
+    [updateState, setDonors, removeNotification]
   );
 
   // Função reutilizável para carregar dados completos do customer e abrir modal (DRY)

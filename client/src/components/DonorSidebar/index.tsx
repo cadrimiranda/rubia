@@ -17,6 +17,7 @@ import { Select } from "antd";
 import type { Donor, Campaign, ViewMode } from "../../types/types";
 import type { ChatStatus } from "../../types/index";
 import { getStatusColor, calculateAge } from "../../utils";
+import { useNotifications } from "../../hooks/useNotifications";
 
 const { Option } = Select;
 
@@ -67,6 +68,8 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
   isLoadingMore = false,
   onLoadMore,
 }) => {
+  const { getNotificationCount } = useNotifications();
+  
   const activeDonors = donors.filter(
     (d) => d.lastMessage || d.hasActiveConversation
   );
@@ -322,9 +325,9 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                         <span className="text-xs text-gray-500 font-medium">
                           {donor.timestamp}
                         </span>
-                        {donor.unread > 0 && (
+                        {((donor.conversationId && getNotificationCount(donor.conversationId) > 0) || donor.unread > 0) && (
                           <div className="bg-red-500 text-white text-xs rounded-xl min-w-[16px] h-3.5 flex items-center justify-center px-1 font-semibold">
-                            {donor.unread}
+                            {donor.conversationId ? getNotificationCount(donor.conversationId) || donor.unread : donor.unread}
                           </div>
                         )}
                       </div>
@@ -403,9 +406,9 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
                           <span className="text-xs text-gray-500 font-medium">
                             {donor.timestamp}
                           </span>
-                          {donor.unread > 0 && (
+                          {((donor.conversationId && getNotificationCount(donor.conversationId) > 0) || donor.unread > 0) && (
                             <div className="bg-red-500 text-white text-xs rounded-xl min-w-[20px] h-5 flex items-center justify-center px-1.5 font-semibold shadow-sm">
-                              {donor.unread}
+                              {donor.conversationId ? getNotificationCount(donor.conversationId) || donor.unread : donor.unread}
                             </div>
                           )}
                         </div>
