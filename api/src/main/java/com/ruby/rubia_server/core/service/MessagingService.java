@@ -83,7 +83,7 @@ public class MessagingService {
     private ChatLidMappingService chatLidMappingService;
     
     @Autowired
-    private NotificationService notificationService;
+    private UnreadMessageCountService unreadCountService;
     
     @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
@@ -252,8 +252,8 @@ public class MessagingService {
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
             
-            // Create notifications for all users in the company who can receive notifications for this conversation
-            createNotificationsForIncomingMessage(savedMessage, conversation, company);
+            // Create unread counters for all users in the company
+            unreadCountService.createUnreadCountsForNewMessage(savedMessage.getId(), conversation.getId(), company);
             
             logger.info("📨 {} → Conversa {}", incomingMessage.getFrom(), conversation.getId());
             
@@ -263,34 +263,6 @@ public class MessagingService {
         }
     }
 
-    /**
-     * Create notifications for all users in the company when an incoming message arrives
-     */
-    private void createNotificationsForIncomingMessage(MessageDTO message, ConversationDTO conversation, Company company) {
-        try {
-            // Get all active users in the company
-            List<User> companyUsers = userRepository.findByCompanyId(company.getId());
-            
-            for (User user : companyUsers) {
-                // Only create notification for active users
-                if (true) { // Assumindo que todos os usuários são ativos por agora
-                    try {
-                        notificationService.createMessageNotification(user.getId(), conversation.getId(), message.getId());
-                        logger.debug("Created notification for user {} for message {}", user.getId(), message.getId());
-                    } catch (Exception e) {
-                        logger.warn("Failed to create notification for user {}: {}", user.getId(), e.getMessage());
-                        // Continue with other users even if one fails
-                    }
-                }
-            }
-            
-            logger.debug("Created notifications for incoming message {} in conversation {}", 
-                    message.getId(), conversation.getId());
-                    
-        } catch (Exception e) {
-            logger.error("Error creating notifications for incoming message: {}", e.getMessage(), e);
-        }
-    }
     
     
     private Company findCompanyByWhatsAppInstanceWithVariations(String connectedPhone) {

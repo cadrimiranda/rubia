@@ -3,7 +3,6 @@ package com.ruby.rubia_server.core.service;
 import com.ruby.rubia_server.config.ChatWebSocketHandler;
 import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.MessageDTO;
-import com.ruby.rubia_server.core.dto.NotificationDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -124,52 +123,30 @@ public class WebSocketNotificationService {
     }
 
     /**
-     * Send notification to specific user
+     * Send unread count update to user
      */
-    public void sendNotificationToUser(UUID userId, NotificationDTO notification) {
+    public void sendUnreadCountUpdate(UUID userId, UUID conversationId, Integer count) {
         try {
-            log.debug("Sending notification to user: {}", userId);
+            log.debug("Sending unread count update to user {}: conversation {} has {} unread messages", 
+                    userId, conversationId, count);
             
             String principalName = userId.toString();
             
-            NotificationUpdateMessage message = NotificationUpdateMessage.builder()
-                    .type("NEW_NOTIFICATION")
-                    .notification(notification)
-                    .build();
-            
-            messagingTemplate.convertAndSendToUser(
-                    principalName, 
-                    "/topic/notifications", 
-                    message
-            );
-            
-        } catch (Exception e) {
-            log.error("Error sending notification to user {}: {}", userId, e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Send notification count update to user
-     */
-    public void sendNotificationCountUpdate(UUID userId) {
-        try {
-            log.debug("Sending notification count update to user: {}", userId);
-            
-            String principalName = userId.toString();
-            
-            NotificationCountMessage message = NotificationCountMessage.builder()
-                    .type("NOTIFICATION_COUNT_UPDATE")
+            UnreadCountUpdateMessage message = UnreadCountUpdateMessage.builder()
+                    .type("UNREAD_COUNT_UPDATE")
+                    .conversationId(conversationId)
                     .userId(userId)
+                    .count(count)
                     .build();
             
             messagingTemplate.convertAndSendToUser(
                     principalName, 
-                    "/topic/notification-count", 
+                    "/topic/unread-counts", 
                     message
             );
             
         } catch (Exception e) {
-            log.error("Error sending notification count update to user {}: {}", userId, e.getMessage(), e);
+            log.error("Error sending unread count update to user {}: {}", userId, e.getMessage(), e);
         }
     }
 
@@ -302,69 +279,53 @@ public class WebSocketNotificationService {
         }
     }
 
-    public static class NotificationUpdateMessage {
+    public static class UnreadCountUpdateMessage {
         private String type;
-        private NotificationDTO notification;
-
-        public static NotificationUpdateMessageBuilder builder() {
-            return new NotificationUpdateMessageBuilder();
-        }
-
-        public String getType() { return type; }
-        public NotificationDTO getNotification() { return notification; }
-
-        public static class NotificationUpdateMessageBuilder {
-            private String type;
-            private NotificationDTO notification;
-
-            public NotificationUpdateMessageBuilder type(String type) {
-                this.type = type;
-                return this;
-            }
-
-            public NotificationUpdateMessageBuilder notification(NotificationDTO notification) {
-                this.notification = notification;
-                return this;
-            }
-
-            public NotificationUpdateMessage build() {
-                NotificationUpdateMessage message = new NotificationUpdateMessage();
-                message.type = this.type;
-                message.notification = this.notification;
-                return message;
-            }
-        }
-    }
-
-    public static class NotificationCountMessage {
-        private String type;
+        private UUID conversationId;
         private UUID userId;
+        private Integer count;
 
-        public static NotificationCountMessageBuilder builder() {
-            return new NotificationCountMessageBuilder();
+        public static UnreadCountUpdateMessageBuilder builder() {
+            return new UnreadCountUpdateMessageBuilder();
         }
 
         public String getType() { return type; }
+        public UUID getConversationId() { return conversationId; }
         public UUID getUserId() { return userId; }
+        public Integer getCount() { return count; }
 
-        public static class NotificationCountMessageBuilder {
+        public static class UnreadCountUpdateMessageBuilder {
             private String type;
+            private UUID conversationId;
             private UUID userId;
+            private Integer count;
 
-            public NotificationCountMessageBuilder type(String type) {
+            public UnreadCountUpdateMessageBuilder type(String type) {
                 this.type = type;
                 return this;
             }
 
-            public NotificationCountMessageBuilder userId(UUID userId) {
+            public UnreadCountUpdateMessageBuilder conversationId(UUID conversationId) {
+                this.conversationId = conversationId;
+                return this;
+            }
+
+            public UnreadCountUpdateMessageBuilder userId(UUID userId) {
                 this.userId = userId;
                 return this;
             }
 
-            public NotificationCountMessage build() {
-                NotificationCountMessage message = new NotificationCountMessage();
+            public UnreadCountUpdateMessageBuilder count(Integer count) {
+                this.count = count;
+                return this;
+            }
+
+            public UnreadCountUpdateMessage build() {
+                UnreadCountUpdateMessage message = new UnreadCountUpdateMessage();
                 message.type = this.type;
+                message.conversationId = this.conversationId;
                 message.userId = this.userId;
+                message.count = this.count;
                 return message;
             }
         }
