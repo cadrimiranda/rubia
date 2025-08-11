@@ -271,7 +271,10 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
         set({ isLoadingMessages: true, error: null });
 
         const response = await messageApi.getByConversation(chatId, page, 50);
-        const newMessages = messageAdapter.toMessageArray(response.content);
+        console.log('📨 Response da API de mensagens:', response);
+        console.log('📨 Response.content:', response?.content);
+        
+        const newMessages = messageAdapter.toMessageArray(response?.content || response || []);
 
         // Mescla com mensagens em cache (incluindo temporárias)
         const existingMessages = cached?.messages || [];

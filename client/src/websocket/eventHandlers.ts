@@ -44,19 +44,10 @@ export interface WebSocketEventData {
     conversationId: string
     updates: Record<string, unknown>
   }
-  NEW_NOTIFICATION: {
-    notification: {
-      id: string
-      conversationId: string
-      title: string
-      content?: string
-      customerName?: string
-      isRead: boolean
-      createdAt: string
-    }
-  }
-  NOTIFICATION_COUNT_UPDATE: {
+  UNREAD_COUNT_UPDATE: {
+    conversationId: string
     userId: string
+    count: number
   }
 }
 
@@ -113,12 +104,8 @@ class WebSocketEventHandlers {
         this.handleConversationUpdated(message.data as WebSocketEventData['CONVERSATION_UPDATED'])
         break
         
-      case 'NEW_NOTIFICATION':
-        this.handleNewNotification(message.data as WebSocketEventData['NEW_NOTIFICATION'])
-        break
-        
-      case 'NOTIFICATION_COUNT_UPDATE':
-        this.handleNotificationCountUpdate(message.data as WebSocketEventData['NOTIFICATION_COUNT_UPDATE'])
+      case 'UNREAD_COUNT_UPDATE':
+        this.handleUnreadCountUpdate(message.data as WebSocketEventData['UNREAD_COUNT_UPDATE'])
         break
         
       default:
@@ -274,29 +261,14 @@ class WebSocketEventHandlers {
     this.store.updateConversation(conversationId, updates)
   }
 
-  private handleNewNotification = (data: WebSocketEventData['NEW_NOTIFICATION']) => {
-    const { notification } = data
-    console.log('Nova notificação recebida via WebSocket:', notification)
+  private handleUnreadCountUpdate = (data: WebSocketEventData['UNREAD_COUNT_UPDATE']) => {
+    const { conversationId, userId, count } = data
+    console.log('Atualização de contador via WebSocket:', { conversationId, userId, count })
     
-    // Disparar evento customizado para que o hook de notificações possa reagir
+    // Disparar evento customizado para que o hook de unread counts possa reagir
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('notification:new', {
-        detail: notification
-      }))
-      
-      // Também disparar evento de atualização de contadores
-      window.dispatchEvent(new CustomEvent('notification:count-update'))
-    }
-  }
-
-  private handleNotificationCountUpdate = (data: WebSocketEventData['NOTIFICATION_COUNT_UPDATE']) => {
-    const { userId } = data
-    console.log('Atualização de contador de notificações via WebSocket para usuário:', userId)
-    
-    // Disparar evento customizado para atualizar contadores
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('notification:count-update', {
-        detail: { userId }
+      window.dispatchEvent(new CustomEvent('unread:count-update', {
+        detail: { conversationId, userId, count }
       }))
     }
   }
