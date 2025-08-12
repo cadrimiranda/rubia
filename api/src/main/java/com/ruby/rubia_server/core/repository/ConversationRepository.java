@@ -63,4 +63,38 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     // Find conversation by Z-API chatLid with participants loaded
     @Query("SELECT c FROM Conversation c LEFT JOIN FETCH c.participants p LEFT JOIN FETCH p.customer WHERE c.chatLid = :chatLid")
     Optional<Conversation> findByChatLidWithParticipants(@Param("chatLid") String chatLid);
+    
+    // CQRS optimized query for conversations ordered by last message date
+    @Query("SELECT c FROM Conversation c " +
+           "LEFT JOIN FETCH c.participants p " +
+           "LEFT JOIN FETCH p.customer " +
+           "LEFT JOIN ConversationLastMessage clm ON c.id = clm.conversationId " +
+           "WHERE c.company.id = :companyId " +
+           "ORDER BY clm.lastMessageDate DESC NULLS LAST, c.createdAt DESC")
+    List<Conversation> findConversationsOrderByLastMessageDateOptimized(@Param("companyId") UUID companyId);
+    
+    @Query("SELECT c FROM Conversation c " +
+           "LEFT JOIN FETCH c.participants p " +
+           "LEFT JOIN FETCH p.customer " +
+           "LEFT JOIN ConversationLastMessage clm ON c.id = clm.conversationId " +
+           "WHERE c.company.id = :companyId " +
+           "ORDER BY clm.lastMessageDate DESC NULLS LAST, c.createdAt DESC")
+    Page<Conversation> findConversationsOrderByLastMessageDateOptimized(@Param("companyId") UUID companyId, Pageable pageable);
+    
+    // CQRS optimized query with status filter
+    @Query("SELECT c FROM Conversation c " +
+           "LEFT JOIN FETCH c.participants p " +
+           "LEFT JOIN FETCH p.customer " +
+           "LEFT JOIN ConversationLastMessage clm ON c.id = clm.conversationId " +
+           "WHERE c.company.id = :companyId AND c.status = :status " +
+           "ORDER BY clm.lastMessageDate DESC NULLS LAST, c.createdAt DESC")
+    List<Conversation> findConversationsOrderByLastMessageDateOptimizedByStatus(@Param("companyId") UUID companyId, @Param("status") ConversationStatus status);
+    
+    @Query("SELECT c FROM Conversation c " +
+           "LEFT JOIN FETCH c.participants p " +
+           "LEFT JOIN FETCH p.customer " +
+           "LEFT JOIN ConversationLastMessage clm ON c.id = clm.conversationId " +
+           "WHERE c.company.id = :companyId AND c.status = :status " +
+           "ORDER BY clm.lastMessageDate DESC NULLS LAST, c.createdAt DESC")
+    Page<Conversation> findConversationsOrderByLastMessageDateOptimizedByStatus(@Param("companyId") UUID companyId, @Param("status") ConversationStatus status, Pageable pageable);
 }

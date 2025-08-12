@@ -122,6 +122,34 @@ public class WebSocketNotificationService {
         }
     }
 
+    /**
+     * Send unread count update to user
+     */
+    public void sendUnreadCountUpdate(UUID userId, UUID conversationId, Integer count) {
+        try {
+            log.debug("Sending unread count update to user {}: conversation {} has {} unread messages", 
+                    userId, conversationId, count);
+            
+            String principalName = userId.toString();
+            
+            UnreadCountUpdateMessage message = UnreadCountUpdateMessage.builder()
+                    .type("UNREAD_COUNT_UPDATE")
+                    .conversationId(conversationId)
+                    .userId(userId)
+                    .count(count)
+                    .build();
+            
+            messagingTemplate.convertAndSendToUser(
+                    principalName, 
+                    "/topic/unread-counts", 
+                    message
+            );
+            
+        } catch (Exception e) {
+            log.error("Error sending unread count update to user {}: {}", userId, e.getMessage(), e);
+        }
+    }
+
     public static class NewMessageNotification {
         private String type;
         private MessageDTO message;
@@ -247,6 +275,58 @@ public class WebSocketNotificationService {
                 notification.userName = this.userName;
                 notification.isTyping = this.isTyping;
                 return notification;
+            }
+        }
+    }
+
+    public static class UnreadCountUpdateMessage {
+        private String type;
+        private UUID conversationId;
+        private UUID userId;
+        private Integer count;
+
+        public static UnreadCountUpdateMessageBuilder builder() {
+            return new UnreadCountUpdateMessageBuilder();
+        }
+
+        public String getType() { return type; }
+        public UUID getConversationId() { return conversationId; }
+        public UUID getUserId() { return userId; }
+        public Integer getCount() { return count; }
+
+        public static class UnreadCountUpdateMessageBuilder {
+            private String type;
+            private UUID conversationId;
+            private UUID userId;
+            private Integer count;
+
+            public UnreadCountUpdateMessageBuilder type(String type) {
+                this.type = type;
+                return this;
+            }
+
+            public UnreadCountUpdateMessageBuilder conversationId(UUID conversationId) {
+                this.conversationId = conversationId;
+                return this;
+            }
+
+            public UnreadCountUpdateMessageBuilder userId(UUID userId) {
+                this.userId = userId;
+                return this;
+            }
+
+            public UnreadCountUpdateMessageBuilder count(Integer count) {
+                this.count = count;
+                return this;
+            }
+
+            public UnreadCountUpdateMessage build() {
+                UnreadCountUpdateMessage message = new UnreadCountUpdateMessage();
+                message.type = this.type;
+                message.conversationId = this.conversationId;
+                message.userId = this.userId;
+                message.count = this.count;
+                return message;
             }
         }
     }

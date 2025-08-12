@@ -99,8 +99,9 @@ export const BloodCenterChat: React.FC = () => {
 
   // Refs para controlar paginação e evitar dependências circulares
   const currentPageRef = useRef(0);
-  const loadConversationsRef =
-    useRef<(status?: ChatStatus, reset?: boolean) => Promise<void>>(async () => {});
+  const loadConversationsRef = useRef<
+    (reset?: boolean, status?: ChatStatus) => Promise<void>
+  >(async () => {});
 
   // WebSocket para atualizações em tempo real
   const webSocket = useWebSocket();
@@ -108,33 +109,40 @@ export const BloodCenterChat: React.FC = () => {
   // Listener para desconexões de instância WhatsApp
   React.useEffect(() => {
     // Configurar callback para quando uma instância é desconectada
-    webSocket.onInstanceDisconnected((instanceId: string, phoneNumber: string, error: string) => {
-      console.log("💬 Chat component received disconnection:", { instanceId, phoneNumber, error });
-      
-      // Se modal já está aberto, não fazer nada
-      if (showDisconnectionModal) {
-        console.log("💬 Disconnection modal already open, ignoring");
-        return;
+    webSocket.onInstanceDisconnected(
+      (instanceId: string, phoneNumber: string, error: string) => {
+        // Se modal já está aberto, não fazer nada
+        if (showDisconnectionModal) {
+          return;
+        }
+
+        // Abrir modal de desconexão
+        setDisconnectedInstance({ instanceId, phoneNumber, error });
+        setShowDisconnectionModal(true);
       }
-      
-      // Abrir modal de desconexão
-      setDisconnectedInstance({ instanceId, phoneNumber, error });
-      setShowDisconnectionModal(true);
-    });
+    );
 
     // Configurar callback para reconexão (fechar modal)
-    webSocket.onInstanceConnected((instanceId: string, phoneNumber: string) => {
+    webSocket.onInstanceConnected((instanceId: string) => {
       // Fechar modal se estava aberto e instância reconectou
-      if (showDisconnectionModal && disconnectedInstance?.instanceId === instanceId) {
-        console.log("💬 Instance reconnected, closing modal");
+      if (
+        showDisconnectionModal &&
+        disconnectedInstance?.instanceId === instanceId
+      ) {
         setShowDisconnectionModal(false);
         setDisconnectedInstance(null);
       }
     });
-  }, [webSocket.onInstanceDisconnected, webSocket.onInstanceConnected, showDisconnectionModal, disconnectedInstance?.instanceId]);
+  }, [
+    webSocket.onInstanceDisconnected,
+    webSocket.onInstanceConnected,
+    showDisconnectionModal,
+    disconnectedInstance,
+    webSocket,
+  ]);
 
   // Chat store para mensagens em tempo real
-  const { messagesCache } = useChatStore();
+  const { messagesCache, updateUnreadCountBulk } = useChatStore();
 
   // Combinar mensagens locais (enviadas) com mensagens do WebSocket (recebidas)
   const activeMessages = React.useMemo(() => {
@@ -154,9 +162,13 @@ export const BloodCenterChat: React.FC = () => {
     webSocketMessages.forEach((wsMsg) => {
       if (!allMessages.some((localMsg) => localMsg.id === wsMsg.id)) {
         allMessages.push(wsMsg);
-        
+
         // Se recebeu uma mensagem de áudio do usuário via WebSocket, desabilitar loading
-        if (wsMsg.messageType === 'audio' && wsMsg.isFromUser && isAudioSending) {
+        if (
+          wsMsg.messageType === "audio" &&
+          wsMsg.isFromUser &&
+          isAudioSending
+        ) {
           setIsAudioSending(false);
         }
       }
@@ -164,14 +176,19 @@ export const BloodCenterChat: React.FC = () => {
 
     // Ordenar por timestamp
     const sortedMessages = allMessages.sort((a, b) => {
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+      const timeA =
+        a.timestamp instanceof Date
+          ? a.timestamp.getTime()
+          : new Date(a.timestamp).getTime();
+      const timeB =
+        b.timestamp instanceof Date
+          ? b.timestamp.getTime()
+          : new Date(b.timestamp).getTime();
       return timeA - timeB;
     });
 
     return sortedMessages;
-  }, [state.selectedDonor, state.messages, messagesCache]);
-
+  }, [state.selectedDonor, state.messages, messagesCache, isAudioSending]);
 
   useEffect(() => {
     if (webSocket.isConnected) {
@@ -187,7 +204,6 @@ export const BloodCenterChat: React.FC = () => {
       setIsCampaignsLoading(true);
       const companyId = localStorage.getItem("auth_company_id");
       if (!companyId) {
-        console.warn("Company ID não encontrado");
         return;
       }
 
@@ -206,14 +222,9 @@ export const BloodCenterChat: React.FC = () => {
     loadCampaigns();
   }, [loadCampaigns]);
 
-  const updateState = React.useCallback(
-    (updates: Partial<ChatState>) => {
-      if (updates.messages !== undefined) {
-      }
-      setState((prev) => ({ ...prev, ...updates }));
-    },
-    [state.messages]
-  );
+  const updateState = React.useCallback((updates: Partial<ChatState>) => {
+    setState((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   // Atualizar lastMessage dos donors quando novas mensagens chegam via WebSocket
   useEffect(() => {
@@ -223,36 +234,55 @@ export const BloodCenterChat: React.FC = () => {
 
       // Pegar a mensagem mais recente da conversa
       const lastMessage = cache.messages[cache.messages.length - 1];
-      
+
       // Usar função callback para evitar dependência direta em donors
-      setDonors(prevDonors => {
+      setDonors((prevDonors) => {
         // Encontrar o donor correspondente
-        const donorIndex = prevDonors.findIndex(d => d.conversationId === conversationId);
-        
+        const donorIndex = prevDonors.findIndex(
+          (d) => d.conversationId === conversationId
+        );
+
         if (donorIndex >= 0) {
           const currentDonor = prevDonors[donorIndex];
-          
+
           // Verificar se é uma mensagem nova (diferente da última conhecida)
-          const isNewMessage = !currentDonor.lastMessage || 
+          const isNewMessage =
+            !currentDonor.lastMessage ||
             currentDonor.lastMessage !== lastMessage.content ||
             !currentDonor.timestamp ||
-            new Date(lastMessage.timestamp).getTime() > new Date(`1970-01-01 ${currentDonor.timestamp}`).getTime();
-          
+            new Date(lastMessage.timestamp).getTime() >
+              new Date(`1970-01-01 ${currentDonor.timestamp}`).getTime();
+
           if (isNewMessage) {
             const updatedDonor = {
               ...currentDonor,
-              lastMessage: lastMessage.content || (lastMessage.messageType === 'audio' ? '🎵 Mensagem de áudio' : 'Anexo enviado'),
-              timestamp: lastMessage.timestamp instanceof Date 
-                ? lastMessage.timestamp.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-                : new Date(lastMessage.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-              unread: !lastMessage.isFromUser ? (currentDonor.unread || 0) + 1 : currentDonor.unread || 0
+              lastMessage:
+                lastMessage.content ||
+                (lastMessage.messageType === "audio"
+                  ? "🎵 Mensagem de áudio"
+                  : "Anexo enviado"),
+              timestamp:
+                lastMessage.timestamp instanceof Date
+                  ? lastMessage.timestamp.toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : new Date(lastMessage.timestamp).toLocaleTimeString(
+                      "pt-BR",
+                      { hour: "2-digit", minute: "2-digit" }
+                    ),
             };
 
-            // Retornar array atualizado
-            return prevDonors.map(d => d.id === currentDonor.id ? updatedDonor : d);
+            // Remove the conversation from its current position
+            const otherDonors = prevDonors.filter(
+              (d) => d.id !== currentDonor.id
+            );
+
+            // Place the updated conversation at the beginning of the array
+            return [updatedDonor, ...otherDonors];
           }
         }
-        
+
         // Se não houve mudanças, retornar o array original
         return prevDonors;
       });
@@ -262,58 +292,20 @@ export const BloodCenterChat: React.FC = () => {
   // Atualizar selectedDonor quando o donor correspondente na lista muda
   useEffect(() => {
     if (state.selectedDonor) {
-      const updatedDonor = donors.find(d => d.id === state.selectedDonor.id);
-      if (updatedDonor && (
-        updatedDonor.lastMessage !== state.selectedDonor.lastMessage ||
-        updatedDonor.timestamp !== state.selectedDonor.timestamp ||
-        updatedDonor.unread !== state.selectedDonor.unread
-      )) {
+      const updatedDonor = donors.find((d) => d.id === state.selectedDonor!.id);
+      if (
+        updatedDonor &&
+        (updatedDonor.lastMessage !== state.selectedDonor.lastMessage ||
+          updatedDonor.timestamp !== state.selectedDonor.timestamp)
+      ) {
         updateState({ selectedDonor: updatedDonor });
       }
     }
-  }, [donors, state.selectedDonor?.id, updateState]);
+  }, [donors, state.selectedDonor, updateState]);
 
-  // Converter ConversationDTO em Donor (desabilitado para usar mock data)
-  /*
-  const convertConversationToDonor = React.useCallback((conversation: ConversationDTO): Donor => {
-    const customer = conversation.customer;
-    const user = customer ? customerAdapter.toUser(customer) : {
-      id: conversation.customerId,
-      name: 'Cliente Desconhecido',
-      avatar: '',
-      isOnline: false,
-      phone: ''
-    };
-
-    return {
-      id: conversation.id,
-      name: user.name,
-      lastMessage: conversation.lastMessage?.content || "",
-      timestamp: conversation.lastMessage?.createdAt ? 
-        new Date(conversation.lastMessage.createdAt).toLocaleTimeString('pt-BR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }) : "",
-      unread: 0, // TODO: implementar contagem real de não lidas
-      status: "offline" as const,
-      bloodType: "N/I", // Valor padrão para contatos sem dados médicos
-      phone: user.phone || '',
-      email: "",
-      lastDonation: "Sem registro",
-      totalDonations: 0,
-      address: "",
-      birthDate: "",
-      weight: 0,
-      height: 0,
-    };
-  }, []);
-  */
-
-  // Carregar conversas da API real
   const loadConversations = React.useCallback(
-    async (status?: ChatStatus, reset = true) => {
+    async (reset = true, status: ChatStatus = "entrada") => {
       try {
-        const statusToLoad = status || currentStatus;
         let pageToLoad: number;
 
         if (reset) {
@@ -328,21 +320,25 @@ export const BloodCenterChat: React.FC = () => {
         setError(null);
 
         // Mapear status do frontend para backend
-        const backendStatus =
-          conversationAdapter.mapStatusToBackend(statusToLoad);
-
-        // Buscar conversas da API com paginação
-        const response = await conversationApi.getByStatus(
-          backendStatus as ConversationStatus,
-          pageToLoad,
-          20
+        const backendStatus = conversationAdapter.mapStatusToBackend(
+          status ?? currentStatus
         );
 
-        // Converter ConversationDTO para formato Donor (compatibilidade)
+        // Usar endpoint CQRS otimizado com filtro de status
+        const response = await conversationApi.getOrderedByLastMessage(
+          pageToLoad,
+          20,
+          backendStatus as ConversationStatus
+        );
+
+        const unreadCount: Record<string, number> = {};
+
         const conversationsAsDonors = response.content.map((conv) => {
+          unreadCount[conv.id] = conv.unreadCount ?? 0;
+
           return {
-            id: conv.customerId, // Usar customerId para buscar dados do customer
-            conversationId: conv.id, // Incluir o ID da conversa
+            id: conv.customerId,
+            conversationId: conv.id,
             name: conv.customerName || conv.customerPhone || "Cliente",
             lastMessage: conv.lastMessage?.content || "",
             timestamp: conv.lastMessage?.createdAt
@@ -354,33 +350,31 @@ export const BloodCenterChat: React.FC = () => {
                   }
                 )
               : "",
-            unread: 0, // TODO: Implementar contagem real de mensagens não lidas
             status: "offline" as const,
             bloodType: conv.customerBloodType || "Não informado",
             phone: conv.customerPhone || "",
             email: "",
             lastDonation: conv.customerLastDonationDate || "Sem registro",
-            totalDonations: 0, // TODO: Implementar contagem real
+            totalDonations: 0,
             address: "",
             birthDate: conv.customerBirthDate || "",
             weight: conv.customerWeight || 0,
             height: conv.customerHeight || 0,
             hasActiveConversation: true,
             conversationStatus: conv.status,
-            campaignId: conv.campaignId, // Incluir o campaignId da conversa
+            campaignId: conv.campaignId,
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
               conv.customerName || conv.customerPhone || "C"
             )}&background=random&size=150`,
           };
         });
 
+        updateUnreadCountBulk(unreadCount);
+
         // Atualizar estado da paginação
         currentPageRef.current = pageToLoad;
         const hasMore = pageToLoad + 1 < (response.totalPages || 0);
         setHasMorePages(hasMore);
-
-        if (!hasMore) {
-        }
 
         if (reset) {
           setDonors(conversationsAsDonors);
@@ -388,7 +382,7 @@ export const BloodCenterChat: React.FC = () => {
           setDonors((prevDonors) => [...prevDonors, ...conversationsAsDonors]);
         }
       } catch (err) {
-        console.error("❌ Erro ao carregar conversas da API:", err);
+        console.error("❌ Erro ao carregar conversas CQRS:", err);
         setError("Erro ao carregar conversas. Tente novamente.");
         setDonors([]);
       } finally {
@@ -396,7 +390,7 @@ export const BloodCenterChat: React.FC = () => {
         setIsLoadingMore(false);
       }
     },
-    [currentStatus]
+    [currentStatus, updateUnreadCountBulk]
   );
 
   // Atualizar ref
@@ -404,8 +398,8 @@ export const BloodCenterChat: React.FC = () => {
 
   // Função simplificada para evitar dependências circulares
   const callLoadConversations = React.useCallback(
-    (status?: ChatStatus, reset = true) => {
-      loadConversationsRef.current?.(status, reset);
+    ({ reset, status }: { reset?: boolean; status?: ChatStatus }) => {
+      loadConversationsRef.current?.(reset, status);
     },
     []
   );
@@ -413,9 +407,8 @@ export const BloodCenterChat: React.FC = () => {
   // Função para carregar mais conversas (scroll infinito)
   const loadMoreConversations = React.useCallback(async () => {
     if (!hasMorePages || isLoadingMore) return;
-
-    await loadConversations(currentStatus, false);
-  }, [currentStatus, hasMorePages, isLoadingMore, loadConversations]);
+    await loadConversations(false);
+  }, [hasMorePages, isLoadingMore, loadConversations]);
 
   // Carregar todos os contatos (customers) da API
   const loadAllContacts = React.useCallback(async () => {
@@ -464,6 +457,7 @@ export const BloodCenterChat: React.FC = () => {
           birthDate: "",
           weight: 0,
           height: 0,
+          ...customer,
         };
       });
 
@@ -475,25 +469,23 @@ export const BloodCenterChat: React.FC = () => {
     }
   }, []);
 
-  // Função para trocar de status da aba
   const handleStatusChange = React.useCallback(
     (newStatus: ChatStatus) => {
       setCurrentStatus(newStatus);
-      callLoadConversations(newStatus);
+      callLoadConversations({ reset: true, status: newStatus });
       updateState({ selectedDonor: null }); // Limpar seleção ao trocar status
       setCurrentDraftMessage(null); // Limpar draft ao trocar status
     },
     [callLoadConversations, updateState]
   );
 
-  // Função para trocar de campanha
   const handleCampaignChange = React.useCallback(
     (campaign: Campaign | null) => {
       setSelectedCampaign(campaign);
       updateState({ selectedDonor: null, selectedCampaign: campaign }); // Limpar seleção ao trocar campanha
-      callLoadConversations(currentStatus);
+      callLoadConversations({ reset: true });
     },
-    [callLoadConversations, updateState, currentStatus]
+    [callLoadConversations, updateState]
   );
 
   // Função para trocar modo de visualização
@@ -532,13 +524,6 @@ export const BloodCenterChat: React.FC = () => {
         }
 
         // Mostrar feedback
-
-        // Se mudou para o status atual, recarregar para mostrar na lista
-        if (newStatus === currentStatus) {
-          setTimeout(() => {
-            callLoadConversations(currentStatus);
-          }, 100);
-        }
       } catch (error) {
         console.error("❌ Erro ao mudar status da conversa:", error);
 
@@ -562,15 +547,7 @@ export const BloodCenterChat: React.FC = () => {
         });
       }
     },
-    [
-      donors,
-      state.selectedDonor,
-      updateState,
-      currentStatus,
-      loadConversations,
-      conversationAdapter,
-      conversationApi,
-    ]
+    [donors, state.selectedDonor, updateState]
   );
 
   // Função para lidar com agendamento
@@ -604,8 +581,8 @@ export const BloodCenterChat: React.FC = () => {
         }`,
         timestamp: new Date(),
         isFromUser: false,
-        messageType: 'text',
-        status: 'sent',
+        messageType: "text",
+        status: "sent",
       };
 
       // Se é a conversa ativa, adicionar a mensagem
@@ -642,7 +619,7 @@ export const BloodCenterChat: React.FC = () => {
 
   // Carregar dados ao montar componente
   useEffect(() => {
-    callLoadConversations();
+    callLoadConversations({ reset: true, status: "entrada" });
   }, [callLoadConversations]);
 
   // Cleanup URLs de preview ao desmontar o componente
@@ -719,31 +696,38 @@ export const BloodCenterChat: React.FC = () => {
 
             // Log das mensagens após ordenação
 
-            donorMessages = sortedMessages.map((msg): Message => ({
-              id: msg.id,
-              senderId: msg.senderId || "unknown",
-              content: msg.content,
-              timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
-              isFromUser: msg.senderType !== "CUSTOMER", // CUSTOMER = false (recebida do cliente), !CUSTOMER = true (enviada por mim/sistema)
-              messageType: (msg.messageType?.toLowerCase() as 'text' | 'image' | 'file' | 'audio') || 'text',
-              status: 'delivered',
-              mediaUrl: msg.mediaUrl,
-              mimeType: msg.mimeType,
-              audioDuration: msg.audioDuration,
-              // Only create attachments for non-audio media
-              attachments:
-                msg.mediaUrl && msg.messageType !== "AUDIO"
-                  ? [
-                      {
-                        id: `media_${msg.id}`,
-                        name: msg.mediaUrl.split("/").pop() || "arquivo",
-                        size: 0,
-                        type: "application/octet-stream",
-                        url: msg.mediaUrl,
-                      },
-                    ]
-                  : undefined,
-            }));
+            donorMessages = sortedMessages.map(
+              (msg): Message => ({
+                id: msg.id,
+                senderId: msg.senderId || "unknown",
+                content: msg.content,
+                timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
+                isFromUser: msg.senderType !== "CUSTOMER", // CUSTOMER = false (recebida do cliente), !CUSTOMER = true (enviada por mim/sistema)
+                messageType:
+                  (msg.messageType?.toLowerCase() as
+                    | "text"
+                    | "image"
+                    | "file"
+                    | "audio") || "text",
+                status: "delivered",
+                mediaUrl: msg.mediaUrl,
+                mimeType: msg.mimeType,
+                audioDuration: msg.audioDuration,
+                // Only create attachments for non-audio media
+                attachments:
+                  msg.mediaUrl && msg.messageType !== "AUDIO"
+                    ? [
+                        {
+                          id: `media_${msg.id}`,
+                          name: msg.mediaUrl.split("/").pop() || "arquivo",
+                          size: 0,
+                          type: "application/octet-stream",
+                          url: msg.mediaUrl,
+                        },
+                      ]
+                    : undefined,
+              })
+            );
           }
         }
       } catch (error) {
@@ -772,16 +756,28 @@ export const BloodCenterChat: React.FC = () => {
 
           // Para mensagens temporárias, usar timestamp atual
           if (a.id.startsWith("temp-") && b.id.startsWith("temp-")) {
-            const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : parseTime(a.timestamp);
-            const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : parseTime(b.timestamp);
+            const timeA =
+              a.timestamp instanceof Date
+                ? a.timestamp.getTime()
+                : parseTime(a.timestamp);
+            const timeB =
+              b.timestamp instanceof Date
+                ? b.timestamp.getTime()
+                : parseTime(b.timestamp);
             return timeA - timeB;
           }
           // Se uma é temporária, ela vai por último (mais recente)
           if (a.id.startsWith("temp-")) return 1;
           if (b.id.startsWith("temp-")) return -1;
           // Para mensagens reais, usar timestamp
-          const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : parseTime(a.timestamp);
-          const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : parseTime(b.timestamp);
+          const timeA =
+            a.timestamp instanceof Date
+              ? a.timestamp.getTime()
+              : parseTime(a.timestamp);
+          const timeB =
+            b.timestamp instanceof Date
+              ? b.timestamp.getTime()
+              : parseTime(b.timestamp);
           return timeA - timeB;
         });
 
@@ -805,8 +801,14 @@ export const BloodCenterChat: React.FC = () => {
 
       // Ordenar mensagens cronologicamente (mais antigas primeiro)
       messagesToUse.sort((a, b) => {
-        const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : parseTimeToMinutes(a.timestamp);
-        const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : parseTimeToMinutes(b.timestamp);
+        const timeA =
+          a.timestamp instanceof Date
+            ? a.timestamp.getTime()
+            : parseTimeToMinutes(a.timestamp);
+        const timeB =
+          b.timestamp instanceof Date
+            ? b.timestamp.getTime()
+            : parseTimeToMinutes(b.timestamp);
         return timeA - timeB;
       });
 
@@ -836,8 +838,8 @@ export const BloodCenterChat: React.FC = () => {
               senderId: msg.senderId,
               timestamp: msg.timestamp,
               isFromUser: !msg.isAI,
-              messageType: msg.messageType || 'text',
-              status: 'delivered',
+              messageType: msg.messageType || "text",
+              status: "delivered",
               attachments: msg.attachments,
               media: msg.media,
             })),
@@ -849,24 +851,8 @@ export const BloodCenterChat: React.FC = () => {
 
       // Armazenar referência da mensagem DRAFT para o MessageInput
       setCurrentDraftMessage(draftMessage);
-      if (draftMessage) {
-      }
-
-      // Marcar mensagens como lidas quando o donor é selecionado
-      if (donor.unread && donor.unread > 0) {
-        const updatedDonor = { ...donor, unread: 0 };
-        setDonors(prevDonors => 
-          prevDonors.map(d => d.id === donor.id ? updatedDonor : d)
-        );
-        
-        // Se há conversationId, também marcar como lida no store
-        if (donor.conversationId) {
-          const store = useChatStore.getState();
-          store.markAsRead && store.markAsRead(donor.conversationId);
-        }
-      }
     },
-    [updateState, setDonors]
+    [state.messages, state.selectedDonor, updateState]
   );
 
   // Função reutilizável para carregar dados completos do customer e abrir modal (DRY)
@@ -910,7 +896,6 @@ export const BloodCenterChat: React.FC = () => {
       name: contactData.name,
       lastMessage: "",
       timestamp: "",
-      unread: 0,
       status: "offline",
       bloodType: "Não informado",
       phone: contactData.phone,
@@ -921,6 +906,8 @@ export const BloodCenterChat: React.FC = () => {
       birthDate: "",
       weight: 0,
       height: 0,
+      conversationId: "",
+      ...contactData.donor,
     };
   };
 
@@ -1018,8 +1005,6 @@ export const BloodCenterChat: React.FC = () => {
       handleDonorSelect,
       handleOpenDonorProfile,
       updateState,
-      state.selectedDonor,
-      setDonors,
     ]
   );
 
@@ -1046,39 +1031,43 @@ export const BloodCenterChat: React.FC = () => {
 
     const { user } = useAuthStore.getState();
     if (!user?.companyId) {
-      console.error('❌ Company ID not found for message enhancement');
+      console.error("❌ Company ID not found for message enhancement");
       return;
     }
 
     const originalMessage = state.messageInput;
 
     try {
-      console.log('🔮 [AI] Starting message enhancement...');
-      
-      // Show loading state in the input
-      updateState({ messageInput: originalMessage + ' ✨' });
+      console.log("🔮 [AI] Starting message enhancement...");
 
-      const { aiAgentApi } = await import('../api/services/aiAgentApi');
+      // Show loading state in the input
+      updateState({ messageInput: originalMessage + " ✨" });
+
+      const { aiAgentApi } = await import("../api/services/aiAgentApi");
       const conversationId = state.selectedDonor?.conversationId;
-      const enhancedMessage = await aiAgentApi.enhanceMessage(user.companyId, originalMessage, conversationId);
-      
-      console.log('✅ [AI] Message enhanced successfully');
-      
+      const enhancedMessage = await aiAgentApi.enhanceMessage(
+        user.companyId,
+        originalMessage,
+        conversationId
+      );
+
+      console.log("✅ [AI] Message enhanced successfully");
+
       // Update the message input with the enhanced version
       updateState({ messageInput: enhancedMessage });
-      
     } catch (error) {
-      console.error('❌ Error enhancing message:', error);
-      
+      console.error("❌ Error enhancing message:", error);
+
       // Restore original message
       updateState({ messageInput: originalMessage });
-      
+
       // Show error modal
       updateState({
         showConfirmationModal: true,
         confirmationData: {
           title: "Erro na Melhoria de Mensagem",
-          message: "Não foi possível melhorar a mensagem com IA. Verifique se você tem um agente IA configurado e ativo.",
+          message:
+            "Não foi possível melhorar a mensagem com IA. Verifique se você tem um agente IA configurado e ativo.",
           type: "warning",
           confirmText: "OK",
           onConfirm: () => {
@@ -1289,7 +1278,7 @@ export const BloodCenterChat: React.FC = () => {
 
     // Armazenar conteúdo antes de qualquer processamento
     const messageContent = state.messageInput;
-    
+
     let conversationId = state.selectedDonor.conversationId;
 
     // Verificar se é a primeira mensagem de um novo contato
@@ -1399,8 +1388,8 @@ export const BloodCenterChat: React.FC = () => {
       content: messageContent,
       timestamp: new Date(),
       isFromUser: true,
-      messageType: state.pendingMedia.length > 0 ? 'file' : 'text',
-      status: 'sending',
+      messageType: state.pendingMedia.length > 0 ? "file" : "text",
+      status: "sending",
       attachments:
         state.attachments.length > 0 ? [...state.attachments] : undefined,
       // Converter pendingMedia para um formato de preview
@@ -1517,9 +1506,12 @@ export const BloodCenterChat: React.FC = () => {
           return {
             ...currentState,
             messages: [
-              ...currentState.messages.map(msg => ({
+              ...currentState.messages.map((msg) => ({
                 ...msg,
-                timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+                timestamp:
+                  msg.timestamp instanceof Date
+                    ? msg.timestamp
+                    : new Date(msg.timestamp),
               })),
               {
                 id: sentMessage.id,
@@ -1530,7 +1522,7 @@ export const BloodCenterChat: React.FC = () => {
                   : tempMessage.timestamp,
                 isFromUser: tempMessage.isFromUser,
                 messageType: tempMessage.messageType,
-                status: 'sent',
+                status: "sent",
                 attachments: tempMessage.attachments,
                 media: tempMessage.media,
               } as Message,
@@ -1547,11 +1539,16 @@ export const BloodCenterChat: React.FC = () => {
                   id: sentMessage.id,
                   timestamp: sentMessage.createdAt
                     ? new Date(sentMessage.createdAt)
-                    : (msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)),
+                    : msg.timestamp instanceof Date
+                    ? msg.timestamp
+                    : new Date(msg.timestamp),
                 }
               : {
                   ...msg,
-                  timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+                  timestamp:
+                    msg.timestamp instanceof Date
+                      ? msg.timestamp
+                      : new Date(msg.timestamp),
                 }
           ),
         };
@@ -1786,12 +1783,16 @@ export const BloodCenterChat: React.FC = () => {
                 pendingMedia={state.pendingMedia}
                 conversationId={state.selectedDonor?.conversationId}
                 draftMessage={currentDraftMessage}
-                onMessageChange={(value) => updateState({ messageInput: value })}
+                onMessageChange={(value) =>
+                  updateState({ messageInput: value })
+                }
                 onSendMessage={handleSendMessage}
                 onFileUpload={handleFileUpload}
                 onRemoveAttachment={(id) =>
                   updateState({
-                    attachments: state.attachments.filter((att) => att.id !== id),
+                    attachments: state.attachments.filter(
+                      (att) => att.id !== id
+                    ),
                   })
                 }
                 onMediaSelected={handleMediaSelected}
@@ -1822,7 +1823,6 @@ export const BloodCenterChat: React.FC = () => {
       </div>
       {/* Monitor de conexão WhatsApp */}
       <WhatsAppConnectionMonitor checkInterval={180000} /> {/* 3 minutos */}
-      
       {/* Modal de desconexão WhatsApp */}
       <Modal
         title="WhatsApp Desconectado"
@@ -1855,24 +1855,37 @@ export const BloodCenterChat: React.FC = () => {
               description={
                 <div>
                   <p>
-                    A instância <strong>{whatsappSetupApi.formatPhoneNumber(disconnectedInstance.phoneNumber)}</strong> foi desconectada.
+                    A instância{" "}
+                    <strong>
+                      {whatsappSetupApi.formatPhoneNumber(
+                        disconnectedInstance.phoneNumber
+                      )}
+                    </strong>{" "}
+                    foi desconectada.
                   </p>
                   <p className="mt-2">
                     <strong>Motivo:</strong> {disconnectedInstance.error}
                   </p>
                   <p className="mt-2">
-                    Para continuar enviando e recebendo mensagens, é necessário reconectar.
+                    Para continuar enviando e recebendo mensagens, é necessário
+                    reconectar.
                   </p>
                 </div>
               }
               showIcon
             />
-            
+
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium mb-2">Para reconectar:</h4>
               <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
                 <li>Clique em "Reconectar" acima</li>
-                <li>Abra o WhatsApp no seu celular ({whatsappSetupApi.formatPhoneNumber(disconnectedInstance.phoneNumber)})</li>
+                <li>
+                  Abra o WhatsApp no seu celular (
+                  {whatsappSetupApi.formatPhoneNumber(
+                    disconnectedInstance.phoneNumber
+                  )}
+                  )
+                </li>
                 <li>Vá em Configurações → Aparelhos conectados</li>
                 <li>Escaneie o QR Code que aparecerá abaixo</li>
               </ol>

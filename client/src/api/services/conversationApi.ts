@@ -84,6 +84,26 @@ export class ConversationAPI {
     return apiClient.get<ConversationDTO[]>(`${this.basePath}/unassigned`)
   }
 
+  async getOrderedByLastMessage(page = 0, size = 20, status?: ConversationStatus): Promise<PageResponse<ConversationDTO>> {
+    const params: Record<string, string> = {
+      page: page.toString(),
+      size: size.toString()
+    }
+    
+    if (status) {
+      params.status = status
+    }
+    
+    return apiClient.get<PageResponse<ConversationDTO>>(
+      `${this.basePath}/ordered-by-last-message/paginated`,
+      params
+    )
+  }
+
+  async getAllOrderedByLastMessage(): Promise<ConversationDTO[]> {
+    return apiClient.get<ConversationDTO[]>(`${this.basePath}/ordered-by-last-message`)
+  }
+
   async getStats(): Promise<{
     entrada: number
     esperando: number

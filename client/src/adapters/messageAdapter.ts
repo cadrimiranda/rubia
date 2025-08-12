@@ -113,6 +113,10 @@ class MessageAdapter {
    * Converte array de MessageDTO para array de Message
    */
   toMessageArray(dtos: MessageDTO[]): Message[] {
+    if (!dtos || !Array.isArray(dtos)) {
+      console.warn('⚠️ MessageAdapter.toMessageArray: dtos is not a valid array:', dtos);
+      return [];
+    }
     return dtos.map(dto => this.toMessage(dto))
   }
 

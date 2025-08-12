@@ -28,6 +28,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import com.ruby.rubia_server.core.repository.UserRepository;
+import com.ruby.rubia_server.core.entity.User;
+
+import java.security.Principal;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -57,6 +61,17 @@ public class ConversationController {
     private final MessagingService messagingService;
     private final WebSocketNotificationService webSocketNotificationService;
     private final CompanyContextUtil companyContextUtil;
+    private final UserRepository userRepository;
+    
+    /**
+     * Helper method to get user UUID from Principal (email)
+     */
+    private UUID getUserIdFromPrincipal(Principal principal) {
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+        return user.getId();
+    }
     
     @PostMapping
     public ResponseEntity<ConversationDTO> create(@Valid @RequestBody CreateConversationDTO createDTO) {
@@ -89,11 +104,13 @@ public class ConversationController {
     @GetMapping
     public ResponseEntity<Page<ConversationDTO>> findByStatus(
             @RequestParam ConversationStatus status,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable,
+            Principal principal) {
         log.debug("Finding conversations by status: {} with pageable: {}", status, pageable);
         
         UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
-        Page<ConversationDTO> conversations = conversationService.findByStatusAndCompanyWithPagination(status, currentCompanyId, pageable);
+        UUID userId = getUserIdFromPrincipal(principal);
+        Page<ConversationDTO> conversations = conversationService.findByStatusAndCompanyWithPagination(status, currentCompanyId, pageable, userId);
         return ResponseEntity.ok(conversations);
     }
     
@@ -141,6 +158,35 @@ public class ConversationController {
         
         UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
         List<ConversationDTO> conversations = conversationService.findUnassignedByCompany(currentCompanyId);
+        return ResponseEntity.ok(conversations);
+    }
+    
+    @GetMapping("/ordered-by-last-message")
+    public ResponseEntity<List<ConversationDTO>> findConversationsOrderedByLastMessage() {
+        log.debug("Finding conversations ordered by last message date");
+        
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        List<ConversationDTO> conversations = conversationService.findConversationsOrderByLastMessageDate(currentCompanyId);
+        return ResponseEntity.ok(conversations);
+    }
+    
+    @GetMapping("/ordered-by-last-message/paginated")
+    public ResponseEntity<Page<ConversationDTO>> findConversationsOrderedByLastMessagePaginated(
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) ConversationStatus status) {
+        log.debug("Finding conversations ordered by last message date with pagination, status: {}", status);
+        
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        Page<ConversationDTO> conversations;
+        
+        if (status != null) {
+            conversations = conversationService
+                    .findConversationsOrderByLastMessageDateByStatusWithPagination(currentCompanyId, status, pageable);
+        } else {
+            conversations = conversationService
+                    .findConversationsOrderByLastMessageDateWithPagination(currentCompanyId, pageable);
+        }
+        
         return ResponseEntity.ok(conversations);
     }
     

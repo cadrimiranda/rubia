@@ -51,9 +51,15 @@ interface ChatStoreState {
   >;
   onlineUsers: Set<string>;
   activeConversationId: string | null;
+
+  unreadCount: Record<string, number>;
 }
 
 interface ChatStoreActions {
+  createUnreadCount: (conversationCounters: Record<string, number>) => void;
+  updateUnreadCount: (conversationId: string, unreadCount: number) => void;
+  updateUnreadCountBulk: (conversationCounters: Record<string, number>) => void;
+
   // Navegação
   setActiveChat: (chat: Chat | null) => Promise<void>;
   setCurrentStatus: (status: ChatStatus) => void;
@@ -61,6 +67,7 @@ interface ChatStoreActions {
 
   // Carregamento de dados
   loadConversations: (status?: ChatStatus, page?: number) => Promise<void>;
+  loadConversationsOrderedByLastMessage: (page?: number) => Promise<void>;
   loadMessages: (chatId: string, page?: number) => Promise<void>;
   refreshConversations: () => Promise<void>;
 
@@ -140,6 +147,31 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     typingUsers: {},
     onlineUsers: new Set(),
     activeConversationId: null,
+    unreadCount: {},
+
+    createUnreadCount: (conversationCounters: Record<string, number>) => {
+      set({
+        unreadCount: conversationCounters,
+      });
+    },
+    updateUnreadCount: (conversationId: string, counter: number) => {
+      const unreadCount = get().unreadCount;
+      unreadCount[conversationId] = counter;
+
+      set({
+        unreadCount,
+      });
+    },
+    updateUnreadCountBulk: (conversationCounters: Record<string, number>) => {
+      const unreadCount = get().unreadCount;
+
+      set({
+        unreadCount: {
+          ...unreadCount,
+          ...conversationCounters,
+        },
+      });
+    },
 
     // Navegação
     setActiveChat: async (chat: Chat | null) => {
@@ -262,6 +294,43 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
       }
     },
 
+    // Carregamento otimizado de conversas ordenadas por última mensagem (CQRS)
+    loadConversationsOrderedByLastMessage: async (page = 0) => {
+      const state = get();
+      
+      set({ isLoading: true, error: null });
+
+      try {
+        // Usar endpoint CQRS otimizado
+        const response = await conversationApi.getOrderedByLastMessage(page, 20);
+
+        const newChats = conversationAdapter.toChatArray(
+          response?.content || []
+        );
+
+        set({
+          chats: page === 0 ? newChats : [...state.chats, ...newChats],
+          currentPage: page,
+          hasMore: !response.last,
+          totalChats: response.totalElements,
+          isLoading: false,
+          error: null,
+        });
+
+      } catch (error) {
+        console.error("Erro ao carregar conversas CQRS:", error);
+        
+        set({
+          chats: page === 0 ? [] : state.chats,
+          currentPage: page,
+          hasMore: false,
+          totalChats: 0,
+          isLoading: false,
+          error: "Erro ao carregar conversas. Tente novamente.",
+        });
+      }
+    },
+
     // Carregamento de mensagens
     loadMessages: async (chatId: string, page = 0) => {
       const state = get();
@@ -271,7 +340,12 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
         set({ isLoadingMessages: true, error: null });
 
         const response = await messageApi.getByConversation(chatId, page, 50);
-        const newMessages = messageAdapter.toMessageArray(response.content);
+        console.log("📨 Response da API de mensagens:", response);
+        console.log("📨 Response.content:", response?.content);
+
+        const newMessages = messageAdapter.toMessageArray(
+          response?.content || response || []
+        );
 
         // Mescla com mensagens em cache (incluindo temporárias)
         const existingMessages = cached?.messages || [];
@@ -759,6 +833,9 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
           });
         }
       }
+
+      // Trigger conversation reordering by updating the last message
+      get().updateConversationLastMessage(conversationId, message);
     },
 
     updateMessageStatus: (messageId: string, status: string) => {
@@ -797,22 +874,39 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
       message: Message
     ) => {
       const state = get();
-      const updatedChats = state.chats.map((chat) =>
-        chat.id === conversationId
-          ? { ...chat, lastMessage: message, updatedAt: new Date() }
-          : chat
-      );
+      const targetChat = state.chats.find((chat) => chat.id === conversationId);
 
-      set({ chats: updatedChats });
+      if (targetChat) {
+        // Remove the conversation from its current position
+        const otherChats = state.chats.filter(
+          (chat) => chat.id !== conversationId
+        );
 
-      if (state.activeChat?.id === conversationId) {
-        set({
-          activeChat: {
-            ...state.activeChat,
-            lastMessage: message,
-            updatedAt: new Date(),
-          },
-        });
+        // Update the conversation with new message and timestamp
+        const updatedChat = {
+          ...targetChat,
+          lastMessage: message,
+          updatedAt: new Date(),
+          unreadCount:
+            state.activeChat?.id === conversationId
+              ? targetChat.unreadCount
+              : (targetChat.unreadCount || 0) + 1,
+        };
+
+        // Place the updated conversation at the beginning of the array
+        const reorderedChats = [updatedChat, ...otherChats];
+
+        set({ chats: reorderedChats });
+
+        if (state.activeChat?.id === conversationId) {
+          set({
+            activeChat: {
+              ...state.activeChat,
+              lastMessage: message,
+              updatedAt: new Date(),
+            },
+          });
+        }
       }
     },
 
