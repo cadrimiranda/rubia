@@ -40,7 +40,6 @@ import { Modal, Alert, Button } from "antd";
 import { QrcodeOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { whatsappSetupApi } from "../api/services/whatsappSetupApi";
 import ZApiActivation from "./ZApiActivation";
-import { useUnreadCounts } from "../hooks/useUnreadCounts";
 
 interface NewContactData {
   name: string;
@@ -101,7 +100,7 @@ export const BloodCenterChat: React.FC = () => {
   // Refs para controlar paginação e evitar dependências circulares
   const currentPageRef = useRef(0);
   const loadConversationsRef = useRef<
-    (status?: ChatStatus, reset?: boolean) => Promise<void>
+    (reset?: boolean, status?: ChatStatus) => Promise<void>
   >(async () => {});
 
   // WebSocket para atualizações em tempo real
@@ -272,9 +271,6 @@ export const BloodCenterChat: React.FC = () => {
                       "pt-BR",
                       { hour: "2-digit", minute: "2-digit" }
                     ),
-              unread: !lastMessage.isFromUser
-                ? (currentDonor.unread || 0) + 1
-                : currentDonor.unread || 0,
             };
 
             // Remove the conversation from its current position
@@ -300,103 +296,113 @@ export const BloodCenterChat: React.FC = () => {
       if (
         updatedDonor &&
         (updatedDonor.lastMessage !== state.selectedDonor.lastMessage ||
-          updatedDonor.timestamp !== state.selectedDonor.timestamp ||
-          updatedDonor.unread !== state.selectedDonor.unread)
+          updatedDonor.timestamp !== state.selectedDonor.timestamp)
       ) {
         updateState({ selectedDonor: updatedDonor });
       }
     }
   }, [donors, state.selectedDonor, updateState]);
 
-  const loadConversations = React.useCallback(async (reset = true) => {
-    try {
-      let pageToLoad: number;
+  const loadConversations = React.useCallback(
+    async (reset = true, status: ChatStatus = "entrada") => {
+      try {
+        let pageToLoad: number;
 
-      if (reset) {
-        setIsLoading(true);
-        setHasMorePages(true);
-        currentPageRef.current = 0;
-        pageToLoad = 0;
-      } else {
-        setIsLoadingMore(true);
-        pageToLoad = currentPageRef.current + 1;
+        if (reset) {
+          setIsLoading(true);
+          setHasMorePages(true);
+          currentPageRef.current = 0;
+          pageToLoad = 0;
+        } else {
+          setIsLoadingMore(true);
+          pageToLoad = currentPageRef.current + 1;
+        }
+        setError(null);
+
+        // Mapear status do frontend para backend
+        const backendStatus = conversationAdapter.mapStatusToBackend(
+          status ?? currentStatus
+        );
+
+        // Usar endpoint CQRS otimizado com filtro de status
+        const response = await conversationApi.getOrderedByLastMessage(
+          pageToLoad,
+          20,
+          backendStatus as ConversationStatus
+        );
+
+        const unreadCount: Record<string, number> = {};
+
+        const conversationsAsDonors = response.content.map((conv) => {
+          unreadCount[conv.id] = conv.unreadCount ?? 0;
+
+          return {
+            id: conv.customerId,
+            conversationId: conv.id,
+            name: conv.customerName || conv.customerPhone || "Cliente",
+            lastMessage: conv.lastMessage?.content || "",
+            timestamp: conv.lastMessage?.createdAt
+              ? new Date(conv.lastMessage.createdAt).toLocaleTimeString(
+                  "pt-BR",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                )
+              : "",
+            status: "offline" as const,
+            bloodType: conv.customerBloodType || "Não informado",
+            phone: conv.customerPhone || "",
+            email: "",
+            lastDonation: conv.customerLastDonationDate || "Sem registro",
+            totalDonations: 0,
+            address: "",
+            birthDate: conv.customerBirthDate || "",
+            weight: conv.customerWeight || 0,
+            height: conv.customerHeight || 0,
+            hasActiveConversation: true,
+            conversationStatus: conv.status,
+            campaignId: conv.campaignId,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              conv.customerName || conv.customerPhone || "C"
+            )}&background=random&size=150`,
+          };
+        });
+
+        updateUnreadCountBulk(unreadCount);
+
+        // Atualizar estado da paginação
+        currentPageRef.current = pageToLoad;
+        const hasMore = pageToLoad + 1 < (response.totalPages || 0);
+        setHasMorePages(hasMore);
+
+        if (reset) {
+          setDonors(conversationsAsDonors);
+        } else {
+          setDonors((prevDonors) => [...prevDonors, ...conversationsAsDonors]);
+        }
+      } catch (err) {
+        console.error("❌ Erro ao carregar conversas CQRS:", err);
+        setError("Erro ao carregar conversas. Tente novamente.");
+        setDonors([]);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
       }
-      setError(null);
-
-      // Mapear status do frontend para backend
-      const backendStatus = conversationAdapter.mapStatusToBackend(currentStatus);
-
-      // Usar endpoint CQRS otimizado com filtro de status
-      const response = await conversationApi.getOrderedByLastMessage(
-        pageToLoad,
-        20,
-        backendStatus as ConversationStatus
-      );
-
-      const unreadCount: Record<string, number> = {};
-
-      const conversationsAsDonors = response.content.map((conv) => {
-        unreadCount[conv.id] = conv.unreadCount ?? 0;
-
-        return {
-          id: conv.customerId,
-          conversationId: conv.id,
-          name: conv.customerName || conv.customerPhone || "Cliente",
-          lastMessage: conv.lastMessage?.content || "",
-          timestamp: conv.lastMessage?.createdAt
-            ? new Date(conv.lastMessage.createdAt).toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "",
-          status: "offline" as const,
-          bloodType: conv.customerBloodType || "Não informado",
-          phone: conv.customerPhone || "",
-          email: "",
-          lastDonation: conv.customerLastDonationDate || "Sem registro",
-          totalDonations: 0,
-          address: "",
-          birthDate: conv.customerBirthDate || "",
-          weight: conv.customerWeight || 0,
-          height: conv.customerHeight || 0,
-          hasActiveConversation: true,
-          conversationStatus: conv.status,
-          campaignId: conv.campaignId,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-            conv.customerName || conv.customerPhone || "C"
-          )}&background=random&size=150`,
-        };
-      });
-
-      updateUnreadCountBulk(unreadCount);
-
-      // Atualizar estado da paginação
-      currentPageRef.current = pageToLoad;
-      const hasMore = pageToLoad + 1 < (response.totalPages || 0);
-      setHasMorePages(hasMore);
-
-      if (reset) {
-        setDonors(conversationsAsDonors);
-      } else {
-        setDonors((prevDonors) => [...prevDonors, ...conversationsAsDonors]);
-      }
-    } catch (err) {
-      console.error("❌ Erro ao carregar conversas CQRS:", err);
-      setError("Erro ao carregar conversas. Tente novamente.");
-      setDonors([]);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [currentStatus]);
+    },
+    [currentStatus, updateUnreadCountBulk]
+  );
 
   // Atualizar ref
   loadConversationsRef.current = loadConversations;
 
   // Função simplificada para evitar dependências circulares
-  const callLoadConversations = React.useCallback((reset = true) => {
-    loadConversationsRef.current?.(reset);
-  }, []);
+  const callLoadConversations = React.useCallback(
+    ({ reset, status }: { reset?: boolean; status?: ChatStatus }) => {
+      loadConversationsRef.current?.(reset, status);
+    },
+    []
+  );
 
   // Função para carregar mais conversas (scroll infinito)
   const loadMoreConversations = React.useCallback(async () => {
@@ -451,6 +457,7 @@ export const BloodCenterChat: React.FC = () => {
           birthDate: "",
           weight: 0,
           height: 0,
+          ...customer,
         };
       });
 
@@ -462,27 +469,23 @@ export const BloodCenterChat: React.FC = () => {
     }
   }, []);
 
-  // Função para trocar de status da aba
   const handleStatusChange = React.useCallback(
     (newStatus: ChatStatus) => {
       setCurrentStatus(newStatus);
-      // O loadConversations agora usa currentStatus automaticamente
-      // Mas como setState é assíncrono, vamos forçar o carregamento
-      setTimeout(() => callLoadConversations(true), 100);
+      callLoadConversations({ reset: true, status: newStatus });
       updateState({ selectedDonor: null }); // Limpar seleção ao trocar status
       setCurrentDraftMessage(null); // Limpar draft ao trocar status
     },
     [callLoadConversations, updateState]
   );
 
-  // Função para trocar de campanha
   const handleCampaignChange = React.useCallback(
     (campaign: Campaign | null) => {
       setSelectedCampaign(campaign);
       updateState({ selectedDonor: null, selectedCampaign: campaign }); // Limpar seleção ao trocar campanha
-      callLoadConversations(currentStatus);
+      callLoadConversations({ reset: true });
     },
-    [callLoadConversations, updateState, currentStatus]
+    [callLoadConversations, updateState]
   );
 
   // Função para trocar modo de visualização
@@ -521,13 +524,6 @@ export const BloodCenterChat: React.FC = () => {
         }
 
         // Mostrar feedback
-
-        // Se mudou para o status atual, recarregar para mostrar na lista
-        if (newStatus === currentStatus) {
-          setTimeout(() => {
-            callLoadConversations(currentStatus);
-          }, 100);
-        }
       } catch (error) {
         console.error("❌ Erro ao mudar status da conversa:", error);
 
@@ -551,13 +547,7 @@ export const BloodCenterChat: React.FC = () => {
         });
       }
     },
-    [
-      donors,
-      state.selectedDonor,
-      updateState,
-      currentStatus,
-      callLoadConversations,
-    ]
+    [donors, state.selectedDonor, updateState]
   );
 
   // Função para lidar com agendamento
@@ -629,7 +619,7 @@ export const BloodCenterChat: React.FC = () => {
 
   // Carregar dados ao montar componente
   useEffect(() => {
-    callLoadConversations();
+    callLoadConversations({ reset: true, status: "entrada" });
   }, [callLoadConversations]);
 
   // Cleanup URLs de preview ao desmontar o componente
