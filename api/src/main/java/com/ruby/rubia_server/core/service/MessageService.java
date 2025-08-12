@@ -13,6 +13,7 @@ import com.ruby.rubia_server.core.enums.MediaType;
 import com.ruby.rubia_server.core.enums.MessageStatus;
 import com.ruby.rubia_server.core.enums.MessageType;
 import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import com.ruby.rubia_server.core.repository.CampaignContactRepository;
 import com.ruby.rubia_server.core.repository.ConversationRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
@@ -21,6 +22,7 @@ import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.entity.IncomingMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -46,6 +48,7 @@ public class MessageService {
     private final MessageTemplateRepository messageTemplateRepository;
     private final CampaignContactRepository campaignContactRepository;
     private final ConversationMediaService conversationMediaService;
+    private final ApplicationEventPublisher eventPublisher;
     
     public boolean hasDraftMessage(UUID conversationId) {
         
@@ -133,6 +136,16 @@ public class MessageService {
         
         Message saved = messageRepository.save(message);
         
+        // Publish event for CQRS
+        MessageCreatedEvent event = MessageCreatedEvent.builder()
+                .messageId(saved.getId())
+                .conversationId(saved.getConversation().getId())
+                .content(saved.getContent())
+                .createdAt(saved.getCreatedAt())
+                .build();
+        
+        eventPublisher.publishEvent(event);
+        log.debug("Published MessageCreatedEvent for message: {}", saved.getId());
         
         return toDTO(saved, sender);
     }

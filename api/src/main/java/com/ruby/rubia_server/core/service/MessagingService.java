@@ -83,6 +83,9 @@ public class MessagingService {
     private ChatLidMappingService chatLidMappingService;
     
     @Autowired
+    private UnreadMessageCountService unreadCountService;
+    
+    @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
         this.adapters = adapters;
         this.currentAdapter = adapters.isEmpty() ? null : adapters.get(0);
@@ -249,6 +252,9 @@ public class MessagingService {
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
             
+            // Create unread counters for all users in the company
+            unreadCountService.createUnreadCountsForNewMessage(savedMessage.getId(), conversation.getId(), company);
+            
             logger.info("📨 {} → Conversa {}", incomingMessage.getFrom(), conversation.getId());
             
         } catch (Exception e) {
@@ -256,6 +262,7 @@ public class MessagingService {
             throw new RuntimeException("Failed to process incoming message", e);
         }
     }
+
     
     
     private Company findCompanyByWhatsAppInstanceWithVariations(String connectedPhone) {

@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +51,9 @@ public class ConversationService {
     private final CompanyRepository companyRepository;
     private final CampaignRepository campaignRepository;
     private final MessageRepository messageRepository;
+    
+    @Autowired
+    private UnreadMessageCountService unreadCountService;
     
     public Optional<ConversationDTO> findByCustomerIdAndCampaignId(UUID customerId, UUID campaignId) {
         log.debug("Finding conversation by customer id: {} and campaign id: {}", customerId, campaignId);
@@ -336,11 +340,54 @@ public class ConversationService {
     
     @Transactional(readOnly = true)
     public Page<ConversationDTO> findByStatusAndCompanyWithPagination(ConversationStatus status, UUID companyId, Pageable pageable) {
-        log.debug("Finding conversations by status: {} for company: {} with pagination", status, companyId);
+        return findByStatusAndCompanyWithPagination(status, companyId, pageable, null);
+    }
+    
+    @Transactional(readOnly = true)
+    public Page<ConversationDTO> findByStatusAndCompanyWithPagination(ConversationStatus status, UUID companyId, Pageable pageable, UUID userId) {
+        log.debug("Finding conversations by status: {} for company: {} with pagination (userId: {})", status, companyId, userId);
         
         Page<Conversation> conversationPage = conversationRepository.findByStatusAndCompanyOrderedByPriorityAndUpdatedAt(status, companyId, pageable);
         
         // Como a query já faz LEFT JOIN FETCH, podemos mapear diretamente
+        return conversationPage.map(conversation -> toDTO(conversation, userId));
+    }
+    
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> findConversationsOrderByLastMessageDate(UUID companyId) {
+        log.debug("Finding conversations ordered by last message date for company: {}", companyId);
+        
+        return conversationRepository.findConversationsOrderByLastMessageDateOptimized(companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public Page<ConversationDTO> findConversationsOrderByLastMessageDateWithPagination(UUID companyId, Pageable pageable) {
+        log.debug("Finding conversations ordered by last message date for company: {} with pagination", companyId);
+        
+        Page<Conversation> conversationPage = conversationRepository.findConversationsOrderByLastMessageDateOptimized(companyId, pageable);
+        
+        return conversationPage.map(this::toDTO);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> findConversationsOrderByLastMessageDateByStatus(UUID companyId, ConversationStatus status) {
+        log.debug("Finding conversations ordered by last message date for company: {} with status: {}", companyId, status);
+        
+        return conversationRepository.findConversationsOrderByLastMessageDateOptimizedByStatus(companyId, status)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public Page<ConversationDTO> findConversationsOrderByLastMessageDateByStatusWithPagination(UUID companyId, ConversationStatus status, Pageable pageable) {
+        log.debug("Finding conversations ordered by last message date for company: {} with status: {} with pagination", companyId, status);
+        
+        Page<Conversation> conversationPage = conversationRepository.findConversationsOrderByLastMessageDateOptimizedByStatus(companyId, status, pageable);
+        
         return conversationPage.map(this::toDTO);
     }
     
@@ -389,6 +436,10 @@ public class ConversationService {
     }
 
     private ConversationDTO toDTO(Conversation conversation) {
+        return toDTO(conversation, null);
+    }
+    
+    private ConversationDTO toDTO(Conversation conversation, UUID userId) {
         // Proteção defensiva para participants null
         Customer customer = null;
         if (conversation.getParticipants() != null) {
@@ -456,7 +507,9 @@ public class ConversationService {
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .lastMessage(lastMessage)
-                .unreadCount(0L) // Will be calculated by message service
+                .unreadCount(userId != null ? 
+                    Optional.ofNullable(unreadCountService.getUnreadCount(userId, conversation.getId()))
+                        .map(Integer::longValue).orElse(0L) : 0L)
                 .chatLid(conversation.getChatLid())
                 .build();
     }
@@ -477,7 +530,7 @@ public class ConversationService {
                 .channel(conversation.getChannel())
                 .priority(conversation.getPriority())
                 .updatedAt(conversation.getUpdatedAt())
-                .unreadCount(0L) // Will be calculated by message service
+                .unreadCount(0L) // Summary doesn't include user-specific unread count
                 .lastMessageContent(null) // Will be populated by message service
                 .lastMessageTime(null) // Will be populated by message service
                 .chatLid(conversation.getChatLid())

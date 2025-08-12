@@ -4,7 +4,7 @@ export interface Campaign {
   description?: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'completed' | 'paused' | 'ativa' | 'pausada' | 'concluida';
+  status: "active" | "completed" | "paused" | "ativa" | "pausada" | "concluida";
   color?: string;
   templatesUsed: number;
   totalContacts: number;
@@ -37,7 +37,6 @@ export interface Donor {
   avatar?: string;
   lastMessage: string;
   timestamp: string;
-  unread: number;
   status: "online" | "offline";
   bloodType: string;
   phone: string;
@@ -52,7 +51,7 @@ export interface Donor {
   conversationStatus?: string; // Para indicar o status da conversa
   campaignId?: string; // ID da campanha atual
   campaigns?: string[]; // Lista de todas as campanhas em que participa
-  conversationId?: string; // ID da conversa ativa
+  conversationId: string; // ID da conversa ativa
 }
 
 export interface FileAttachment {
@@ -67,7 +66,7 @@ export interface ConversationMedia {
   id: string;
   conversationId: string;
   fileUrl: string;
-  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT' | 'STICKER' | 'OTHER';
+  mediaType: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | "STICKER" | "OTHER";
   mimeType: string;
   originalFileName: string;
   fileSizeBytes: number;
@@ -79,7 +78,7 @@ export interface ConversationMedia {
 export interface PendingMedia {
   id: string;
   file: File;
-  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT' | 'STICKER' | 'OTHER';
+  mediaType: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | "STICKER" | "OTHER";
   mimeType: string;
   originalFileName: string;
   fileSizeBytes: number;
@@ -93,8 +92,8 @@ export interface Message {
   timestamp: Date;
   isFromUser: boolean;
   isAI?: boolean;
-  messageType: 'text' | 'image' | 'file' | 'audio';
-  status: 'sending' | 'sent' | 'delivered' | 'read';
+  messageType: "text" | "image" | "file" | "audio";
+  status: "sending" | "sent" | "delivered" | "read";
   mediaUrl?: string;
   mimeType?: string;
   audioDuration?: number;
@@ -115,7 +114,7 @@ export interface ContextMenu {
   donorId: string;
 }
 
-export type ViewMode = 'full' | 'compact';
+export type ViewMode = "full" | "compact";
 
 export interface ChatState {
   selectedDonor: Donor | null;
@@ -138,7 +137,7 @@ export interface ChatState {
   confirmationData: {
     title: string;
     message: string;
-    type: 'warning' | 'danger' | 'info';
+    type: "warning" | "danger" | "info";
     onConfirm: () => void;
     confirmText?: string;
   } | null;
