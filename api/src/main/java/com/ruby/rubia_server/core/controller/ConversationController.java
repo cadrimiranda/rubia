@@ -161,6 +161,35 @@ public class ConversationController {
         return ResponseEntity.ok(conversations);
     }
     
+    @GetMapping("/ordered-by-last-message")
+    public ResponseEntity<List<ConversationDTO>> findConversationsOrderedByLastMessage() {
+        log.debug("Finding conversations ordered by last message date");
+        
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        List<ConversationDTO> conversations = conversationService.findConversationsOrderByLastMessageDate(currentCompanyId);
+        return ResponseEntity.ok(conversations);
+    }
+    
+    @GetMapping("/ordered-by-last-message/paginated")
+    public ResponseEntity<Page<ConversationDTO>> findConversationsOrderedByLastMessagePaginated(
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) ConversationStatus status) {
+        log.debug("Finding conversations ordered by last message date with pagination, status: {}", status);
+        
+        UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+        Page<ConversationDTO> conversations;
+        
+        if (status != null) {
+            conversations = conversationService
+                    .findConversationsOrderByLastMessageDateByStatusWithPagination(currentCompanyId, status, pageable);
+        } else {
+            conversations = conversationService
+                    .findConversationsOrderByLastMessageDateWithPagination(currentCompanyId, pageable);
+        }
+        
+        return ResponseEntity.ok(conversations);
+    }
+    
     @PutMapping("/{id}")
     public ResponseEntity<ConversationDTO> update(@PathVariable UUID id, 
                                                  @Valid @RequestBody UpdateConversationDTO updateDTO) {

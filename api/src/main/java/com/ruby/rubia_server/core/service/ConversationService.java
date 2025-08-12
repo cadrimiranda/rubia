@@ -354,6 +354,44 @@ public class ConversationService {
     }
     
     @Transactional(readOnly = true)
+    public List<ConversationDTO> findConversationsOrderByLastMessageDate(UUID companyId) {
+        log.debug("Finding conversations ordered by last message date for company: {}", companyId);
+        
+        return conversationRepository.findConversationsOrderByLastMessageDateOptimized(companyId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public Page<ConversationDTO> findConversationsOrderByLastMessageDateWithPagination(UUID companyId, Pageable pageable) {
+        log.debug("Finding conversations ordered by last message date for company: {} with pagination", companyId);
+        
+        Page<Conversation> conversationPage = conversationRepository.findConversationsOrderByLastMessageDateOptimized(companyId, pageable);
+        
+        return conversationPage.map(this::toDTO);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<ConversationDTO> findConversationsOrderByLastMessageDateByStatus(UUID companyId, ConversationStatus status) {
+        log.debug("Finding conversations ordered by last message date for company: {} with status: {}", companyId, status);
+        
+        return conversationRepository.findConversationsOrderByLastMessageDateOptimizedByStatus(companyId, status)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public Page<ConversationDTO> findConversationsOrderByLastMessageDateByStatusWithPagination(UUID companyId, ConversationStatus status, Pageable pageable) {
+        log.debug("Finding conversations ordered by last message date for company: {} with status: {} with pagination", companyId, status);
+        
+        Page<Conversation> conversationPage = conversationRepository.findConversationsOrderByLastMessageDateOptimizedByStatus(companyId, status, pageable);
+        
+        return conversationPage.map(this::toDTO);
+    }
+    
+    @Transactional(readOnly = true)
     public List<ConversationDTO> findByCustomerAndCompany(UUID customerId, UUID companyId) {
         log.debug("Finding conversations by customer: {} for company: {}", customerId, companyId);
         

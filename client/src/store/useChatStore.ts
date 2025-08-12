@@ -67,6 +67,7 @@ interface ChatStoreActions {
 
   // Carregamento de dados
   loadConversations: (status?: ChatStatus, page?: number) => Promise<void>;
+  loadConversationsOrderedByLastMessage: (page?: number) => Promise<void>;
   loadMessages: (chatId: string, page?: number) => Promise<void>;
   refreshConversations: () => Promise<void>;
 
@@ -289,6 +290,43 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
           totalChats: 0,
           isLoading: false,
           error: null,
+        });
+      }
+    },
+
+    // Carregamento otimizado de conversas ordenadas por última mensagem (CQRS)
+    loadConversationsOrderedByLastMessage: async (page = 0) => {
+      const state = get();
+      
+      set({ isLoading: true, error: null });
+
+      try {
+        // Usar endpoint CQRS otimizado
+        const response = await conversationApi.getOrderedByLastMessage(page, 20);
+
+        const newChats = conversationAdapter.toChatArray(
+          response?.content || []
+        );
+
+        set({
+          chats: page === 0 ? newChats : [...state.chats, ...newChats],
+          currentPage: page,
+          hasMore: !response.last,
+          totalChats: response.totalElements,
+          isLoading: false,
+          error: null,
+        });
+
+      } catch (error) {
+        console.error("Erro ao carregar conversas CQRS:", error);
+        
+        set({
+          chats: page === 0 ? [] : state.chats,
+          currentPage: page,
+          hasMore: false,
+          totalChats: 0,
+          isLoading: false,
+          error: "Erro ao carregar conversas. Tente novamente.",
         });
       }
     },
