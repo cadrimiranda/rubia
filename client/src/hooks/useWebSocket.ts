@@ -238,6 +238,22 @@ export const useWebSocket = (): UseWebSocketReturn => {
         }
       });
 
+      // Subscribe to unread count updates
+      client.subscribe(`/user/topic/unread-counts`, (message: IMessage) => {
+        try {
+          console.log("🔢 Raw unread count message received:", message.body);
+          const data = JSON.parse(message.body);
+          console.log("🔢 Parsed unread count data:", data);
+          
+          // Update store directly
+          const { updateUnreadCount } = useChatStore.getState();
+          updateUnreadCount(data.conversationId, data.count);
+          
+        } catch (error) {
+          console.error("❌ Error parsing unread count notification:", error, "Raw body:", message.body);
+        }
+      });
+
       // Mark subscriptions as created
       subscriptionsRef.current = true;
 

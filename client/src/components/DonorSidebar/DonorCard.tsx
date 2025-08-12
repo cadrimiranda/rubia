@@ -3,6 +3,8 @@ import { User, Circle } from "lucide-react";
 import type { Donor, Campaign, ViewMode } from "../../types/types";
 import type { ChatStatus } from "../../types/index";
 import { getStatusColor, calculateAge } from "../../utils";
+import { useChatStore } from "../../store/useChatStore";
+import { useUnreadCounts } from "../../hooks/useUnreadCounts";
 
 interface DonorCardProps {
   donor: Donor;
@@ -23,6 +25,8 @@ export const DonorCard: React.FC<DonorCardProps> = ({
   onDonorSelect,
   onContextMenu,
 }) => {
+  const { markAsRead } = useUnreadCounts();
+  const { unreadCount } = useChatStore();
   const isSelected = selectedDonor?.id === donor.id;
   const cardClassName = `cursor-pointer transition-all duration-200 shadow-sm border ${
     isSelected
@@ -30,14 +34,19 @@ export const DonorCard: React.FC<DonorCardProps> = ({
       : "bg-white border-gray-200 hover:bg-gray-50 hover:shadow-md hover:border-gray-300"
   }`;
 
-  const unreadCount = donor.unread > 0;
-  const displayCount = donor.unread;
+  const displayCount = unreadCount[donor.conversationId];
+  const hasUnreadMessages = displayCount > 0;
+
+  const handleSelectConversation = () => {
+    markAsRead(donor.conversationId);
+    onDonorSelect(donor);
+  };
 
   if (viewMode === "compact") {
     return (
       <div
         key={donor.id}
-        onClick={() => onDonorSelect(donor)}
+        onClick={handleSelectConversation}
         onContextMenu={(e) => onContextMenu(e, donor.id)}
         className={`p-2.5 mb-1.5 rounded-md ${cardClassName}`}
       >
@@ -65,7 +74,7 @@ export const DonorCard: React.FC<DonorCardProps> = ({
                 <span className="text-xs text-gray-500 font-medium">
                   {donor.timestamp}
                 </span>
-                {unreadCount && (
+                {hasUnreadMessages && (
                   <div className="bg-red-500 text-white text-xs rounded-xl min-w-[16px] h-3.5 flex items-center justify-center px-1 font-semibold">
                     {displayCount}
                   </div>
@@ -145,7 +154,7 @@ export const DonorCard: React.FC<DonorCardProps> = ({
                 <span className="text-xs text-gray-500 font-medium">
                   {donor.timestamp}
                 </span>
-                {unreadCount && (
+                {hasUnreadMessages && (
                   <div className="bg-red-500 text-white text-xs rounded-xl min-w-[20px] h-5 flex items-center justify-center px-1.5 font-semibold shadow-sm">
                     {displayCount}
                   </div>

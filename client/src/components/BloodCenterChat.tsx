@@ -112,15 +112,8 @@ export const BloodCenterChat: React.FC = () => {
     // Configurar callback para quando uma instância é desconectada
     webSocket.onInstanceDisconnected(
       (instanceId: string, phoneNumber: string, error: string) => {
-        console.log("💬 Chat component received disconnection:", {
-          instanceId,
-          phoneNumber,
-          error,
-        });
-
         // Se modal já está aberto, não fazer nada
         if (showDisconnectionModal) {
-          console.log("💬 Disconnection modal already open, ignoring");
           return;
         }
 
@@ -131,13 +124,12 @@ export const BloodCenterChat: React.FC = () => {
     );
 
     // Configurar callback para reconexão (fechar modal)
-    webSocket.onInstanceConnected((instanceId: string, phoneNumber: string) => {
+    webSocket.onInstanceConnected((instanceId: string) => {
       // Fechar modal se estava aberto e instância reconectou
       if (
         showDisconnectionModal &&
         disconnectedInstance?.instanceId === instanceId
       ) {
-        console.log("💬 Instance reconnected, closing modal");
         setShowDisconnectionModal(false);
         setDisconnectedInstance(null);
       }
@@ -146,11 +138,12 @@ export const BloodCenterChat: React.FC = () => {
     webSocket.onInstanceDisconnected,
     webSocket.onInstanceConnected,
     showDisconnectionModal,
-    disconnectedInstance?.instanceId,
+    disconnectedInstance,
+    webSocket,
   ]);
 
   // Chat store para mensagens em tempo real
-  const { messagesCache } = useChatStore();
+  const { messagesCache, updateUnreadCountBulk } = useChatStore();
 
   // Unread counts hook
   const { markAsRead } = useUnreadCounts();
@@ -199,7 +192,7 @@ export const BloodCenterChat: React.FC = () => {
     });
 
     return sortedMessages;
-  }, [state.selectedDonor, state.messages, messagesCache]);
+  }, [state.selectedDonor, state.messages, messagesCache, isAudioSending]);
 
   useEffect(() => {
     if (webSocket.isConnected) {
@@ -215,7 +208,6 @@ export const BloodCenterChat: React.FC = () => {
       setIsCampaignsLoading(true);
       const companyId = localStorage.getItem("auth_company_id");
       if (!companyId) {
-        console.warn("Company ID não encontrado");
         return;
       }
 
@@ -234,14 +226,9 @@ export const BloodCenterChat: React.FC = () => {
     loadCampaigns();
   }, [loadCampaigns]);
 
-  const updateState = React.useCallback(
-    (updates: Partial<ChatState>) => {
-      if (updates.messages !== undefined) {
-      }
-      setState((prev) => ({ ...prev, ...updates }));
-    },
-    [state.messages]
-  );
+  const updateState = React.useCallback((updates: Partial<ChatState>) => {
+    setState((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   // Atualizar lastMessage dos donors quando novas mensagens chegam via WebSocket
   useEffect(() => {
@@ -322,7 +309,7 @@ export const BloodCenterChat: React.FC = () => {
         updateState({ selectedDonor: updatedDonor });
       }
     }
-  }, [donors, state.selectedDonor?.id, updateState]);
+  }, [donors, state.selectedDonor, updateState]);
 
   const loadConversations = React.useCallback(
     async (status?: ChatStatus, reset = true) => {
@@ -352,8 +339,11 @@ export const BloodCenterChat: React.FC = () => {
           20
         );
 
-        // Converter ConversationDTO para formato Donor (compatibilidade)
+        const unreadCount: Record<string, number> = {};
+
         const conversationsAsDonors = response.content.map((conv) => {
+          unreadCount[conv.id] = conv.unreadCount ?? 0;
+
           return {
             id: conv.customerId, // Usar customerId para buscar dados do customer
             conversationId: conv.id, // Incluir o ID da conversa
@@ -368,7 +358,6 @@ export const BloodCenterChat: React.FC = () => {
                   }
                 )
               : "",
-            unread: conv.unreadCount || 0, // Unread count vem da API
             status: "offline" as const,
             bloodType: conv.customerBloodType || "Não informado",
             phone: conv.customerPhone || "",
@@ -387,6 +376,8 @@ export const BloodCenterChat: React.FC = () => {
             )}&background=random&size=150`,
           };
         });
+
+        updateUnreadCountBulk(unreadCount);
 
         // Atualizar estado da paginação
         currentPageRef.current = pageToLoad;

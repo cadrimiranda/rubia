@@ -51,9 +51,15 @@ interface ChatStoreState {
   >;
   onlineUsers: Set<string>;
   activeConversationId: string | null;
+
+  unreadCount: Record<string, number>;
 }
 
 interface ChatStoreActions {
+  createUnreadCount: (conversationCounters: Record<string, number>) => void;
+  updateUnreadCount: (conversationId: string, unreadCount: number) => void;
+  updateUnreadCountBulk: (conversationCounters: Record<string, number>) => void;
+
   // Navegação
   setActiveChat: (chat: Chat | null) => Promise<void>;
   setCurrentStatus: (status: ChatStatus) => void;
@@ -140,6 +146,31 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     typingUsers: {},
     onlineUsers: new Set(),
     activeConversationId: null,
+    unreadCount: {},
+
+    createUnreadCount: (conversationCounters: Record<string, number>) => {
+      set({
+        unreadCount: conversationCounters,
+      });
+    },
+    updateUnreadCount: (conversationId: string, counter: number) => {
+      const unreadCount = get().unreadCount;
+      unreadCount[conversationId] = counter;
+
+      set({
+        unreadCount,
+      });
+    },
+    updateUnreadCountBulk: (conversationCounters: Record<string, number>) => {
+      const unreadCount = get().unreadCount;
+
+      set({
+        unreadCount: {
+          ...unreadCount,
+          ...conversationCounters,
+        },
+      });
+    },
 
     // Navegação
     setActiveChat: async (chat: Chat | null) => {
@@ -271,10 +302,12 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
         set({ isLoadingMessages: true, error: null });
 
         const response = await messageApi.getByConversation(chatId, page, 50);
-        console.log('📨 Response da API de mensagens:', response);
-        console.log('📨 Response.content:', response?.content);
-        
-        const newMessages = messageAdapter.toMessageArray(response?.content || response || []);
+        console.log("📨 Response da API de mensagens:", response);
+        console.log("📨 Response.content:", response?.content);
+
+        const newMessages = messageAdapter.toMessageArray(
+          response?.content || response || []
+        );
 
         // Mescla com mensagens em cache (incluindo temporárias)
         const existingMessages = cached?.messages || [];
@@ -804,24 +837,29 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     ) => {
       const state = get();
       const targetChat = state.chats.find((chat) => chat.id === conversationId);
-      
+
       if (targetChat) {
         // Remove the conversation from its current position
-        const otherChats = state.chats.filter((chat) => chat.id !== conversationId);
-        
+        const otherChats = state.chats.filter(
+          (chat) => chat.id !== conversationId
+        );
+
         // Update the conversation with new message and timestamp
         const updatedChat = {
           ...targetChat,
           lastMessage: message,
           updatedAt: new Date(),
-          unreadCount: state.activeChat?.id === conversationId ? targetChat.unreadCount : (targetChat.unreadCount || 0) + 1
+          unreadCount:
+            state.activeChat?.id === conversationId
+              ? targetChat.unreadCount
+              : (targetChat.unreadCount || 0) + 1,
         };
-        
+
         // Place the updated conversation at the beginning of the array
         const reorderedChats = [updatedChat, ...otherChats];
-        
+
         set({ chats: reorderedChats });
-        
+
         if (state.activeChat?.id === conversationId) {
           set({
             activeChat: {
