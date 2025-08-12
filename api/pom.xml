@@ -327,9 +327,9 @@
 				<groupId>org.flywaydb</groupId>
 				<artifactId>flyway-maven-plugin</artifactId>
 				<configuration>
-					<url>jdbc:postgresql://localhost:5432/rubia_chat</url>
-					<user>postgres</user>
-					<password>ifbtaiy7</password>
+					<url>jdbc:postgresql://postgres:5432/rubia_chat</url>
+					<user>${env.DB_USERNAME}</user>
+					<password>${env.DB_PASSWORD}</password>
 					<locations>
 						<location>filesystem:src/main/resources/db/migration</location>
 					</locations>
