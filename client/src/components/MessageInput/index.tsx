@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Mic, MicOff, Send, Sparkles, Loader2, Play, Pause, Trash2 } from "lucide-react";
-import type { FileAttachment as FileAttachmentType, ConversationMedia, PendingMedia } from "../../types/types";
+import type { FileAttachment as FileAttachmentType, PendingMedia } from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
 
 interface MessageInputProps {
@@ -30,13 +30,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   messageInput,
   attachments,
   pendingMedia = [],
-  conversationId,
   draftMessage,
   onMessageChange,
   onSendMessage,
-  onFileUpload,
   onRemoveAttachment,
-  onMediaSelected,
   onRemovePendingMedia,
   onKeyPress,
   onEnhanceMessage,
@@ -48,7 +45,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   maxRecordingTimeMs = 300000, // 5 minutos
   maxFileSizeMB = 16,
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -158,7 +154,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       setIsRecording(true);
       setRecordingTime(0);
       
-      recordingIntervalRef.current = setInterval(() => {
+      recordingIntervalRef.current = window.setInterval(() => {
         setRecordingTime(prev => {
           const newTime = prev + 1;
           // Auto-stop quando atinge o tempo máximo

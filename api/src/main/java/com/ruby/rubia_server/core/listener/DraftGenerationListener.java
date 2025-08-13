@@ -1,0 +1,78 @@
+package com.ruby.rubia_server.core.listener;
+
+import com.ruby.rubia_server.core.dto.MessageDraftDTO;
+import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.core.service.AIDraftService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+
+/**
+ * Listener que monitora novas mensagens e gera drafts automaticamente
+ * quando mensagens de clientes são recebidas
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class DraftGenerationListener {
+    
+    private final AIDraftService aiDraftService;
+    
+    /**
+     * Escuta eventos de nova mensagem e gera draft se for mensagem de cliente
+     */
+    @EventListener
+    @Async
+    public void handleNewMessage(NewMessageEvent event) {
+        try {
+            Message message = event.getMessage();
+            
+            // Só gera draft para mensagens de clientes (não operadores)
+            if (!SenderType.CUSTOMER.equals(message.getSenderType())) {
+                log.debug("Skipping draft generation for non-customer message: {}", message.getId());
+                return;
+            }
+            
+            // Só gera draft para mensagens de texto
+            if (!"TEXT".equalsIgnoreCase(message.getMessageType())) {
+                log.debug("Skipping draft generation for non-text message: {}", message.getId());
+                return;
+            }
+            
+            log.info("Generating draft for new message: {} in conversation: {}", 
+                message.getId(), message.getConversation().getId());
+            
+            // Gera draft automaticamente
+            MessageDraftDTO draft = aiDraftService.generateDraftResponse(
+                message.getConversation().getId(), 
+                message.getContent()
+            );
+            
+            if (draft != null) {
+                log.info("Successfully generated draft: {} for message: {}", draft.getId(), message.getId());
+                
+                // TODO: Notificar operadores via WebSocket
+                // websocketService.notifyNewDraft(draft);
+                
+            } else {
+                log.debug("No draft generated for message: {}", message.getId());
+            }
+            
+        } catch (Exception e) {
+            log.error("Error generating draft for message: {}", 
+                event.getMessage() != null ? event.getMessage().getId() : "unknown", e);
+        }
+    }
+    
+    /**
+     * Event class para nova mensagem
+     */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    public static class NewMessageEvent {
+        private Message message;
+    }
+}

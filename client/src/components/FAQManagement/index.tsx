@@ -5,9 +5,6 @@ import {
   Edit3,
   Trash2,
   MoreVertical,
-  Search,
-  Tag,
-  BarChart3,
   HelpCircle,
 } from "lucide-react";
 import {
@@ -28,7 +25,6 @@ import {
   faqService,
   type FAQ,
   type FAQStats,
-  type PagedResponse,
 } from "../../services/faqService";
 
 // Re-export FAQ type for components that import from this file
@@ -73,7 +69,7 @@ export const FAQManagement: React.FC<FAQManagementProps> = () => {
         setPagination((prev) => ({
           ...prev,
           current: resetPagination ? 1 : currentPage,
-          total: response.totalElements,
+          total: response.totalElements || 0,
         }));
       } catch (error) {
         console.error("Erro ao carregar FAQs:", error);
@@ -112,7 +108,7 @@ export const FAQManagement: React.FC<FAQManagementProps> = () => {
         setPagination((prev) => ({
           ...prev,
           current: 1,
-          total: response.totalElements,
+          total: response.totalElements || 0,
         }));
 
         // Load stats separately

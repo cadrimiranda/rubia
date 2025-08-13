@@ -13,6 +13,7 @@ import { DonorSidebar } from "./DonorSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput/index";
+import { DraftPanel } from "./DraftPanel";
 import { AudioErrorBoundary } from "./AudioErrorBoundary";
 import { ContextMenu as ContextMenuComponent } from "./ContextMenu";
 import { NewChatModal } from "./NewChatModal";
@@ -92,6 +93,7 @@ export const BloodCenterChat: React.FC = () => {
     null
   );
   const [currentDraftMessage, setCurrentDraftMessage] = useState<any>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<string>('');
 
   // Estados para paginação infinita
   const [hasMorePages, setHasMorePages] = useState(true);
@@ -197,6 +199,20 @@ export const BloodCenterChat: React.FC = () => {
       webSocket.connect();
     }
   }, [webSocket, webSocket.isConnected]);
+
+  // Detectar última mensagem do usuário para gerar drafts
+  useEffect(() => {
+    if (activeMessages.length > 0) {
+      // Pegar a última mensagem que veio do usuário
+      const userMessages = activeMessages.filter(msg => msg.isFromUser);
+      if (userMessages.length > 0) {
+        const lastMessage = userMessages[userMessages.length - 1];
+        if (lastMessage.content && lastMessage.content !== lastUserMessage) {
+          setLastUserMessage(lastMessage.content);
+        }
+      }
+    }
+  }, [activeMessages, lastUserMessage]);
 
   // Carregar campanhas ativas da API
   const loadCampaigns = React.useCallback(async () => {
@@ -1774,6 +1790,19 @@ export const BloodCenterChat: React.FC = () => {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               agentAvatar={undefined} // TODO: Buscar avatar do agente IA da empresa
+            />
+
+            {/* Draft Panel - Sugestões da IA */}
+            <DraftPanel
+              conversationId={state.selectedDonor?.conversationId || ''}
+              lastUserMessage={lastUserMessage}
+              onDraftSelected={(content) => updateState({ messageInput: content })}
+              onDraftApproved={() => {
+                // Recarregar mensagens após aprovação de draft
+                if (state.selectedDonor?.conversationId) {
+                  // TODO: Recarregar mensagens
+                }
+              }}
             />
 
             <AudioErrorBoundary>

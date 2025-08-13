@@ -104,40 +104,41 @@ class FAQService {
     
     // Adapt backend response structure to frontend expectations
     return {
-      content: response.content,
-      totalElements: response.page.totalElements,
-      totalPages: response.page.totalPages,
-      size: response.page.size,
-      number: response.page.number,
-      first: response.page.number === 0,
-      last: response.page.number === response.page.totalPages - 1,
-      empty: response.content.length === 0,
-      numberOfElements: response.content.length
+      content: (response as any).content,
+      page: (response as any).page,
+      totalElements: (response as any).page?.totalElements || 0,
+      totalPages: (response as any).page?.totalPages || 0,
+      size: (response as any).page?.size || 10,
+      number: (response as any).page?.number || 0,
+      first: ((response as any).page?.number || 0) === 0,
+      last: ((response as any).page?.number || 0) === ((response as any).page?.totalPages || 1) - 1,
+      empty: ((response as any).content?.length || 0) === 0,
+      numberOfElements: (response as any).content?.length || 0
     };
   }
 
   // Get all active FAQs (simplified)
   async getActiveFAQs(): Promise<FAQ[]> {
     const response = await apiClient.get('/api/faqs/active');
-    return response;
+    return response as FAQ[];
   }
 
   // Get FAQ by ID
   async getFAQById(id: string): Promise<FAQ> {
     const response = await apiClient.get(`/api/faqs/${id}`);
-    return response;
+    return response as FAQ;
   }
 
   // Create new FAQ
   async createFAQ(data: CreateFAQRequest): Promise<FAQ> {
     const response = await apiClient.post('/api/faqs', data);
-    return response;
+    return response as FAQ;
   }
 
   // Update FAQ
   async updateFAQ(id: string, data: UpdateFAQRequest): Promise<FAQ> {
     const response = await apiClient.put(`/api/faqs/${id}`, data);
-    return response;
+    return response as FAQ;
   }
 
   // Soft delete FAQ
@@ -148,13 +149,13 @@ class FAQService {
   // Toggle FAQ active status
   async toggleFAQStatus(id: string, isActive: boolean): Promise<FAQ> {
     const response = await apiClient.put(`/api/faqs/${id}`, { isActive });
-    return response;
+    return response as FAQ;
   }
 
   // Search relevant FAQs for AI (future use)
   async searchRelevantFAQs(searchRequest: FAQSearchRequest): Promise<FAQMatch[]> {
     const response = await apiClient.post('/api/faqs/search/relevant', searchRequest);
-    return response;
+    return response as FAQMatch[];
   }
 
   // Record FAQ usage for AI learning
@@ -169,25 +170,25 @@ class FAQService {
   // Get FAQ statistics
   async getFAQStats(): Promise<FAQStats> {
     const response = await apiClient.get('/api/faqs/stats');
-    return response;
+    return response as FAQStats;
   }
 
   // Get deleted FAQs
   async getDeletedFAQs(): Promise<FAQ[]> {
     const response = await apiClient.get('/api/faqs/deleted');
-    return response;
+    return response as FAQ[];
   }
 
   // Restore deleted FAQ
   async restoreFAQ(id: string): Promise<FAQ> {
     const response = await apiClient.post(`/api/faqs/${id}/restore`);
-    return response;
+    return response as FAQ;
   }
 
   // Test FAQ search (for frontend testing)
   async testFAQSearch(message: string): Promise<FAQMatch[]> {
     const response = await apiClient.post('/api/faqs/test-search', { message });
-    return response;
+    return response as FAQMatch[];
   }
 }
 
