@@ -31,13 +31,16 @@ import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.MessageDTO;
+import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Optional;
 
@@ -84,6 +87,9 @@ public class MessagingService {
     
     @Autowired
     private UnreadMessageCountService unreadCountService;
+    
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
     
     @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
@@ -251,6 +257,14 @@ public class MessagingService {
             // Save message and notify
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
+            
+            // Publicar evento para gerar draft automático
+            eventPublisher.publishEvent(MessageCreatedEvent.builder()
+                .messageId(savedMessage.getId())
+                .conversationId(conversation.getId())
+                .content(savedMessage.getContent())
+                .createdAt(savedMessage.getCreatedAt())
+                .build());
             
             // Create unread counters for all users in the company
             unreadCountService.createUnreadCountsForNewMessage(savedMessage.getId(), conversation.getId(), company);
@@ -614,6 +628,30 @@ public class MessagingService {
 
     public MessageResult sendMediaByUrl(String to, String mediaUrl, String caption) {
         return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
+    }
+
+    
+    /**
+     * Analisa mensagem recebida via webhook
+     */
+    public IncomingMessage parseIncomingMessage(Map<String, String> payload) {
+        // Implementação básica - adapt according to your webhook format
+        return IncomingMessage.builder()
+            .messageId(payload.get("messageId"))
+            .from(payload.get("from"))
+            .body(payload.get("body"))
+            .chatLid(payload.get("chatLid"))
+            .senderName(payload.get("senderName"))
+            .build();
+    }
+    
+    /**
+     * Valida webhook (implementação básica)
+     */
+    public boolean validateWebhook(Map<String, String> payload, String signature) {
+        // Implementação básica - sempre aceita por enquanto
+        // TODO: Implementar validação real do webhook
+        return true;
     }
 
     /**

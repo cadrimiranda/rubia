@@ -3,6 +3,8 @@ package com.ruby.rubia_server.core.listener;
 import com.ruby.rubia_server.core.dto.MessageDraftDTO;
 import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.enums.SenderType;
+import com.ruby.rubia_server.core.event.MessageCreatedEvent;
+import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.service.AIDraftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,15 +22,23 @@ import org.springframework.stereotype.Component;
 public class DraftGenerationListener {
     
     private final AIDraftService aiDraftService;
+    private final MessageRepository messageRepository;
     
     /**
      * Escuta eventos de nova mensagem e gera draft se for mensagem de cliente
      */
     @EventListener
     @Async
-    public void handleNewMessage(NewMessageEvent event) {
+    public void handleMessageCreated(MessageCreatedEvent event) {
         try {
-            Message message = event.getMessage();
+            // Busca a mensagem completa pelo ID
+            Message message = messageRepository.findById(event.getMessageId())
+                .orElse(null);
+                
+            if (message == null) {
+                log.warn("Message not found for draft generation: {}", event.getMessageId());
+                return;
+            }
             
             // Só gera draft para mensagens de clientes (não operadores)
             if (!SenderType.CUSTOMER.equals(message.getSenderType())) {
@@ -68,17 +78,7 @@ public class DraftGenerationListener {
             }
             
         } catch (Exception e) {
-            log.error("Error generating draft for message: {}", 
-                event.getMessage() != null ? event.getMessage().getId() : "unknown", e);
+            log.error("Error generating draft for message: {}", event.getMessageId(), e);
         }
-    }
-    
-    /**
-     * Event class para nova mensagem
-     */
-    @lombok.Data
-    @lombok.AllArgsConstructor
-    public static class NewMessageEvent {
-        private Message message;
     }
 }
