@@ -1659,7 +1659,7 @@ export const BloodCenterChat: React.FC = () => {
     if (state.showConfiguration) {
       setWasInConfiguration(true);
     } else if (wasInConfiguration) {
-      callLoadConversations();
+      callLoadConversations({ reset: true });
       loadCampaigns();
       setWasInConfiguration(false);
     }
@@ -1698,7 +1698,7 @@ export const BloodCenterChat: React.FC = () => {
         onContextMenu={handleContextMenu}
         isLoading={isLoading}
         error={error}
-        onRetry={() => callLoadConversations()}
+        onRetry={() => callLoadConversations({ reset: true })}
         onConfigClick={() => updateState({ showConfiguration: true })}
         currentStatus={currentStatus}
         onStatusChange={handleStatusChange}
