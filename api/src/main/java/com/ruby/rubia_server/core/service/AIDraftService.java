@@ -4,6 +4,7 @@ import com.ruby.rubia_server.core.dto.*;
 import com.ruby.rubia_server.core.entity.*;
 import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.repository.*;
+import com.ruby.rubia_server.core.service.OpenAIService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,8 @@ public class AIDraftService {
     private final MessageRepository messageRepository;
     private final FAQService faqService;
     private final MessageTemplateService messageTemplateService;
+    private final OpenAIService openAIService;
+    private final AIAgentService aiAgentService;
     private final UserRepository userRepository;
     private final CompanyContextUtil companyContextUtil;
     
@@ -53,7 +56,7 @@ public class AIDraftService {
             List<MessageTemplate> templates = searchRelevantTemplates(conversation.getCompany().getId(), userMessage);
             
             // 4. Determinar melhor resposta baseada em confiança
-            DraftResponse bestResponse = selectBestResponse(faqMatches, templates, userMessage);
+            DraftResponse bestResponse = selectBestResponse(faqMatches, templates, userMessage, conversation.getCompany().getId());
             
             if (bestResponse == null || bestResponse.getConfidence() < 0.5) {
                 log.debug("No suitable response found for conversation: {}", conversationId);
@@ -291,14 +294,23 @@ public class AIDraftService {
         return Collections.emptyList();
     }
     
-    private DraftResponse selectBestResponse(List<FAQMatchDTO> faqMatches, List<MessageTemplate> templates, String userMessage) {
-        // Priorizar FAQs com alta confiança
+    private DraftResponse selectBestResponse(List<FAQMatchDTO> faqMatches, List<MessageTemplate> templates, String userMessage, UUID companyId) {
+        // 1. Se tem FAQs relevantes, usar IA para contextualizar
+        if (!faqMatches.isEmpty()) {
+            DraftResponse aiResponse = generateContextualizedResponse(faqMatches, userMessage, companyId);
+            if (aiResponse != null) {
+                return aiResponse;
+            }
+        }
+        
+        // 2. Fallback: Retornar FAQ com maior confiança sem IA
         Optional<FAQMatchDTO> bestFaq = faqMatches.stream()
             .filter(faq -> faq.getConfidenceScore() >= 0.7)
             .findFirst();
             
         if (bestFaq.isPresent()) {
             FAQMatchDTO faq = bestFaq.get();
+            log.info("Using direct FAQ response as fallback for: {}", userMessage);
             return DraftResponse.builder()
                 .content(faq.getFaq().getAnswer())
                 .confidence(faq.getConfidenceScore())
@@ -307,9 +319,98 @@ public class AIDraftService {
                 .build();
         }
         
-        // TODO: Implementar lógica para templates
+        // 3. TODO: Implementar lógica para templates
         
         return null;
+    }
+    
+    /**
+     * Gera resposta contextualizada usando IA com FAQs como base de conhecimento
+     */
+    private DraftResponse generateContextualizedResponse(List<FAQMatchDTO> faqMatches, String userMessage, UUID companyId) {
+        try {
+            // Buscar agente de IA da empresa (usar o primeiro ativo)
+            List<AIAgent> agents = aiAgentService.getActiveAIAgentsByCompanyId(companyId);
+            
+            if (agents.isEmpty()) {
+                log.debug("No AI agent found for company {}, using direct FAQ", companyId);
+                return null;
+            }
+            
+            AIAgent agent = agents.get(0);
+            log.info("Using AI agent '{}' to generate contextual response", agent.getName());
+            
+            // Construir contexto com FAQs relevantes
+            StringBuilder context = new StringBuilder();
+            context.append("Base de conhecimento disponível:\n\n");
+            
+            for (int i = 0; i < Math.min(3, faqMatches.size()); i++) {
+                FAQMatchDTO match = faqMatches.get(i);
+                context.append(String.format("FAQ %d (confiança %.0f%%):\n", 
+                    i + 1, match.getConfidenceScore() * 100));
+                context.append("P: ").append(match.getFaq().getQuestion()).append("\n");
+                context.append("R: ").append(match.getFaq().getAnswer()).append("\n\n");
+            }
+            
+            // Construir prompt contextualizado
+            String prompt = String.format(
+                """
+                Você é %s, um assistente especializado em atendimento ao cliente.
+                Temperamento: %s
+                
+                Sua tarefa é responder à pergunta do cliente de forma natural e personalizada, 
+                usando as informações da base de conhecimento como referência.
+                
+                %s
+                
+                Pergunta do cliente: "%s"
+                
+                Instruções:
+                - Use as informações da base de conhecimento como fonte principal
+                - Personalize a resposta para ser natural e conversacional
+                - Mantenha o temperamento %s
+                - Limite a resposta a %d caracteres
+                - Seja direto e útil
+                
+                Resposta:
+                """,
+                agent.getName(),
+                agent.getTemperament().toLowerCase(),
+                context.toString(),
+                userMessage,
+                agent.getTemperament().toLowerCase(),
+                agent.getMaxResponseLength()
+            );
+            
+            // Chamar IA para gerar resposta
+            String aiResponse = openAIService.enhanceTemplate(
+                prompt,
+                agent.getAiModel().getName(),
+                agent.getTemperature().doubleValue(),
+                agent.getMaxResponseLength()
+            );
+            
+            if (aiResponse != null && !aiResponse.startsWith("Erro")) {
+                // Calcular confiança baseada na melhor FAQ match
+                double confidence = faqMatches.get(0).getConfidenceScore();
+                // Aumentar ligeiramente a confiança por usar IA contextualizada
+                confidence = Math.min(0.95, confidence + 0.1);
+                
+                log.info("AI generated contextual response with confidence: {:.2f}", confidence);
+                
+                return DraftResponse.builder()
+                    .content(aiResponse)
+                    .confidence(confidence)
+                    .sourceType("AI_CONTEXTUAL")
+                    .sourceId(faqMatches.get(0).getFaq().getId()) // FAQ base usada
+                    .build();
+            }
+            
+        } catch (Exception e) {
+            log.error("Error generating AI contextual response: {}", e.getMessage(), e);
+        }
+        
+        return null; // Fallback para método tradicional
     }
     
     private MessageDraftDTO convertToDTO(MessageDraft draft) {

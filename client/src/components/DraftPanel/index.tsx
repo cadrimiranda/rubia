@@ -184,6 +184,7 @@ export const DraftPanel: React.FC<DraftPanelProps> = ({
                 <Text type="secondary" className="text-xs ml-auto">
                   {currentDraft.sourceType === 'FAQ' ? 'Baseado em FAQ' : 
                    currentDraft.sourceType === 'TEMPLATE' ? 'Baseado em Template' : 
+                   currentDraft.sourceType === 'AI_CONTEXTUAL' ? 'IA Contextualizada' :
                    'Gerado pela IA'}
                 </Text>
               </div>

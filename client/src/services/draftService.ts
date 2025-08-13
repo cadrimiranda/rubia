@@ -9,7 +9,7 @@ export interface MessageDraft {
   aiModel?: string;
   confidence?: number;
   status: DraftStatus;
-  sourceType?: 'FAQ' | 'TEMPLATE' | 'AI_GENERATED';
+  sourceType?: 'FAQ' | 'TEMPLATE' | 'AI_GENERATED' | 'AI_CONTEXTUAL';
   sourceId?: string;
   createdById?: string;
   createdByName?: string;
@@ -30,7 +30,7 @@ export interface CreateMessageDraftRequest {
   content: string;
   aiModel?: string;
   confidence?: number;
-  sourceType?: 'FAQ' | 'TEMPLATE' | 'AI_GENERATED';
+  sourceType?: 'FAQ' | 'TEMPLATE' | 'AI_GENERATED' | 'AI_CONTEXTUAL';
   sourceId?: string;
   originalMessage?: string;
 }
@@ -236,6 +236,7 @@ class DraftService {
       case 'FAQ': return '❓';
       case 'TEMPLATE': return '📝';
       case 'AI_GENERATED': return '🤖';
+      case 'AI_CONTEXTUAL': return '🧠';
       default: return '💬';
     }
   }
