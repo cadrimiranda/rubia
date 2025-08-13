@@ -643,10 +643,22 @@ public class MessagingService {
                             com.ruby.rubia_server.core.enums.MessageStatus.DRAFT);
                     
                     if (draftMessage.isPresent()) {
-                        // Atualizar mensagem para SENT
+                        // Atualizar mensagem para SENT usando MessageService para disparar eventos CQRS
                         com.ruby.rubia_server.core.entity.Message message = draftMessage.get();
-                        message.setStatus(com.ruby.rubia_server.core.enums.MessageStatus.SENT);
-                        messageRepository.save(message);
+                        
+                        // Usar MessageService.updateMessageStatus para garantir eventos CQRS
+                        try {
+                            messageService.updateMessageStatus(message.getId(), com.ruby.rubia_server.core.enums.MessageStatus.SENT);
+                            logger.debug("Updated DRAFT message {} to SENT via MessageService (CQRS enabled) for CampaignContact {}", 
+                                message.getId(), contact.getId());
+                        } catch (Exception e) {
+                            // Fallback para save direto se MessageService falhar
+                            logger.warn("MessageService.updateMessageStatus failed, falling back to direct save: {}", e.getMessage());
+                            message.setStatus(com.ruby.rubia_server.core.enums.MessageStatus.SENT);
+                            messageRepository.save(message);
+                            logger.debug("Updated DRAFT message {} to SENT via fallback direct save for CampaignContact {}", 
+                                message.getId(), contact.getId());
+                        }
                         
                         // Atualizar CampaignContact
                         contact.setStatus(com.ruby.rubia_server.core.enums.CampaignContactStatus.SENT);
@@ -654,9 +666,6 @@ public class MessagingService {
                         // campaignContactService salva automaticamente (gerenciado)
                         
                         updatedMessages++;
-                        
-                        logger.debug("Updated DRAFT message {} to SENT for CampaignContact {}", 
-                            message.getId(), contact.getId());
                     }
                 }
                 
