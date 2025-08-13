@@ -20,5 +20,6 @@ public class DraftReviewDTO {
     
     private String rejectionReason; // Motivo se action = REJECTED
     
+    @Builder.Default
     private Boolean sendImmediately = true; // Se deve enviar imediatamente após aprovação
 }

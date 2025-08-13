@@ -2,6 +2,7 @@ package com.ruby.rubia_server.core.service;
 
 import com.ruby.rubia_server.core.dto.*;
 import com.ruby.rubia_server.core.entity.*;
+import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.repository.*;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import lombok.RequiredArgsConstructor;
@@ -144,8 +145,9 @@ public class AIDraftService {
                 .id(UUID.randomUUID())
                 .conversationId(draft.getConversation().getId())
                 .content(finalContent)
-                .fromOperator(true)
-                .sentAt(LocalDateTime.now())
+                .isFromUser(false) // false = from operator
+                .senderType(SenderType.AGENT)
+                .createdAt(LocalDateTime.now())
                 .build();
         }
         

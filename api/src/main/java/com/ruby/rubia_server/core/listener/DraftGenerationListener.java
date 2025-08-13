@@ -36,9 +36,15 @@ public class DraftGenerationListener {
                 return;
             }
             
-            // Só gera draft para mensagens de texto
-            if (!"TEXT".equalsIgnoreCase(message.getMessageType())) {
-                log.debug("Skipping draft generation for non-text message: {}", message.getId());
+            // Só gera draft para mensagens de texto (sem mídia)
+            if (message.getMedia() != null) {
+                log.debug("Skipping draft generation for media message: {}", message.getId());
+                return;
+            }
+            
+            // Só gera draft para mensagens com conteúdo de texto
+            if (message.getContent() == null || message.getContent().trim().isEmpty()) {
+                log.debug("Skipping draft generation for message without text content: {}", message.getId());
                 return;
             }
             
