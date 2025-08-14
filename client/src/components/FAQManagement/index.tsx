@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./styles.css";
-import {
-  Plus,
-  Edit3,
-  Trash2,
-  MoreVertical,
-  HelpCircle,
-} from "lucide-react";
+import { Plus, Edit3, Trash2, MoreVertical, HelpCircle } from "lucide-react";
 import {
   Button,
   Input,
@@ -21,11 +15,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FAQModal } from "../FAQModal";
-import {
-  faqService,
-  type FAQ,
-  type FAQStats,
-} from "../../services/faqService";
+import { faqService, type FAQ, type FAQStats } from "../../services/faqService";
 
 // Re-export FAQ type for components that import from this file
 export type { FAQ } from "../../services/faqService";
@@ -338,7 +328,7 @@ export const FAQManagement: React.FC<FAQManagementProps> = () => {
             </h3>
             <p className="text-sm text-gray-600 leading-relaxed">
               A IA utiliza as FAQs cadastradas para gerar respostas automáticas
-              em DRAFT. Quando um cliente faz uma pergunta similar às
+              em rascunhos. Quando um cliente faz uma pergunta similar às
               registradas aqui, o sistema busca a FAQ mais relevante e usa como
               base para criar uma resposta personalizada.
             </p>
