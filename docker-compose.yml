@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"
+      - "${PG_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
@@ -97,10 +97,11 @@ services:
       CLIENT_TOKEN: ${CLIENT_TOKEN}
       ZAPI_WEBHOOK_TOKEN: ${ZAPI_WEBHOOK_TOKEN}
       SECURITY_REQUIRE_SSL: ${SECURITY_REQUIRE_SSL}
+
     ports:
       - "8081:8081"
     networks:
-      - rubia-network
+      - rubia-network]
     # depends_on:
     #   postgres:
     #     condition: service_healthy

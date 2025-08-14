@@ -1062,7 +1062,6 @@ export const BloodCenterChat: React.FC = () => {
     try {
       console.log("🔮 [AI] Starting message enhancement...");
 
-      // Ativar estado de loading
       setIsEnhancing(true);
 
       const { aiAgentApi } = await import("../api/services/aiAgentApi");

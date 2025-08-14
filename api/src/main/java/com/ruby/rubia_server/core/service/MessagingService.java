@@ -91,7 +91,6 @@ public class MessagingService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
     
-    @Autowired
     public MessagingService(List<MessagingAdapter> adapters) {
         this.adapters = adapters;
         this.currentAdapter = adapters.isEmpty() ? null : adapters.get(0);
