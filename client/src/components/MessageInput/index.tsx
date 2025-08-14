@@ -1,6 +1,18 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Mic, MicOff, Send, Sparkles, Loader2, Play, Pause, Trash2 } from "lucide-react";
-import type { FileAttachment as FileAttachmentType, ConversationMedia, PendingMedia } from "../../types/types";
+import {
+  Mic,
+  MicOff,
+  Send,
+  Sparkles,
+  Loader2,
+  Play,
+  Pause,
+  Trash2,
+} from "lucide-react";
+import type {
+  FileAttachment as FileAttachmentType,
+  PendingMedia,
+} from "../../types/types";
 import { FileAttachment } from "../FileAttachment";
 
 interface MessageInputProps {
@@ -19,8 +31,10 @@ interface MessageInputProps {
   onEnhanceMessage?: () => void;
   onError?: (error: string) => void;
   onAudioRecorded?: (audioBlob: Blob) => void;
+  onDeleteDraft?: () => void;
   isLoading?: boolean;
   isAudioSending?: boolean;
+  isEnhancing?: boolean;
   recordingCooldownMs?: number;
   maxRecordingTimeMs?: number;
   maxFileSizeMB?: number;
@@ -30,31 +44,29 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   messageInput,
   attachments,
   pendingMedia = [],
-  conversationId,
   draftMessage,
   onMessageChange,
   onSendMessage,
-  onFileUpload,
   onRemoveAttachment,
-  onMediaSelected,
   onRemovePendingMedia,
   onKeyPress,
   onEnhanceMessage,
   onError,
   onAudioRecorded,
+  onDeleteDraft,
   isLoading = false,
   isAudioSending = false,
+  isEnhancing = false,
   recordingCooldownMs = 2000,
   maxRecordingTimeMs = 300000, // 5 minutos
   maxFileSizeMB = 16,
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -66,12 +78,17 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const recordingTimeoutRef = useRef<number | null>(null);
 
   // Validação de MIME types para áudio
-  const ALLOWED_AUDIO_MIME_TYPES = ['audio/wav', 'audio/mp3', 'audio/ogg', 'audio/webm'];
+  const ALLOWED_AUDIO_MIME_TYPES = [
+    "audio/wav",
+    "audio/mp3",
+    "audio/ogg",
+    "audio/webm",
+  ];
   const MAX_RECORDING_TIME_SECONDS = Math.floor(maxRecordingTimeMs / 1000);
 
   const adjustTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
       const minHeight = 40;
       const maxHeight = 200;
@@ -84,15 +101,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     adjustTextareaHeight();
   }, [messageInput, adjustTextareaHeight]);
 
-  const showAudioError = useCallback((error: string) => {
-    setAudioError(error);
-    onError?.(error);
-    setTimeout(() => setAudioError(null), 4000);
-  }, [onError]);
+  const showAudioError = useCallback(
+    (error: string) => {
+      setAudioError(error);
+      onError?.(error);
+      setTimeout(() => setAudioError(null), 4000);
+    },
+    [onError]
+  );
 
   const cleanupRecording = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     if (mediaRecorderRef.current) {
@@ -112,7 +132,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     // Rate limiting
     const now = Date.now();
     if (now - lastRecordingTime < recordingCooldownMs) {
-      showAudioError(`Aguarde ${Math.ceil((recordingCooldownMs - (now - lastRecordingTime)) / 1000)} segundos antes de gravar novamente`);
+      showAudioError(
+        `Aguarde ${Math.ceil(
+          (recordingCooldownMs - (now - lastRecordingTime)) / 1000
+        )} segundos antes de gravar novamente`
+      );
       return;
     }
 
@@ -122,44 +146,48 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/wav",
+        });
+
         // Validação de MIME type
         if (!ALLOWED_AUDIO_MIME_TYPES.includes(audioBlob.type)) {
-          showAudioError('Formato de áudio não suportado');
+          showAudioError("Formato de áudio não suportado");
           cleanupRecording();
           return;
         }
-        
+
         // Validação de tamanho do arquivo
         const fileSizeMB = audioBlob.size / (1024 * 1024);
         if (fileSizeMB > maxFileSizeMB) {
-          showAudioError(`Arquivo muito grande. Tamanho máximo: ${maxFileSizeMB}MB`);
+          showAudioError(
+            `Arquivo muito grande. Tamanho máximo: ${maxFileSizeMB}MB`
+          );
           cleanupRecording();
           return;
         }
-        
+
         setRecordedAudio(audioBlob);
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
         setLastRecordingTime(Date.now());
         cleanupRecording();
       };
-      
+
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-      
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => {
+
+      recordingIntervalRef.current = window.setInterval(() => {
+        setRecordingTime((prev) => {
           const newTime = prev + 1;
           // Auto-stop quando atinge o tempo máximo
           if (newTime >= MAX_RECORDING_TIME_SECONDS) {
@@ -168,20 +196,27 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           return newTime;
         });
       }, 1000);
-      
+
       // Timeout de segurança
       recordingTimeoutRef.current = window.setTimeout(() => {
         if (isRecording) {
-          showAudioError(`Gravação limitada a ${MAX_RECORDING_TIME_SECONDS / 60} minutos`);
+          showAudioError(
+            `Gravação limitada a ${MAX_RECORDING_TIME_SECONDS / 60} minutos`
+          );
           stopRecording();
         }
       }, maxRecordingTimeMs);
     } catch (error) {
-      showAudioError('Erro ao acessar o microfone');
+      showAudioError("Erro ao acessar o microfone");
       cleanupRecording();
     }
-  }, [showAudioError, lastRecordingTime, recordingCooldownMs, cleanupRecording]);
-  
+  }, [
+    showAudioError,
+    lastRecordingTime,
+    recordingCooldownMs,
+    cleanupRecording,
+  ]);
+
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -189,26 +224,26 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
     // Cleanup será feito pelo cleanupRecording no onstop
   }, [isRecording]);
-  
+
   const playAudio = useCallback(() => {
     if (audioUrl && !isPlaying) {
       if (audioRef.current) {
         audioRef.current.pause();
       }
-      
+
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
-      
+
       audio.onended = () => {
         setIsPlaying(false);
         audioRef.current = null;
       };
-      
+
       audio.play();
       setIsPlaying(true);
     }
   }, [audioUrl, isPlaying]);
-  
+
   const pauseAudio = useCallback(() => {
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
@@ -216,7 +251,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       audioRef.current = null;
     }
   }, [isPlaying]);
-  
+
   const removeAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -244,28 +279,39 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       cleanupRecording();
     };
   }, [audioUrl, cleanupRecording]);
-  
+
   const sendAudio = useCallback(() => {
     if (recordedAudio && onAudioRecorded) {
       onAudioRecorded(recordedAudio);
       removeAudio();
     }
   }, [recordedAudio, onAudioRecorded, removeAudio]);
-  
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
     <div className="border-t border-gray-200 bg-white p-4">
       {/* Indicador de mensagem DRAFT */}
-      {draftMessage && (
+      {draftMessage && messageInput.trim().length > 0 && (
         <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-          <div className="flex items-center gap-2 text-sm text-yellow-800">
-            <Sparkles className="w-4 h-4" />
-            <span>Mensagem da campanha carregada - pronta para envio</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-yellow-800">
+              <Sparkles className="w-4 h-4" />
+              <span>Mensagem da campanha carregada - pronta para envio</span>
+            </div>
+            {onDeleteDraft && (
+              <button
+                onClick={onDeleteDraft}
+                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                title="Excluir mensagem draft"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -287,7 +333,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 onClick={isPlaying ? pauseAudio : playAudio}
                 className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
               >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isPlaying ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
               </button>
               <span className="text-sm text-gray-600">
                 Áudio gravado • {formatTime(recordingTime)}
@@ -305,9 +355,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 onClick={sendAudio}
                 disabled={isAudioSending}
                 className={`px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 ${
-                  isAudioSending 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-green-500 hover:bg-green-600'
+                  isAudioSending
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600"
                 } text-white`}
               >
                 {isAudioSending ? (
@@ -316,7 +366,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                     Enviando...
                   </>
                 ) : (
-                  'Enviar'
+                  "Enviar"
                 )}
               </button>
             </div>
@@ -380,20 +430,26 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         <button
           onClick={isRecording ? stopRecording : startRecording}
           className={`p-2 rounded-lg transition-colors self-end ${
-            isRecording 
-              ? 'text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100' 
-              : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+            isRecording
+              ? "text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           }`}
           disabled={!!recordedAudio}
-          title={isRecording ? 'Parar gravação' : 'Gravar áudio'}
+          title={isRecording ? "Parar gravação" : "Gravar áudio"}
         >
-          {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          {isRecording ? (
+            <MicOff className="w-4 h-4" />
+          ) : (
+            <Mic className="w-4 h-4" />
+          )}
         </button>
-        
+
         {isRecording && (
           <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg self-end">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-red-600">{formatTime(recordingTime)}</span>
+            <span className="text-sm text-red-600">
+              {formatTime(recordingTime)}
+            </span>
           </div>
         )}
 
@@ -403,32 +459,62 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             value={messageInput}
             onChange={(e) => onMessageChange(e.target.value)}
             onKeyPress={onKeyPress}
+            disabled={isEnhancing}
             placeholder={
-              draftMessage 
+              isEnhancing
+                ? "Melhorando mensagem com IA..."
+                : draftMessage
                 ? "Edite a mensagem da campanha se necessário..."
                 : "Digite sua mensagem..."
             }
             rows={1}
-            className="w-full resize-y border border-gray-300 rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent overflow-auto"
+            className={`w-full resize-y border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent overflow-auto ${
+              isEnhancing
+                ? "border-purple-300 bg-purple-50 text-gray-500 cursor-not-allowed"
+                : "border-gray-300"
+            }`}
             style={{ minHeight: "40px", maxHeight: "300px" }}
           />
 
           {onEnhanceMessage && messageInput.trim() && (
             <button
               onClick={onEnhanceMessage}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-purple-500 hover:text-purple-700 hover:bg-purple-50 p-1 rounded transition-colors"
-              title="Melhorar mensagem com IA"
+              disabled={isEnhancing}
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors ${
+                isEnhancing
+                  ? "text-purple-300 cursor-not-allowed"
+                  : "text-purple-500 hover:text-purple-700 hover:bg-purple-50"
+              }`}
+              title={isEnhancing ? "Melhorando..." : "Melhorar mensagem com IA"}
             >
-              <Sparkles className="w-4 h-4" />
+              {isEnhancing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
             </button>
           )}
         </div>
 
         <button
           onClick={onSendMessage}
-          disabled={(!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0 && !recordedAudio) || isLoading || isRecording}
+          disabled={
+            (!messageInput.trim() &&
+              attachments.length === 0 &&
+              pendingMedia.length === 0 &&
+              !recordedAudio) ||
+            isLoading ||
+            isRecording ||
+            isEnhancing
+          }
           className={`p-2 rounded-lg transition-colors self-end ${
-            ((!messageInput.trim() && attachments.length === 0 && pendingMedia.length === 0 && !recordedAudio) || isLoading || isRecording)
+            (!messageInput.trim() &&
+              attachments.length === 0 &&
+              pendingMedia.length === 0 &&
+              !recordedAudio) ||
+            isLoading ||
+            isRecording ||
+            isEnhancing
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : draftMessage
               ? "bg-yellow-500 hover:bg-yellow-600 text-white"

@@ -31,13 +31,16 @@ import com.ruby.rubia_server.core.dto.ConversationDTO;
 import com.ruby.rubia_server.core.dto.CreateCustomerDTO;
 import com.ruby.rubia_server.core.dto.CustomerDTO;
 import com.ruby.rubia_server.core.dto.MessageDTO;
+import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Optional;
 
@@ -86,6 +89,8 @@ public class MessagingService {
     private UnreadMessageCountService unreadCountService;
     
     @Autowired
+    private ApplicationEventPublisher eventPublisher;
+    
     public MessagingService(List<MessagingAdapter> adapters) {
         this.adapters = adapters;
         this.currentAdapter = adapters.isEmpty() ? null : adapters.get(0);
@@ -251,6 +256,14 @@ public class MessagingService {
             // Save message and notify
             MessageDTO savedMessage = messageService.createFromIncomingMessage(incomingMessage, conversation.getId());
             webSocketNotificationService.notifyNewMessage(savedMessage, conversation);
+            
+            // Publicar evento para gerar draft automático
+            eventPublisher.publishEvent(MessageCreatedEvent.builder()
+                .messageId(savedMessage.getId())
+                .conversationId(conversation.getId())
+                .content(savedMessage.getContent())
+                .createdAt(savedMessage.getCreatedAt())
+                .build());
             
             // Create unread counters for all users in the company
             unreadCountService.createUnreadCountsForNewMessage(savedMessage.getId(), conversation.getId(), company);
@@ -616,6 +629,30 @@ public class MessagingService {
         return currentAdapter.sendMediaMessage(to, mediaUrl, caption);
     }
 
+    
+    /**
+     * Analisa mensagem recebida via webhook
+     */
+    public IncomingMessage parseIncomingMessage(Map<String, String> payload) {
+        // Implementação básica - adapt according to your webhook format
+        return IncomingMessage.builder()
+            .messageId(payload.get("messageId"))
+            .from(payload.get("from"))
+            .body(payload.get("body"))
+            .chatLid(payload.get("chatLid"))
+            .senderName(payload.get("senderName"))
+            .build();
+    }
+    
+    /**
+     * Valida webhook (implementação básica)
+     */
+    public boolean validateWebhook(Map<String, String> payload, String signature) {
+        // Implementação básica - sempre aceita por enquanto
+        // TODO: Implementar validação real do webhook
+        return true;
+    }
+
     /**
      * Sincroniza envio manual com campanhas ativas
      * Marca mensagens DRAFT específicas como SENT e atualiza CampaignContact
@@ -643,10 +680,22 @@ public class MessagingService {
                             com.ruby.rubia_server.core.enums.MessageStatus.DRAFT);
                     
                     if (draftMessage.isPresent()) {
-                        // Atualizar mensagem para SENT
+                        // Atualizar mensagem para SENT usando MessageService para disparar eventos CQRS
                         com.ruby.rubia_server.core.entity.Message message = draftMessage.get();
-                        message.setStatus(com.ruby.rubia_server.core.enums.MessageStatus.SENT);
-                        messageRepository.save(message);
+                        
+                        // Usar MessageService.updateMessageStatus para garantir eventos CQRS
+                        try {
+                            messageService.updateMessageStatus(message.getId(), com.ruby.rubia_server.core.enums.MessageStatus.SENT);
+                            logger.debug("Updated DRAFT message {} to SENT via MessageService (CQRS enabled) for CampaignContact {}", 
+                                message.getId(), contact.getId());
+                        } catch (Exception e) {
+                            // Fallback para save direto se MessageService falhar
+                            logger.warn("MessageService.updateMessageStatus failed, falling back to direct save: {}", e.getMessage());
+                            message.setStatus(com.ruby.rubia_server.core.enums.MessageStatus.SENT);
+                            messageRepository.save(message);
+                            logger.debug("Updated DRAFT message {} to SENT via fallback direct save for CampaignContact {}", 
+                                message.getId(), contact.getId());
+                        }
                         
                         // Atualizar CampaignContact
                         contact.setStatus(com.ruby.rubia_server.core.enums.CampaignContactStatus.SENT);
@@ -654,9 +703,6 @@ public class MessagingService {
                         // campaignContactService salva automaticamente (gerenciado)
                         
                         updatedMessages++;
-                        
-                        logger.debug("Updated DRAFT message {} to SENT for CampaignContact {}", 
-                            message.getId(), contact.getId());
                     }
                 }
                 

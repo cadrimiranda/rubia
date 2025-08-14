@@ -84,6 +84,7 @@ export const BloodCenterChat: React.FC = () => {
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [isAudioSending, setIsAudioSending] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<ChatStatus>("ativos");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -92,10 +93,14 @@ export const BloodCenterChat: React.FC = () => {
     null
   );
   const [currentDraftMessage, setCurrentDraftMessage] = useState<any>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<string>("");
 
   // Estados para paginação infinita
   const [hasMorePages, setHasMorePages] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Cache dos drafts excluídos para evitar recarregar
+  const [deletedDraftIds, setDeletedDraftIds] = useState<Set<string>>(new Set());
 
   // Refs para controlar paginação e evitar dependências circulares
   const currentPageRef = useRef(0);
@@ -197,6 +202,20 @@ export const BloodCenterChat: React.FC = () => {
       webSocket.connect();
     }
   }, [webSocket, webSocket.isConnected]);
+
+  // Detectar última mensagem do usuário para gerar drafts
+  useEffect(() => {
+    if (activeMessages.length > 0) {
+      // Pegar a última mensagem que veio do usuário
+      const userMessages = activeMessages.filter((msg) => msg.isFromUser);
+      if (userMessages.length > 0) {
+        const lastMessage = userMessages[userMessages.length - 1];
+        if (lastMessage.content && lastMessage.content !== lastUserMessage) {
+          setLastUserMessage(lastMessage.content);
+        }
+      }
+    }
+  }, [activeMessages, lastUserMessage]);
 
   // Carregar campanhas ativas da API
   const loadCampaigns = React.useCallback(async () => {
@@ -668,6 +687,8 @@ export const BloodCenterChat: React.FC = () => {
               (msg) => msg.status === "DRAFT"
             );
 
+            console.log("📝 Drafts encontrados na API:", draftMessages);
+
             // Se encontrou mensagem DRAFT, pegar a mais recente
             if (draftMessages.length > 0) {
               draftMessage = draftMessages.sort(
@@ -675,6 +696,7 @@ export const BloodCenterChat: React.FC = () => {
                   new Date(b.createdAt || 0).getTime() -
                   new Date(a.createdAt || 0).getTime()
               )[0];
+              console.log("📝 Draft mais recente:", draftMessage);
             }
 
             // Converter todas as mensagens exceto DRAFT para exibição
@@ -1040,8 +1062,7 @@ export const BloodCenterChat: React.FC = () => {
     try {
       console.log("🔮 [AI] Starting message enhancement...");
 
-      // Show loading state in the input
-      updateState({ messageInput: originalMessage + " ✨" });
+      setIsEnhancing(true);
 
       const { aiAgentApi } = await import("../api/services/aiAgentApi");
       const conversationId = state.selectedDonor?.conversationId;
@@ -1078,12 +1099,68 @@ export const BloodCenterChat: React.FC = () => {
           },
         },
       });
+    } finally {
+      // Sempre desativar loading ao final
+      setIsEnhancing(false);
     }
   };
 
   const handleApplyEnhancedMessage = (enhancedMessage: string) => {
     updateState({ messageInput: enhancedMessage });
     setShowMessageEnhancer(false);
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!currentDraftMessage) {
+      return;
+    }
+
+    console.log("🗑️ Excluindo draft:", currentDraftMessage.id);
+
+    try {
+      await messageApi.delete(currentDraftMessage.id);
+      console.log("✅ Draft excluído com sucesso!");
+      
+      // Limpar draft do estado local
+      setCurrentDraftMessage(null);
+      updateState({ messageInput: "" });
+      
+      // Feedback de sucesso (opcional)
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: "Draft Excluído",
+          message: "A mensagem draft foi excluída com sucesso.",
+          type: "success",
+          confirmText: "OK",
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null,
+            });
+          },
+        },
+      });
+    } catch (error) {
+      console.error("❌ Erro ao excluir draft:", error);
+      
+      // Mostrar erro para o usuário
+      updateState({
+        showConfirmationModal: true,
+        confirmationData: {
+          title: "Erro ao Excluir Draft",
+          message: "Não foi possível excluir a mensagem draft. Tente novamente.",
+          type: "warning",
+          confirmText: "OK",
+          onConfirm: () => {
+            updateState({
+              showConfirmationModal: false,
+              confirmationData: null,
+            });
+          },
+        },
+      });
+    }
   };
 
   const handleMediaSelected = (file: File) => {
@@ -1659,7 +1736,7 @@ export const BloodCenterChat: React.FC = () => {
     if (state.showConfiguration) {
       setWasInConfiguration(true);
     } else if (wasInConfiguration) {
-      callLoadConversations();
+      callLoadConversations({ reset: true });
       loadCampaigns();
       setWasInConfiguration(false);
     }
@@ -1698,7 +1775,7 @@ export const BloodCenterChat: React.FC = () => {
         onContextMenu={handleContextMenu}
         isLoading={isLoading}
         error={error}
-        onRetry={() => callLoadConversations()}
+        onRetry={() => callLoadConversations({ reset: true })}
         onConfigClick={() => updateState({ showConfiguration: true })}
         currentStatus={currentStatus}
         onStatusChange={handleStatusChange}
@@ -1801,7 +1878,9 @@ export const BloodCenterChat: React.FC = () => {
                 onEnhanceMessage={handleEnhanceMessage}
                 onError={handleMediaError}
                 onAudioRecorded={handleAudioRecorded}
+                onDeleteDraft={handleDeleteDraft}
                 isAudioSending={isAudioSending}
+                isEnhancing={isEnhancing}
                 maxRecordingTimeMs={300000}
                 maxFileSizeMB={16}
               />

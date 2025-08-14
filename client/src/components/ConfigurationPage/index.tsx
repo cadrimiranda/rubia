@@ -47,6 +47,7 @@ import {
 import { useAuthStore } from "../../store/useAuthStore";
 import { aiModelService } from "../../services/aiModelService";
 import AgentManagement from "../AgentManagement";
+import { FAQManagement } from "../FAQManagement";
 import { userApi } from "../../api";
 
 const { Option } = Select;
@@ -74,7 +75,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<
-    "agent" | "campaign" | "templates" | "deleted"
+    "agent" | "campaign" | "templates" | "faq" | "deleted"
   >("agent");
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",
@@ -613,6 +614,16 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                 Templates
               </button>
               <button
+                onClick={() => setActiveTab("faq")}
+                className={`px-6 py-3 font-medium transition-all relative ${
+                  activeTab === "faq"
+                    ? "text-red-600 border-b-2 border-red-500 bg-red-50/50"
+                    : "text-gray-600 hover:text-red-600 hover:bg-gray-50"
+                }`}
+              >
+                FAQ
+              </button>
+              <button
                 onClick={() => {
                   setActiveTab("deleted");
                   loadDeletedTemplates();
@@ -1065,6 +1076,8 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               </div>
             </div>
           )}
+
+          {activeTab === "faq" && <FAQManagement />}
 
           {activeTab === "deleted" && (
             <div className="max-w-6xl mx-auto p-8">
