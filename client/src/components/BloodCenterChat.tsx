@@ -30,7 +30,7 @@ import { conversationAdapter } from "../adapters/conversationAdapter";
 import { campaignApi } from "../api/services/campaignApi";
 import type { ChatStatus } from "../types/index";
 import type { Campaign } from "../types/types";
-import type { ConversationStatus } from "../api/types";
+import type { ConversationStatus, MessageDTO } from "../api/types";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { authService } from "../auth/authService";
 import { useAuthStore } from "../store/useAuthStore";
@@ -92,15 +92,13 @@ export const BloodCenterChat: React.FC = () => {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null
   );
-  const [currentDraftMessage, setCurrentDraftMessage] = useState<any>(null);
+  const [currentDraftMessage, setCurrentDraftMessage] =
+    useState<MessageDTO | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
 
   // Estados para paginação infinita
   const [hasMorePages, setHasMorePages] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  // Cache dos drafts excluídos para evitar recarregar
-  const [deletedDraftIds, setDeletedDraftIds] = useState<Set<string>>(new Set());
 
   // Refs para controlar paginação e evitar dependências circulares
   const currentPageRef = useRef(0);
@@ -1120,18 +1118,18 @@ export const BloodCenterChat: React.FC = () => {
     try {
       await messageApi.delete(currentDraftMessage.id);
       console.log("✅ Draft excluído com sucesso!");
-      
+
       // Limpar draft do estado local
       setCurrentDraftMessage(null);
       updateState({ messageInput: "" });
-      
+
       // Feedback de sucesso (opcional)
       updateState({
         showConfirmationModal: true,
         confirmationData: {
           title: "Draft Excluído",
           message: "A mensagem draft foi excluída com sucesso.",
-          type: "success",
+          type: "info",
           confirmText: "OK",
           onConfirm: () => {
             updateState({
@@ -1143,13 +1141,14 @@ export const BloodCenterChat: React.FC = () => {
       });
     } catch (error) {
       console.error("❌ Erro ao excluir draft:", error);
-      
+
       // Mostrar erro para o usuário
       updateState({
         showConfirmationModal: true,
         confirmationData: {
           title: "Erro ao Excluir Draft",
-          message: "Não foi possível excluir a mensagem draft. Tente novamente.",
+          message:
+            "Não foi possível excluir a mensagem draft. Tente novamente.",
           type: "warning",
           confirmText: "OK",
           onConfirm: () => {

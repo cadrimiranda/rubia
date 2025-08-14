@@ -4,10 +4,6 @@ import type { ConversationStatus } from "../api/types";
 import { conversationApi, messageApi, customerApi } from "../api";
 import { conversationAdapter, messageAdapter } from "../adapters";
 import { MessageValidator } from "../utils/validation";
-import {
-  getAllCampaignConversations,
-  getCampaignConversationMessages,
-} from "../mocks/campaignMock";
 // import { mockDonors } from '../mocks/data'
 
 interface ChatStoreState {
@@ -224,40 +220,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
 
       set({ isLoading: true, error: null });
 
-      // Tentar carregar conversas mock primeiro (campanhas)
-      try {
-        const mockConversations = getAllCampaignConversations();
-
-        if (mockConversations.length > 0) {
-          // Filtrar conversas por status
-          const filteredConversations = mockConversations.filter((conv) => {
-            if (targetStatus === "ativos") return conv.status === "ENTRADA";
-            if (targetStatus === "aguardando")
-              return conv.status === "ESPERANDO";
-            if (targetStatus === "inativo")
-              return conv.status === "FINALIZADOS";
-            return true;
-          });
-
-          const mockChats = conversationAdapter.toChatArray(
-            filteredConversations
-          );
-
-          set({
-            chats: page === 0 ? mockChats : [...state.chats, ...mockChats],
-            currentPage: page,
-            hasMore: false,
-            totalChats: mockChats.length,
-            isLoading: false,
-            error: null,
-          });
-
-          return;
-        }
-      } catch (mockError) {
-        console.warn("Erro ao carregar conversas de campanha:", mockError);
-      }
-
       // Tentar carregar da API se não há conversas mock
       try {
         const response = await conversationApi.getByStatus(
@@ -297,12 +259,15 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     // Carregamento otimizado de conversas ordenadas por última mensagem (CQRS)
     loadConversationsOrderedByLastMessage: async (page = 0) => {
       const state = get();
-      
+
       set({ isLoading: true, error: null });
 
       try {
         // Usar endpoint CQRS otimizado
-        const response = await conversationApi.getOrderedByLastMessage(page, 20);
+        const response = await conversationApi.getOrderedByLastMessage(
+          page,
+          20
+        );
 
         const newChats = conversationAdapter.toChatArray(
           response?.content || []
@@ -316,10 +281,9 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
           isLoading: false,
           error: null,
         });
-
       } catch (error) {
         console.error("Erro ao carregar conversas CQRS:", error);
-        
+
         set({
           chats: page === 0 ? [] : state.chats,
           currentPage: page,
@@ -378,49 +342,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
         }
       } catch (error) {
         console.error("Erro ao carregar mensagens:", error);
-
-        // Fallback para mensagens de campanha mock
-        try {
-          const mockMessages = getCampaignConversationMessages(chatId);
-
-          if (mockMessages.length > 0) {
-            const convertedMessages =
-              messageAdapter.toMessageArray(mockMessages);
-
-            set({
-              messagesCache: {
-                ...state.messagesCache,
-                [chatId]: {
-                  messages: convertedMessages,
-                  page: 0,
-                  hasMore: false,
-                },
-              },
-              isLoadingMessages: false,
-            });
-
-            // Atualizar chat ativo se for o mesmo
-            if (state.activeChat?.id === chatId) {
-              set({
-                activeChat: {
-                  ...state.activeChat,
-                  messages: convertedMessages,
-                },
-              });
-            }
-          } else {
-            set({
-              error: "Nenhuma mensagem encontrada",
-              isLoadingMessages: false,
-            });
-          }
-        } catch (mockError) {
-          console.error("Erro ao carregar mensagens mock:", mockError);
-          set({
-            error: "Erro ao carregar mensagens",
-            isLoadingMessages: false,
-          });
-        }
       }
     },
 
@@ -620,28 +541,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     },
 
     // Fixar conversa
-    pinConversation: async (chatId: string) => {
-      const state = get();
-      const chat = state.chats.find((c) => c.id === chatId);
-      if (!chat) return;
-
-      try {
-        if (chat.isPinned) {
-          await (conversationApi as any).unpin(chatId);
-        } else {
-          await (conversationApi as any).pin(chatId);
-        }
-
-        // Atualiza chat local
-        const updatedChats = state.chats.map((c) =>
-          c.id === chatId ? { ...c, isPinned: !c.isPinned } : c
-        );
-        set({ chats: updatedChats });
-      } catch (error) {
-        console.error("Erro ao fixar conversa:", error);
-        set({ error: "Erro ao fixar conversa" });
-      }
-    },
+    pinConversation: async () => {},
 
     // Bloquear cliente
     blockCustomer: async (chatId: string) => {
