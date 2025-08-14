@@ -1,5 +1,5 @@
 # --- Stage 1: Build ---
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:24-jdk-ubi10-minimal AS build
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY src src
 RUN ./mvnw clean package -DskipTests
 
 # --- Stage 2: Run ---
-FROM eclipse-temurin:21-jdk
+FROM eclipse-temurin:24-jdk-ubi10-minimal
 
 WORKDIR /app
 
