@@ -46,7 +46,7 @@ public class MessageDraft implements BaseEntity {
     @Column(name = "ai_model", length = 50)
     private String aiModel;
     
-    @Column(name = "confidence", precision = 3, scale = 2)
+    @Column(name = "confidence", precision = 3)
     private Double confidence;
     
     @Enumerated(EnumType.STRING)
@@ -75,6 +75,9 @@ public class MessageDraft implements BaseEntity {
     
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason; // Motivo da rejeição pelo operador
+    
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
     
     // Método para aprovar draft
     public void approve(User reviewer) {
@@ -118,5 +121,18 @@ public class MessageDraft implements BaseEntity {
     
     public boolean canBeReviewed() {
         return isPending();
+    }
+    
+    // Soft delete methods
+    public void markAsDeleted() {
+        this.deletedAt = LocalDateTime.now();
+    }
+    
+    public void restore() {
+        this.deletedAt = null;
+    }
+    
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

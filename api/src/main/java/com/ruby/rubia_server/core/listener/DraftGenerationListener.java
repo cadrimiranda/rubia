@@ -1,6 +1,6 @@
 package com.ruby.rubia_server.core.listener;
 
-import com.ruby.rubia_server.core.dto.MessageDraftDTO;
+import com.ruby.rubia_server.core.dto.MessageDTO;
 import com.ruby.rubia_server.core.entity.Message;
 import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.event.MessageCreatedEvent;
@@ -62,7 +62,7 @@ public class DraftGenerationListener {
                 message.getId(), message.getConversation().getId());
             
             // Gera draft automaticamente
-            MessageDraftDTO draft = aiDraftService.generateDraftResponse(
+            MessageDTO draft = aiDraftService.generateDraftResponse(
                 message.getConversation().getId(), 
                 message.getContent()
             );

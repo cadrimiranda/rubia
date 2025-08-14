@@ -29,9 +29,9 @@ public class MessageDraftController {
      * Gera draft automaticamente para uma conversa
      */
     @PostMapping("/generate")
-    public ResponseEntity<MessageDraftDTO> generateDraft(@Valid @RequestBody GenerateDraftRequest request) {
+    public ResponseEntity<MessageDTO> generateDraft(@Valid @RequestBody GenerateDraftRequest request) {
         try {
-            MessageDraftDTO draft = aiDraftService.generateDraftResponse(
+            MessageDTO draft = aiDraftService.generateDraftResponse(
                 request.getConversationId(), 
                 request.getUserMessage()
             );
