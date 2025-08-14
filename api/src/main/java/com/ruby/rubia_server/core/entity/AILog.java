@@ -69,7 +69,7 @@ public class AILog {
     @Column(name = "tokens_used_output")
     private Integer tokensUsedOutput; // Número de tokens usados na resposta de saída
 
-    @Column(name = "estimated_cost", precision = 10, scale = 8) // Custos podem ser muito pequenos (ex: $0.00000020)
+    @Column(name = "estimated_cost", precision = 10) // Custos podem ser muito pequenos (ex: $0.00000020)
     private BigDecimal estimatedCost; // Custo estimado desta chamada à API da IA
 
     @Enumerated(EnumType.STRING)

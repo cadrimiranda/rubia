@@ -48,7 +48,7 @@ public class AIAgent {
     @Builder.Default
     private Integer maxResponseLength = 500; // Limite de caracteres para a resposta da IA
 
-    @Column(name = "temperature", precision = 3, scale = 2)
+    @Column(name = "temperature", precision = 3)
     @Builder.Default
     private BigDecimal temperature = BigDecimal.valueOf(0.7); // Parâmetro de criatividade da IA (0.0 a 1.0)
 
