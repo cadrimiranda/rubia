@@ -9,6 +9,7 @@ import com.ruby.rubia_server.core.service.AIDraftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -25,11 +26,12 @@ public class DraftGenerationListener {
     private final MessageRepository messageRepository;
     
     /**
-     * Escuta eventos de nova mensagem e gera draft se for mensagem de cliente
+     * DESABILITADO: Migrado para UnifiedMessageListener
      */
-    @EventListener
-    @Async
-    public void handleMessageCreated(MessageCreatedEvent event) {
+    // @Order(2)
+    // @Async
+    // @EventListener
+    public void handleMessageCreated_DISABLED(MessageCreatedEvent event) {
         try {
             // Busca a mensagem completa pelo ID
             Message message = messageRepository.findById(event.getMessageId())
@@ -81,4 +83,5 @@ public class DraftGenerationListener {
             log.error("Error generating draft for message: {}", event.getMessageId(), e);
         }
     }
+    
 }

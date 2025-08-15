@@ -9,6 +9,7 @@ import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.repository.*;
 import com.ruby.rubia_server.core.service.OpenAIService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
+import com.ruby.rubia_server.core.service.MessagingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,6 +36,11 @@ public class AIDraftService {
     private final AIAgentService aiAgentService;
     private final UserRepository userRepository;
     private final CompanyContextUtil companyContextUtil;
+    private final MessagingService messagingService;
+    private final CustomerService customerService;
+    private final MessageService messageService;
+    private final WebSocketNotificationService webSocketNotificationService;
+    private final ConversationService conversationService;
     
     /**
      * Gera draft automaticamente baseado na mensagem do cliente
@@ -52,36 +58,23 @@ public class AIDraftService {
                 return null;
             }
             
-            // 2. Buscar FAQs relevantes
-            List<FAQMatchDTO> faqMatches = searchRelevantFAQs(conversation.getCompany().getId(), userMessage);
-            
-            // 3. Buscar templates relevantes  
-            List<MessageTemplate> templates = searchRelevantTemplates(conversation.getCompany().getId(), userMessage);
-            
-            // 4. Determinar melhor resposta baseada em confiança
-            DraftResponse bestResponse = selectBestResponse(faqMatches, templates, userMessage, conversation.getCompany().getId());
+            // 2. Gerar resposta do hemocentro usando AIAgent da empresa
+            DraftResponse bestResponse = generateBloodCenterResponse(conversation.getCompany().getId(), userMessage);
             
             if (bestResponse == null) {
                 log.debug("❌ [DEBUG] No response selected for conversation: {}", conversationId);
                 return null;
             }
             
-            if (bestResponse.getConfidence() < 0.5) {
-                log.debug("❌ [DEBUG] Response confidence too low: {:.2f} (minimum 0.5) for conversation: {}", 
-                    bestResponse.getConfidence(), conversationId);
-                return null;
-            }
-            
-            log.debug("✅ [DEBUG] Selected response with confidence {:.2f} for conversation: {}", 
+            log.info("✅ Selected response with confidence {:.2f} for conversation: {}", 
                 bestResponse.getConfidence(), conversationId);
-            
-            // 5. Criar Message com status DRAFT (não MessageDraft separada)
-            log.debug("✅ [DEBUG] Creating Message with DRAFT status, source: {} and confidence: {:.2f}", 
-                bestResponse.getSourceType(), bestResponse.getConfidence());
                 
-            MessageDTO result = createDraftMessage(conversation, bestResponse, userMessage);
-            log.info("✅ [SUCCESS] Draft Message created successfully with ID: {} for conversation: {}", 
-                result.getId(), conversationId);
+            // Enviar resposta automaticamente para hemocentro
+            MessageDTO result = sendBloodCenterResponse(conversation, bestResponse, userMessage);
+            if (result != null) {
+                log.info("✅ [SUCCESS] Blood center message sent automatically with ID: {} for conversation: {}", 
+                    result.getId(), conversationId);
+            }
             return result;
             
         } catch (Exception e) {
@@ -337,12 +330,6 @@ public class AIDraftService {
         log.debug("🔍 [DEBUG] - Conversation status: '{}'", conversation.getStatus());
         log.debug("🔍 [DEBUG] - User message: '{}' (length: {})", userMessage, userMessage != null ? userMessage.length() : 0);
         
-        // Regras para gerar draft:
-        // 1. Conversa em status "entrada"
-        // 2. Não há draft pendente recente
-        // 3. Mensagem não é muito curta
-        // 4. Empresa tem IA habilitada (TODO: implementar configuração)
-        
         // 1. Verificar status da conversa
         if (conversation.getStatus() != ConversationStatus.ENTRADA) {
             log.debug("❌ [DEBUG] Draft generation skipped: conversation status is '{}', expected 'ENTRADA'", conversation.getStatus());
@@ -350,30 +337,6 @@ public class AIDraftService {
         }
         log.debug("✅ [DEBUG] Conversation status check passed: '{}'", conversation.getStatus());
         
-        // 2. Verificar se já existe draft pendente recente (últimos 5 minutos)
-        LocalDateTime recentTime = LocalDateTime.now().minusMinutes(5);
-        List<MessageDraft> recentDrafts = messageDraftRepository.findRecentDrafts(
-            conversation.getCompany().getId(), recentTime);
-        log.debug("🔍 [DEBUG] Found {} recent drafts in last 5 minutes for company {}", recentDrafts.size(), conversation.getCompany().getId());
-            
-        boolean hasRecentPendingDraft = recentDrafts.stream()
-            .anyMatch(d -> d.getConversation().getId().equals(conversation.getId()) && d.isPending());
-        
-        if (hasRecentPendingDraft) {
-            log.debug("❌ [DEBUG] Draft generation skipped: recent pending draft found for conversation {}", conversation.getId());
-            return false;
-        }
-        log.debug("✅ [DEBUG] No recent pending drafts found for conversation {}", conversation.getId());
-        
-        // 3. Verificar comprimento da mensagem
-        if (userMessage == null || userMessage.trim().length() < 10) {
-            log.debug("❌ [DEBUG] Draft generation skipped: message too short ({} chars, minimum 10)", 
-                userMessage != null ? userMessage.trim().length() : 0);
-            return false;
-        }
-        log.debug("✅ [DEBUG] Message length check passed: {} chars", userMessage.trim().length());
-        
-        log.debug("✅ [DEBUG] All checks passed - should generate draft for conversation {}", conversation.getId());
         return true;
     }
     
@@ -543,6 +506,181 @@ public class AIDraftService {
         }
         
         return null; // Fallback para método tradicional
+    }
+    
+    /**
+     * Gera resposta especializada do hemocentro usando AIAgent da empresa
+     */
+    private DraftResponse generateBloodCenterResponse(UUID companyId, String userMessage) {
+        log.debug("🩸 Generating blood center response for company: {}", companyId);
+        try {
+            // Buscar agente de IA da empresa (similar ao TemplateEnhancementService)
+            List<AIAgent> activeAgents = aiAgentService.getActiveAIAgentsByCompanyId(companyId);
+            log.debug("🔍 Found {} active AI agents for company {}", activeAgents.size(), companyId);
+            
+            AIAgent agent;
+            String modelSource;
+            boolean isUsingCompanyAgent = false;
+            
+            if (!activeAgents.isEmpty()) {
+                // Cenário ideal: empresa tem agente configurado
+                agent = activeAgents.get(0);
+                modelSource = "agente da empresa";
+                isUsingCompanyAgent = true;
+                log.info("Using company's configured AI agent: {} for blood center response", agent.getName());
+            } else {
+                log.debug("❌ No AI agent found for company {}, skipping blood center response", companyId);
+                return null; // Empresa precisa ter agente configurado para hemocentro
+            }
+            
+            // Construir prompt especializado do hemocentro
+            String prompt = String.format(
+                """
+                Você é %s, assistente especializada de um hemocentro.
+                Temperamento: %s
+                
+                Responda apenas dúvidas sobre doação de sangue, com tom descontraído, acolhedor e encorajador.
+                
+                Contexto rápido:
+                - Explique critérios de elegibilidade (idade, peso, saúde, tempo entre doações).
+                - Oriente pré e pós-doação (hidratação, alimentação, descanso).
+                - Esclareça medos comuns e benefícios para a sociedade.
+                - Se a pergunta fugir do tema doação de sangue/hemocentro, avise gentilmente que só responde sobre isso.
+                
+                Use linguagem clara, direta e humana. Sempre seja positiva e encorajadora sobre a doação de sangue.
+                Mantenha as respostas concisas mas informativas.
+                Limite a resposta a %d caracteres.
+                
+                Pergunta do cliente: "%s"
+                
+                Resposta especializada:
+                """,
+                agent.getName(),
+                agent.getTemperament().toLowerCase(),
+                agent.getMaxResponseLength(),
+                userMessage
+            );
+            
+            // Chamar IA para gerar resposta usando configurações do agente
+            String aiResponse = openAIService.enhanceTemplate(
+                prompt,
+                agent.getAiModel().getName(),
+                agent.getTemperature().doubleValue(),
+                agent.getMaxResponseLength()
+            );
+            
+            if (aiResponse != null && !aiResponse.startsWith("Erro")) {
+                // Calcular confiança alta para resposta especializada
+                double confidence = 0.85; // Confiança alta para agente especializado
+                
+                log.info("🩸 Blood center AI generated response with confidence: {}", aiResponse);
+                
+                return DraftResponse.builder()
+                    .content(aiResponse)
+                    .confidence(confidence)
+                    .sourceType("BLOOD_CENTER_AI")
+                    .sourceId(agent.getId())
+                    .build();
+            }
+            
+        } catch (Exception e) {
+            log.error("Error generating blood center AI response: {}", e.getMessage(), e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Envia resposta do hemocentro automaticamente via WhatsApp
+     */
+    private MessageDTO sendBloodCenterResponse(Conversation conversation, DraftResponse draftResponse, String originalMessage) {
+        try {
+            log.info("🩸 Sending blood center response automatically for conversation: {}", conversation.getId());
+            
+            // Buscar usuário para criar a mensagem
+            User currentUser;
+            try {
+                currentUser = companyContextUtil.getAuthenticatedUser();
+            } catch (IllegalStateException e) {
+                log.debug("No authenticated user in async context, using system user for automatic send");
+                List<User> companyUsers = userRepository.findByCompanyId(conversation.getCompany().getId());
+                currentUser = companyUsers.isEmpty() ? null : companyUsers.get(0);
+                
+                if (currentUser == null) {
+                    log.warn("No users found for company {}, cannot send automatic message", conversation.getCompany().getId());
+                    return null;
+                }
+            }
+            
+            // Buscar customer através dos participantes da conversa
+            Customer customer = null;
+            for (ConversationParticipant participant : conversation.getParticipants()) {
+                if (participant.getCustomer() != null) {
+                    customer = participant.getCustomer();
+                    break;
+                }
+            }
+            
+            if (customer == null || customer.getPhone() == null || customer.getPhone().trim().isEmpty()) {
+                log.warn("Customer phone not found for conversation: {}, cannot send automatic message", conversation.getId());
+                return null;
+            }
+            
+            // Criar mensagem no banco primeiro
+            CreateMessageDTO createDTO = CreateMessageDTO.builder()
+                .conversationId(conversation.getId())
+                .companyId(conversation.getCompany().getId())
+                .content(draftResponse.getContent())
+                .senderType(SenderType.AI_AGENT)
+                .senderId(currentUser.getId())
+                .build();
+            
+            MessageDTO message = messageService.create(createDTO);
+            log.info("Message created in database with ID: {}", message.getId());
+            
+            // Enviar via WhatsApp/Z-API (passando Company para evitar problema de contexto)
+            MessageResult result = messagingService.sendMessage(
+                customer.getPhone(),
+                draftResponse.getContent(),
+                conversation.getCompany()
+            );
+            
+            if (result.isSuccess()) {
+                // Atualizar mensagem com ID externo e status SENT
+                UpdateMessageDTO updateDTO = UpdateMessageDTO.builder()
+                    .status(MessageStatus.SENT)
+                    .externalMessageId(result.getMessageId())
+                    .build();
+                
+                MessageDTO updatedMessage = messageService.update(message.getId(), updateDTO);
+                log.info("🩸 Blood center message sent successfully via WhatsApp. External ID: {}", result.getMessageId());
+                
+                // Notificar frontend via WebSocket
+                try {
+                    ConversationDTO conversationDTO = conversationService.findById(conversation.getId(), conversation.getCompany().getId());
+                    webSocketNotificationService.notifyNewMessage(updatedMessage, conversationDTO);
+                    log.debug("WebSocket notification sent for blood center message: {}", updatedMessage.getId());
+                } catch (Exception e) {
+                    log.warn("Failed to send WebSocket notification for blood center message: {}", e.getMessage());
+                }
+                
+                return updatedMessage;
+            } else {
+                // Marcar mensagem como falhou
+                UpdateMessageDTO failedUpdateDTO = UpdateMessageDTO.builder()
+                    .status(MessageStatus.FAILED)
+                    .build();
+                
+                messageService.update(message.getId(), failedUpdateDTO);
+                log.error("Failed to send blood center message via WhatsApp: {}", result.getError());
+                
+                return null;
+            }
+            
+        } catch (Exception e) {
+            log.error("Error sending blood center response automatically: {}", e.getMessage(), e);
+            return null;
+        }
     }
     
     private MessageDraftDTO convertToDTO(MessageDraft draft) {

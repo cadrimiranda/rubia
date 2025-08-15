@@ -64,7 +64,7 @@ public class OpenAIService {
                 String enhancedContent = response.getResult().getOutput().getContent();
                 
                 log.info("Template enhanced successfully using model: {} - Tokens used: {}", 
-                        modelName != null ? modelName : defaultModel, 
+                        enhancedContent, 
                         response.getMetadata() != null ? response.getMetadata().getUsage() : "unknown");
                 
                 return enhancedContent;
