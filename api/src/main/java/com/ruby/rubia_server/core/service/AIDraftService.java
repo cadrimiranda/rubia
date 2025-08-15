@@ -46,20 +46,22 @@ public class AIDraftService {
      * Gera draft automaticamente baseado na mensagem do cliente
      */
     public MessageDTO generateDraftResponse(UUID conversationId, String userMessage) {
-        log.info("Generating draft response for conversation: {} with message: '{}'", conversationId, userMessage);
+        // Normalizar mensagem para melhor processamento
+        String normalizedMessage = normalizeUserMessage(userMessage);
+        log.info("Generating draft response for conversation: {} with message: '{}'", conversationId, normalizedMessage);
         
         try {
             // 1. Verificar se deve gerar draft
             Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Conversa não encontrada"));
                 
-            if (!shouldGenerateDraft(conversation, userMessage)) {
+            if (!shouldGenerateDraft(conversation, normalizedMessage)) {
                 log.debug("Skipping draft generation for conversation: {}", conversationId);
                 return null;
             }
             
             // 2. Gerar resposta do hemocentro usando AIAgent da empresa
-            DraftResponse bestResponse = generateBloodCenterResponse(conversation.getCompany().getId(), userMessage);
+            DraftResponse bestResponse = generateBloodCenterResponse(conversation.getCompany().getId(), normalizedMessage);
             
             if (bestResponse == null) {
                 log.debug("❌ [DEBUG] No response selected for conversation: {}", conversationId);
@@ -70,7 +72,7 @@ public class AIDraftService {
                 bestResponse.getConfidence(), conversationId);
                 
             // Enviar resposta automaticamente para hemocentro
-            MessageDTO result = sendBloodCenterResponse(conversation, bestResponse, userMessage);
+            MessageDTO result = sendBloodCenterResponse(conversation, bestResponse, normalizedMessage);
             if (result != null) {
                 log.info("✅ [SUCCESS] Blood center message sent automatically with ID: {} for conversation: {}", 
                     result.getId(), conversationId);
@@ -706,6 +708,43 @@ public class AIDraftService {
             .build();
     }
     
+    /**
+     * Normaliza mensagem do usuário para melhor processamento pela IA
+     * - Remove quebras de linha desnecessárias 
+     * - Preserva quebras importantes para listas e pontos
+     * - Remove espaços extras
+     * - Limpa formatação do WhatsApp
+     */
+    private String normalizeUserMessage(String userMessage) {
+        if (userMessage == null || userMessage.trim().isEmpty()) {
+            return userMessage;
+        }
+
+        String normalized = userMessage
+            // Remove espaços no início e fim
+            .trim()
+            // Converte múltiplas quebras de linha em uma única
+            .replaceAll("\\n{3,}", "\n\n")
+            // Remove espaços antes e depois de quebras de linha
+            .replaceAll("\\s*\\n\\s*", "\n")
+            // Remove múltiplos espaços em branco
+            .replaceAll("\\s{2,}", " ")
+            // Remove formatação do WhatsApp (negrito, itálico)
+            .replaceAll("\\*([^*]+)\\*", "$1")  // *texto* -> texto
+            .replaceAll("_([^_]+)_", "$1")      // _texto_ -> texto
+            .replaceAll("~([^~]+)~", "$1")      // ~texto~ -> texto
+            // Preserva quebras importantes (listas, pontos)
+            .replaceAll("\\n([0-9]+\\.|[•\\-\\*])\\s*", "\n$1 ")
+            // Remove quebras de linha simples que não são listas (junta frases)
+            .replaceAll("(?<!\\n)\\n(?![0-9]+\\.|[•\\-\\*\\n])", " ")
+            // Limpa espaços extras novamente
+            .replaceAll("\\s{2,}", " ")
+            .trim();
+
+        log.debug("Normalized message: '{}' -> '{}'", userMessage, normalized);
+        return normalized;
+    }
+
     // Classe auxiliar para resposta do draft
     @lombok.Data
     @lombok.Builder

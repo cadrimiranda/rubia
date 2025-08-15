@@ -11,6 +11,12 @@ import com.ruby.rubia_server.core.service.AIDraftService;
 import com.ruby.rubia_server.core.service.CqrsMetricsService;
 import com.ruby.rubia_server.core.service.OpenAIService;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
+import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.annotation.Backoff;
@@ -40,6 +46,11 @@ public class UnifiedMessageListener {
     private final CqrsMetricsService metricsService;
     private final OpenAIService openAIService;
     private final RestTemplate restTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
+    
+    // Configurações do debounce
+    private static final long DEBOUNCE_DELAY_SECONDS = 8; // Aguarda 3 segundos
+    private static final String DEBOUNCE_KEY_PREFIX = "debounce:conversation:";
     
     /**
      * Processa MessageCreatedEvent de forma unificada:
@@ -111,7 +122,7 @@ public class UnifiedMessageListener {
     }
     
     /**
-     * Processa geração de draft de IA
+     * Processa geração de draft de IA com debounce para agrupar mensagens sequenciais
      */
     private void processAIDraft(MessageCreatedEvent event) {
         try {
@@ -149,24 +160,92 @@ public class UnifiedMessageListener {
                 return;
             }
             
-            log.info("Generating draft for new message: {} in conversation: {}", 
-                message.getId(), message.getConversation().getId());
+            // DEBOUNCE: Agendar processamento com delay para agrupar mensagens sequenciais
+            scheduleDebounceProcessing(message);
             
-            // Gera draft automaticamente
-            MessageDTO draft = aiDraftService.generateDraftResponse(
-                message.getConversation().getId(), 
-                message.getContent()
-            );
+        } catch (Exception e) {
+            log.error("Error processing draft with debounce for message: {}", event.getMessageId(), e);
+        }
+    }
+    
+    /**
+     * Agenda processamento com debounce para agrupar mensagens do mesmo usuário
+     */
+    private void scheduleDebounceProcessing(Message message) {
+        UUID conversationId = message.getConversation().getId();
+        String debounceKey = DEBOUNCE_KEY_PREFIX + conversationId;
+        
+        log.debug("⏰ Scheduling debounce processing for conversation: {} with {}s delay", 
+                conversationId, DEBOUNCE_DELAY_SECONDS);
+        
+        // Armazenar no Redis com TTL
+        redisTemplate.opsForValue().set(debounceKey, "pending", DEBOUNCE_DELAY_SECONDS, TimeUnit.SECONDS);
+        
+        // Agendar processamento após o delay
+        new Thread(() -> {
+            try {
+                Thread.sleep(DEBOUNCE_DELAY_SECONDS * 1000);
+                
+                // Verificar se ainda existe a chave (não foi cancelada por nova mensagem)
+                String status = redisTemplate.opsForValue().get(debounceKey);
+                if ("pending".equals(status)) {
+                    // Remover chave e processar
+                    redisTemplate.delete(debounceKey);
+                    processGroupedMessages(conversationId);
+                } else {
+                    log.debug("⏰ Debounce cancelled for conversation: {} (new message received)", conversationId);
+                }
+                
+            } catch (InterruptedException e) {
+                log.debug("Debounce thread interrupted for conversation: {}", conversationId);
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+    
+    /**
+     * Processa mensagens agrupadas da conversa após o debounce
+     */
+    private void processGroupedMessages(UUID conversationId) {
+        try {
+            log.info("🔗 Processing grouped messages for conversation: {}", conversationId);
+            
+            // Buscar últimas mensagens do cliente (últimos 5 minutos)
+            LocalDateTime fiveMinutesAgo = LocalDateTime.now().minusMinutes(5);
+            List<Message> recentMessages = messageRepository
+                .findRecentCustomerMessages(conversationId, fiveMinutesAgo);
+            
+            if (recentMessages.isEmpty()) {
+                log.debug("No recent customer messages found for conversation: {}", conversationId);
+                return;
+            }
+            
+            // Combinar conteúdo das mensagens em ordem cronológica
+            String combinedContent = recentMessages.stream()
+                .filter(msg -> msg.getContent() != null && !msg.getContent().trim().isEmpty())
+                .map(Message::getContent)
+                .collect(Collectors.joining(" "));
+            
+            if (combinedContent.trim().isEmpty()) {
+                log.debug("No text content found in recent messages for conversation: {}", conversationId);
+                return;
+            }
+            
+            log.info("📝 Combined message content ({} messages): '{}'", 
+                    recentMessages.size(), combinedContent);
+            
+            // Gerar resposta para o conteúdo combinado
+            MessageDTO draft = aiDraftService.generateDraftResponse(conversationId, combinedContent);
             
             if (draft != null) {
-                log.info("Successfully generated draft: {} for message: {}", draft.getId(), message.getId());
-                
+                log.info("✅ Successfully generated grouped response: {} for conversation: {}", 
+                        draft.getId(), conversationId);
             } else {
-                log.debug("No draft generated for message: {}", message.getId());
+                log.debug("No draft generated for grouped messages in conversation: {}", conversationId);
             }
             
         } catch (Exception e) {
-            log.error("Error generating draft for message: {}", event.getMessageId(), e);
+            log.error("Error processing grouped messages for conversation: {}", conversationId, e);
         }
     }
     
@@ -215,6 +294,7 @@ public class UnifiedMessageListener {
             log.info("🗣️ Audio transcribed: '{}' for message: {}", transcription, audioMessage.getId());
             
             // 3. Processar texto transcrito com IA do hemocentro
+            // A normalização será feita dentro do AIDraftService.generateDraftResponse()
             MessageDTO response = aiDraftService.generateDraftResponse(
                 audioMessage.getConversation().getId(), 
                 transcription
