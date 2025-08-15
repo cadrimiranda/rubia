@@ -1,5 +1,13 @@
 import React from "react";
-import { User, Circle, MoreVertical, Check, Calendar, Bot, BotOff } from "lucide-react";
+import {
+  User,
+  Circle,
+  MoreVertical,
+  Check,
+  // Calendar,
+  Bot,
+  BotOff,
+} from "lucide-react";
 import { Dropdown, Button, Switch, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import type { Donor } from "../../types/types";
@@ -21,7 +29,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onDonorInfoClick,
   currentStatus,
   onStatusChange,
-  onScheduleClick,
+  // onScheduleClick,
   aiAutoResponseEnabled = true,
   onAiToggleChange,
 }) => {
@@ -151,8 +159,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
 
         {onAiToggleChange && (
-          <Tooltip 
-            title={aiAutoResponseEnabled ? "IA automática ativada" : "IA automática desativada"}
+          <Tooltip
+            title={
+              aiAutoResponseEnabled
+                ? "IA automática ativada"
+                : "IA automática desativada"
+            }
             placement="bottom"
           >
             <div className="flex items-center gap-2">
@@ -172,7 +184,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </Tooltip>
         )}
 
-        {onScheduleClick && (
+        {/* {onScheduleClick && (
           <Button
             type="primary"
             size="small"
@@ -182,7 +194,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           >
             Agendar
           </Button>
-        )}
+        )} */}
 
         {onStatusChange && (
           <Dropdown
