@@ -49,6 +49,9 @@ interface ChatStoreState {
   activeConversationId: string | null;
 
   unreadCount: Record<string, number>;
+
+  // Callback para notificar componentes externos sobre refresh necessário
+  onRefreshNeeded: (() => void) | null;
 }
 
 interface ChatStoreActions {
@@ -123,6 +126,10 @@ interface ChatStoreActions {
   setActiveConversation: (conversationId: string | null) => void;
   getTypingUsers: (conversationId: string) => string[];
 
+  // Callback management
+  setOnRefreshNeeded: (callback: (() => void) | null) => void;
+  triggerRefreshNeeded: () => void;
+
   // Utilitários
   getFilteredChats: () => Chat[];
   clearError: () => void;
@@ -148,6 +155,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     onlineUsers: new Set(),
     activeConversationId: null,
     unreadCount: {},
+    onRefreshNeeded: null,
 
     createUnreadCount: (conversationCounters: Record<string, number>) => {
       set({
@@ -351,9 +359,15 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
 
     // Refresh das conversas
     refreshConversations: async () => {
+      // Em vez de fazer a API call aqui, notificar o componente externo
       const state = get();
-      set({ currentPage: 0, hasMore: true, chats: [] });
-      await get().loadConversations(state.currentStatus, 0);
+      if (state.onRefreshNeeded) {
+        state.onRefreshNeeded();
+      } else {
+        // Fallback para compatibilidade se não há callback registrado
+        set({ currentPage: 0, hasMore: true, chats: [] });
+        await get().loadConversations(state.currentStatus, 0);
+      }
     },
 
     // Envio de mensagens com optimistic updates
@@ -1010,6 +1024,18 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
       }
 
       return activeTyping.map((u) => u.userName);
+    },
+
+    // Callback management
+    setOnRefreshNeeded: (callback: (() => void) | null) => {
+      set({ onRefreshNeeded: callback });
+    },
+
+    triggerRefreshNeeded: () => {
+      const state = get();
+      if (state.onRefreshNeeded) {
+        state.onRefreshNeeded();
+      }
     },
 
     // Utilitários

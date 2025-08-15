@@ -147,7 +147,7 @@ export const BloodCenterChat: React.FC = () => {
   ]);
 
   // Chat store para mensagens em tempo real
-  const { messagesCache, updateUnreadCountBulk, toggleAiAutoResponse } =
+  const { messagesCache, updateUnreadCountBulk, toggleAiAutoResponse, setOnRefreshNeeded } =
     useChatStore();
 
   // Combinar mensagens locais (enviadas) com mensagens do WebSocket (recebidas)
@@ -649,6 +649,22 @@ export const BloodCenterChat: React.FC = () => {
     },
     [donors, allContacts, updateState]
   );
+
+  // Registrar callback no store para refresh quando WebSocket precisar
+  useEffect(() => {
+    const handleRefreshNeeded = () => {
+      console.log("🔄 Store solicitou refresh das conversações");
+      callLoadConversations({ reset: true, status: currentStatus });
+    };
+
+    // Registrar callback no store
+    setOnRefreshNeeded(handleRefreshNeeded);
+
+    // Cleanup: remover callback ao desmontar
+    return () => {
+      setOnRefreshNeeded(null);
+    };
+  }, [callLoadConversations, currentStatus, setOnRefreshNeeded]);
 
   // Carregar dados ao montar componente
   useEffect(() => {
