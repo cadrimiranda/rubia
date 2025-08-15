@@ -92,6 +92,12 @@ export const BloodCenterChat: React.FC = () => {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null
   );
+  const [statusStats, setStatusStats] = useState({
+    entrada: 0,
+    esperando: 0,
+    finalizados: 0,
+    total: 0
+  });
   const [currentDraftMessage, setCurrentDraftMessage] =
     useState<MessageDTO | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
@@ -237,10 +243,21 @@ export const BloodCenterChat: React.FC = () => {
     }
   }, []);
 
-  // Carregar campanhas no mount
+  // Carregar estatísticas de conversas por status
+  const loadStatusStats = React.useCallback(async () => {
+    try {
+      const stats = await conversationApi.getStats();
+      setStatusStats(stats);
+    } catch (error) {
+      console.error("❌ Erro ao carregar estatísticas:", error);
+    }
+  }, []);
+
+  // Carregar campanhas e stats no mount
   useEffect(() => {
     loadCampaigns();
-  }, [loadCampaigns]);
+    loadStatusStats();
+  }, [loadCampaigns, loadStatusStats]);
 
   const updateState = React.useCallback((updates: Partial<ChatState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -669,8 +686,9 @@ export const BloodCenterChat: React.FC = () => {
   // Registrar callback no store para refresh quando WebSocket precisar
   useEffect(() => {
     const handleRefreshNeeded = () => {
-      console.log("🔄 Store solicitou refresh das conversações");
+      console.log("🔄 Store solicitou refresh das conversações e stats");
       callLoadConversations({ reset: true, status: currentStatus });
+      loadStatusStats(); // Atualizar contadores das abas
     };
 
     // Registrar callback no store
@@ -680,7 +698,7 @@ export const BloodCenterChat: React.FC = () => {
     return () => {
       setOnRefreshNeeded(null);
     };
-  }, [callLoadConversations, currentStatus, setOnRefreshNeeded]);
+  }, [callLoadConversations, currentStatus, setOnRefreshNeeded, loadStatusStats]);
 
   // Carregar dados ao montar componente
   useEffect(() => {
@@ -1800,12 +1818,14 @@ export const BloodCenterChat: React.FC = () => {
     } else if (wasInConfiguration) {
       callLoadConversations({ reset: true });
       loadCampaigns();
+      loadStatusStats();
       setWasInConfiguration(false);
     }
   }, [
     state.showConfiguration,
     callLoadConversations,
     loadCampaigns,
+    loadStatusStats,
     wasInConfiguration,
   ]);
 
@@ -1849,6 +1869,7 @@ export const BloodCenterChat: React.FC = () => {
         hasMorePages={hasMorePages}
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMoreConversations}
+        statusStats={statusStats}
       />
       <NewChatModal
         show={state.showNewChatModal}

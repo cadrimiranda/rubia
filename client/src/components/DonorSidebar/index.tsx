@@ -30,6 +30,12 @@ interface DonorSidebarProps {
   hasMorePages?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  statusStats?: {
+    entrada: number;
+    esperando: number;
+    finalizados: number;
+    total: number;
+  };
 }
 
 export const DonorSidebar: React.FC<DonorSidebarProps> = ({
@@ -54,6 +60,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
   hasMorePages = false,
   isLoadingMore = false,
   onLoadMore,
+  statusStats,
 }) => {
   const activeDonors = donors.filter(
     (d) => d.lastMessage || d.hasActiveConversation
@@ -113,6 +120,7 @@ export const DonorSidebar: React.FC<DonorSidebarProps> = ({
         <ConversationsStatuses
           currentStatus={currentStatus}
           onStatusChange={onStatusChange}
+          statusStats={statusStats}
         />
         <div className="space-y-2">
           <SearchConversation

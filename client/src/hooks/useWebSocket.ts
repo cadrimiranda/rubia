@@ -75,11 +75,34 @@ export const useWebSocket = (): UseWebSocketReturn => {
         // Adicionar mensagem ao cache
         addMessage(conversationId, messageData);
 
-        if (conversationExists) {
-          // Se a conversa existe, apenas atualizar
+        // Verificar se a conversa deve ser movida para "entrada"
+        const shouldMoveToEntrada = message.conversation.status !== "ENTRADA";
+        
+        if (shouldMoveToEntrada) {
+          console.log(
+            `📥 Movendo conversa ${conversationId} de ${message.conversation.status} para ENTRADA devido à nova mensagem`
+          );
+          
+          // Importar API dinamicamente para evitar dependência circular
+          import("../api/services/conversationApi").then(async ({ conversationApi }) => {
+            try {
+              await conversationApi.changeStatus(conversationId, "ENTRADA");
+              console.log(`✅ Conversa ${conversationId} movida para ENTRADA`);
+              
+              // Sempre fazer refresh após mover para ENTRADA para atualizar todas as abas
+              refreshConversations();
+            } catch (error) {
+              console.error(`❌ Erro ao mover conversa ${conversationId} para ENTRADA:`, error);
+              
+              // Mesmo com erro na mudança de status, fazer refresh para mostrar a mensagem
+              refreshConversations();
+            }
+          });
+        } else if (conversationExists) {
+          // Se a conversa já está em ENTRADA e existe na lista, apenas atualizar
           updateConversation(conversationId, message.conversation);
         } else {
-          // Se a conversa não existe, recarregar lista para mostrar em tempo real
+          // Se a conversa não existe na lista atual, recarregar para mostrar
           console.log(
             "Conversa não encontrada na lista atual, recarregando...",
             conversationId
