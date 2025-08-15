@@ -6,7 +6,7 @@ import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import com.ruby.rubia_server.core.repository.ConversationLastMessageRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
-import com.ruby.rubia_server.core.service.AIDraftService;
+import com.ruby.rubia_server.core.service.AIAutoMessageService;
 import com.ruby.rubia_server.core.service.CqrsMetricsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 class UnifiedMessageListenerTest {
 
     @Mock
-    private AIDraftService aiDraftService;
+    private AIAutoMessageService aiAutoMessageService;
     
     @Mock
     private MessageRepository messageRepository;
@@ -79,7 +79,7 @@ class UnifiedMessageListenerTest {
         );
         
         // Then - Verify draft generation was attempted
-        verify(aiDraftService).generateDraftResponse(eq(conversationId), eq("Test message"));
+        verify(aiAutoMessageService).generateDraftResponse(eq(conversationId), eq("Test message"));
         
         // Then - Verify metrics were recorded
         verify(metricsService).recordOperationDuration(eq("UPDATE"), anyLong());
@@ -124,7 +124,7 @@ class UnifiedMessageListenerTest {
         );
         
         // Then - Verify draft generation was NOT attempted
-        verify(aiDraftService, never()).generateDraftResponse(any(), any());
+        verify(aiAutoMessageService, never()).generateDraftResponse(any(), any());
     }
 
     @Test
@@ -160,7 +160,7 @@ class UnifiedMessageListenerTest {
         verify(conversationLastMessageRepository, never()).updateLastMessage(any(), any(), any(), any());
         
         // Then - Verify draft generation was attempted
-        verify(aiDraftService).generateDraftResponse(eq(conversationId), eq("Test message"));
+        verify(aiAutoMessageService).generateDraftResponse(eq(conversationId), eq("Test message"));
         
         // Then - Verify metrics were recorded
         verify(metricsService).recordOperationDuration(eq("INSERT"), anyLong());

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 @Transactional
-public class AIDraftService {
+public class AIAutoMessageService {
     
     private final MessageDraftRepository messageDraftRepository;
     private final ConversationRepository conversationRepository;

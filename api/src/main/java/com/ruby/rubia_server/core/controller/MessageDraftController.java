@@ -1,7 +1,7 @@
 package com.ruby.rubia_server.core.controller;
 
 import com.ruby.rubia_server.core.dto.*;
-import com.ruby.rubia_server.core.service.AIDraftService;
+import com.ruby.rubia_server.core.service.AIAutoMessageService;
 import com.ruby.rubia_server.core.util.CompanyContextUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.UUID;
 @Slf4j
 public class MessageDraftController {
     
-    private final AIDraftService aiDraftService;
+    private final AIAutoMessageService aiAutoMessageService;
     private final CompanyContextUtil companyContextUtil;
     
     /**
@@ -31,7 +31,7 @@ public class MessageDraftController {
     @PostMapping("/generate")
     public ResponseEntity<MessageDTO> generateDraft(@Valid @RequestBody GenerateDraftRequest request) {
         try {
-            MessageDTO draft = aiDraftService.generateDraftResponse(
+            MessageDTO draft = aiAutoMessageService.generateDraftResponse(
                 request.getConversationId(), 
                 request.getUserMessage()
             );
@@ -55,7 +55,7 @@ public class MessageDraftController {
     @PostMapping
     public ResponseEntity<MessageDraftDTO> createDraft(@Valid @RequestBody CreateMessageDraftDTO createDTO) {
         try {
-            MessageDraftDTO draft = aiDraftService.createDraft(createDTO);
+            MessageDraftDTO draft = aiAutoMessageService.createDraft(createDTO);
             
             log.info("Created draft: {}", draft.getId());
             return ResponseEntity.ok(draft);
@@ -72,7 +72,7 @@ public class MessageDraftController {
     @GetMapping("/conversation/{conversationId}")
     public ResponseEntity<List<MessageDraftDTO>> getDraftsByConversation(@PathVariable UUID conversationId) {
         try {
-            List<MessageDraftDTO> drafts = aiDraftService.getDraftsByConversation(conversationId);
+            List<MessageDraftDTO> drafts = aiAutoMessageService.getDraftsByConversation(conversationId);
             
             log.info("Retrieved {} drafts for conversation: {}", drafts.size(), conversationId);
             return ResponseEntity.ok(drafts);
@@ -98,7 +98,7 @@ public class MessageDraftController {
             Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
             
-            Page<MessageDraftDTO> drafts = aiDraftService.getPendingDrafts(companyId, pageable);
+            Page<MessageDraftDTO> drafts = aiAutoMessageService.getPendingDrafts(companyId, pageable);
             
             log.info("Retrieved {} pending drafts for company: {}", drafts.getTotalElements(), companyId);
             return ResponseEntity.ok(drafts);
@@ -119,7 +119,7 @@ public class MessageDraftController {
         
         try {
             reviewDTO.setAction(com.ruby.rubia_server.core.entity.DraftStatus.APPROVED);
-            MessageDTO message = aiDraftService.approveDraft(draftId, reviewDTO);
+            MessageDTO message = aiAutoMessageService.approveDraft(draftId, reviewDTO);
             
             log.info("Approved draft: {}", draftId);
             
@@ -148,7 +148,7 @@ public class MessageDraftController {
         
         try {
             reviewDTO.setAction(com.ruby.rubia_server.core.entity.DraftStatus.EDITED);
-            MessageDTO message = aiDraftService.approveDraft(draftId, reviewDTO);
+            MessageDTO message = aiAutoMessageService.approveDraft(draftId, reviewDTO);
             
             log.info("Edited and approved draft: {}", draftId);
             
@@ -177,7 +177,7 @@ public class MessageDraftController {
         
         try {
             reviewDTO.setAction(com.ruby.rubia_server.core.entity.DraftStatus.REJECTED);
-            aiDraftService.rejectDraft(draftId, reviewDTO);
+            aiAutoMessageService.rejectDraft(draftId, reviewDTO);
             
             log.info("Rejected draft: {}", draftId);
             return ResponseEntity.ok().build();
@@ -198,7 +198,7 @@ public class MessageDraftController {
     public ResponseEntity<DraftStatsDTO> getDraftStats() {
         try {
             UUID companyId = companyContextUtil.getCurrentCompanyId();
-            DraftStatsDTO stats = aiDraftService.getDraftStats(companyId);
+            DraftStatsDTO stats = aiAutoMessageService.getDraftStats(companyId);
             
             log.info("Retrieved draft stats for company: {}", companyId);
             return ResponseEntity.ok(stats);

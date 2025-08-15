@@ -8,7 +8,7 @@ import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import com.ruby.rubia_server.core.repository.ConversationLastMessageRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
-import com.ruby.rubia_server.core.service.AIDraftService;
+import com.ruby.rubia_server.core.service.AIAutoMessageService;
 import com.ruby.rubia_server.core.service.CqrsMetricsService;
 import com.ruby.rubia_server.core.service.OpenAIService;
 import com.ruby.rubia_server.core.service.ConversationService;
@@ -44,7 +44,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class UnifiedMessageListener {
     
-    private final AIDraftService aiDraftService;
+    private final AIAutoMessageService aiAutoMessageService;
     private final MessageRepository messageRepository;
     private final ConversationLastMessageRepository conversationLastMessageRepository;
     private final CqrsMetricsService metricsService;
@@ -75,11 +75,9 @@ public class UnifiedMessageListener {
         log.info("Processing MessageCreatedEvent (UNIFIED) - conversationId: {}, messageId: {}", 
                 event.getConversationId(), event.getMessageId());
         
-        // 1. PRIMEIRO: Atualizar conversation_last_message (CQRS)
         updateConversationLastMessage(event);
         
-        // 2. SEGUNDO: Processar draft de IA se aplicável
-        processAIDraft(event);
+        processAIMessage(event);
     }
     
     /**
@@ -130,7 +128,7 @@ public class UnifiedMessageListener {
     /**
      * Processa geração de draft de IA com debounce para agrupar mensagens sequenciais
      */
-    private void processAIDraft(MessageCreatedEvent event) {
+    private void processAIMessage(MessageCreatedEvent event) {
         try {
             // Busca a mensagem completa pelo ID
             Message message = messageRepository.findById(event.getMessageId())
@@ -276,7 +274,7 @@ public class UnifiedMessageListener {
                     recentMessages.size(), combinedContent);
             
             // Gerar resposta para o conteúdo combinado
-            MessageDTO draft = aiDraftService.generateDraftResponse(conversationId, combinedContent);
+            MessageDTO draft = aiAutoMessageService.generateDraftResponse(conversationId, combinedContent);
             
             if (draft != null) {
                 log.info("✅ Successfully generated grouped response: {} for conversation: {}", 
@@ -338,8 +336,8 @@ public class UnifiedMessageListener {
             log.info("🗣️ Audio transcribed: '{}' for message: {}", transcription, audioMessage.getId());
             
             // 3. Processar texto transcrito com IA do hemocentro
-            // A normalização será feita dentro do AIDraftService.generateDraftResponse()
-            MessageDTO response = aiDraftService.generateDraftResponse(
+            // A normalização será feita dentro do aiAutoMessageService.generateDraftResponse()
+            MessageDTO response = aiAutoMessageService.generateDraftResponse(
                 audioMessage.getConversation().getId(), 
                 transcription
             );
