@@ -79,7 +79,7 @@ public class UnifiedMessageListener {
         updateConversationLastMessage(event);
         
         // 2. SEGUNDO: Processar draft de IA se aplicável
-        // processAIDraft(event);
+        processAIDraft(event);
     }
     
     /**
@@ -164,7 +164,8 @@ public class UnifiedMessageListener {
             // NOVO: Detectar se é mensagem de áudio
             if (message.getMedia() != null && isAudioMessage(message)) {
                 log.info("🎤 Processing audio message for blood center: {}", message.getId());
-                processAudioForBloodCenter(message);
+                UUID companyId = message.getConversation().getCompany().getId(); // Acessar dentro da sessão ativa
+                processAudioForBloodCenter(message, companyId);
                 return;
             }
             
@@ -193,27 +194,35 @@ public class UnifiedMessageListener {
      */
     private void scheduleDebounceProcessing(Message message) {
         UUID conversationId = message.getConversation().getId();
+        UUID companyId = message.getConversation().getCompany().getId(); // Acessar dentro da sessão ativa
         String debounceKey = DEBOUNCE_KEY_PREFIX + conversationId;
         
         log.debug("⏰ Scheduling debounce processing for conversation: {} with {}s delay", 
                 conversationId, DEBOUNCE_DELAY_SECONDS);
         
-        // Armazenar no Redis com TTL
-        redisTemplate.opsForValue().set(debounceKey, "pending", DEBOUNCE_DELAY_SECONDS, TimeUnit.SECONDS);
+        // Cancelar processamento anterior se existir e agendar novo
+        String previousStatus = redisTemplate.opsForValue().getAndSet(debounceKey, "pending");
+        
+        // Definir TTL maior que o delay para evitar expiração automática
+        redisTemplate.expire(debounceKey, DEBOUNCE_DELAY_SECONDS + 5, TimeUnit.SECONDS);
+        
+        if (previousStatus != null) {
+            log.debug("⏰ Previous debounce found for conversation: {}, extending delay", conversationId);
+        }
         
         // Agendar processamento após o delay
         new Thread(() -> {
             try {
                 Thread.sleep(DEBOUNCE_DELAY_SECONDS * 1000);
                 
-                // Verificar se ainda existe a chave (não foi cancelada por nova mensagem)
-                String status = redisTemplate.opsForValue().get(debounceKey);
-                if ("pending".equals(status)) {
-                    // Remover chave e processar
-                    redisTemplate.delete(debounceKey);
-                    processGroupedMessages(conversationId);
+                // Tentar remover a chave atomicamente - só processa se conseguir remover
+                String removedValue = redisTemplate.opsForValue().getAndDelete(debounceKey);
+                if ("pending".equals(removedValue)) {
+                    // Conseguiu remover a chave = não houve nova mensagem
+                    processGroupedMessages(conversationId, companyId);
                 } else {
-                    log.debug("⏰ Debounce cancelled for conversation: {} (new message received)", conversationId);
+                    // Chave já foi removida/alterada = houve nova mensagem ou expirou
+                    log.debug("⏰ Debounce cancelled for conversation: {} (key was already removed/changed)", conversationId);
                 }
                 
             } catch (InterruptedException e) {
@@ -238,7 +247,7 @@ public class UnifiedMessageListener {
     /**
      * Processa mensagens agrupadas da conversa após o debounce
      */
-    private void processGroupedMessages(UUID conversationId) {
+    private void processGroupedMessages(UUID conversationId, UUID companyId) {
         try {
             log.info("🔗 Processing grouped messages for conversation: {}", conversationId);
             
@@ -273,9 +282,7 @@ public class UnifiedMessageListener {
                 log.info("✅ Successfully generated grouped response: {} for conversation: {}", 
                         draft.getId(), conversationId);
                 
-                // Incrementar contador de mensagens AI usadas
-                Conversation conversation = recentMessages.get(0).getConversation();
-                UUID companyId = conversation.getCompany().getId();
+                // Incrementar contador de mensagens AI usadas (usando companyId passado como parâmetro)
                 incrementAiUsageCounter(conversationId, companyId, "grouped text response");
             } else {
                 log.debug("No draft generated for grouped messages in conversation: {}", conversationId);
@@ -304,7 +311,7 @@ public class UnifiedMessageListener {
     /**
      * Processa áudio para gerar resposta automática do hemocentro
      */
-    private void processAudioForBloodCenter(Message audioMessage) {
+    private void processAudioForBloodCenter(Message audioMessage, UUID companyId) {
         try {
             log.info("🎤 Processing audio message for blood center: {}", audioMessage.getId());
             
@@ -341,9 +348,8 @@ public class UnifiedMessageListener {
                 log.info("✅ Blood center response generated automatically from audio transcription for message: {}", 
                     audioMessage.getId());
                 
-                // Incrementar contador de mensagens AI usadas
+                // Incrementar contador de mensagens AI usadas (usando companyId passado como parâmetro)
                 UUID conversationId = audioMessage.getConversation().getId();
-                UUID companyId = audioMessage.getConversation().getCompany().getId();
                 incrementAiUsageCounter(conversationId, companyId, "audio response");
             } else {
                 log.debug("No blood center response generated from audio for message: {}", audioMessage.getId());
