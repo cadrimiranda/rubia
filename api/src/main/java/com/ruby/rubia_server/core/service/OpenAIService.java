@@ -12,7 +12,12 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +30,7 @@ public class OpenAIService {
 
     private final OpenAiChatModel chatModel;
     private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
     
     @Value("${ai.default-model:gpt-4o-mini}")
     private String defaultModel;
@@ -34,6 +40,9 @@ public class OpenAIService {
     
     @Value("${ai.default-temperature:0.7}")
     private Double defaultTemperature;
+    
+    @Value("${spring.ai.openai.api-key}")
+    private String openAiApiKey;
 
     public String enhanceTemplate(String prompt, String modelName, Double temperature, Integer maxTokens) {
         try {
@@ -193,5 +202,62 @@ public class OpenAIService {
             log.warn("OpenAI service is not available: {}", e.getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Transcreve áudio usando OpenAI Whisper API
+     */
+    public String transcribeAudio(byte[] audioData, String language) {
+        try {
+            log.debug("Transcribing audio with OpenAI Whisper - Language: {}, Size: {} bytes", 
+                     language, audioData.length);
+            
+            // Preparar request multipart para Whisper API
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", new ByteArrayResource(audioData) {
+                @Override
+                public String getFilename() { 
+                    return "audio.ogg"; // Z-API normalmente envia OGG
+                }
+            });
+            body.add("model", "whisper-1");
+            body.add("language", language);
+            body.add("response_format", "json");
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.setBearerAuth(openAiApiKey);
+            
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+            
+            ResponseEntity<TranscriptionResponse> response = restTemplate.postForEntity(
+                "https://api.openai.com/v1/audio/transcriptions",
+                request,
+                TranscriptionResponse.class
+            );
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                String transcription = response.getBody().getText();
+                log.info("Audio transcribed successfully: '{}'", transcription);
+                return transcription;
+            }
+            
+            log.warn("OpenAI Whisper response was empty or failed");
+            return null;
+            
+        } catch (Exception e) {
+            log.error("Error transcribing audio with OpenAI Whisper: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+    
+    /**
+     * DTO para resposta da API de transcrição do OpenAI
+     */
+    public static class TranscriptionResponse {
+        private String text;
+        
+        public String getText() { return text; }
+        public void setText(String text) { this.text = text; }
     }
 }

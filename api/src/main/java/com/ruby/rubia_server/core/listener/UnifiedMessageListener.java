@@ -9,6 +9,8 @@ import com.ruby.rubia_server.core.repository.ConversationLastMessageRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.service.AIDraftService;
 import com.ruby.rubia_server.core.service.CqrsMetricsService;
+import com.ruby.rubia_server.core.service.OpenAIService;
+import org.springframework.web.client.RestTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.annotation.Backoff;
@@ -36,6 +38,8 @@ public class UnifiedMessageListener {
     private final MessageRepository messageRepository;
     private final ConversationLastMessageRepository conversationLastMessageRepository;
     private final CqrsMetricsService metricsService;
+    private final OpenAIService openAIService;
+    private final RestTemplate restTemplate;
     
     /**
      * Processa MessageCreatedEvent de forma unificada:
@@ -126,9 +130,16 @@ public class UnifiedMessageListener {
                 return;
             }
             
+            // NOVO: Detectar se é mensagem de áudio
+            if (message.getMedia() != null && isAudioMessage(message)) {
+                log.info("🎤 Processing audio message for blood center: {}", message.getId());
+                processAudioForBloodCenter(message);
+                return;
+            }
+            
             // Só gera draft para mensagens de texto (sem mídia)
             if (message.getMedia() != null) {
-                log.debug("Skipping draft generation for media message: {}", message.getId());
+                log.debug("Skipping draft generation for non-audio media message: {}", message.getId());
                 return;
             }
             
@@ -156,6 +167,91 @@ public class UnifiedMessageListener {
             
         } catch (Exception e) {
             log.error("Error generating draft for message: {}", event.getMessageId(), e);
+        }
+    }
+    
+    /**
+     * Detecta se a mensagem contém áudio
+     */
+    private boolean isAudioMessage(Message message) {
+        if (message.getMedia() == null || message.getMedia().getMimeType() == null) {
+            return false;
+        }
+        
+        String mimeType = message.getMedia().getMimeType().toLowerCase();
+        return mimeType.startsWith("audio/") || 
+               mimeType.equals("application/ogg") || 
+               mimeType.contains("voice") ||
+               mimeType.contains("opus");
+    }
+    
+    /**
+     * Processa áudio para gerar resposta automática do hemocentro
+     */
+    private void processAudioForBloodCenter(Message audioMessage) {
+        try {
+            log.info("🎤 Processing audio message for blood center: {}", audioMessage.getId());
+            
+            // 1. Baixar áudio da URL
+            String audioUrl = audioMessage.getMedia().getFileUrl();
+            if (audioUrl == null || audioUrl.trim().isEmpty()) {
+                log.warn("Audio URL is empty for message: {}", audioMessage.getId());
+                return;
+            }
+            
+            byte[] audioData = downloadAudio(audioUrl);
+            if (audioData == null || audioData.length == 0) {
+                log.warn("Failed to download audio for message: {}", audioMessage.getId());
+                return;
+            }
+            
+            // 2. Transcrever com OpenAI Whisper
+            String transcription = openAIService.transcribeAudio(audioData, "pt");
+            if (transcription == null || transcription.trim().isEmpty()) {
+                log.warn("Failed to transcribe audio for message: {}", audioMessage.getId());
+                return;
+            }
+            
+            log.info("🗣️ Audio transcribed: '{}' for message: {}", transcription, audioMessage.getId());
+            
+            // 3. Processar texto transcrito com IA do hemocentro
+            MessageDTO response = aiDraftService.generateDraftResponse(
+                audioMessage.getConversation().getId(), 
+                transcription
+            );
+            
+            if (response != null) {
+                log.info("✅ Blood center response generated automatically from audio transcription for message: {}", 
+                    audioMessage.getId());
+            } else {
+                log.debug("No blood center response generated from audio for message: {}", audioMessage.getId());
+            }
+            
+        } catch (Exception e) {
+            log.error("Error processing audio for blood center: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Baixa o arquivo de áudio da URL
+     */
+    private byte[] downloadAudio(String audioUrl) {
+        try {
+            log.debug("Downloading audio from URL: {}", audioUrl);
+            
+            byte[] audioData = restTemplate.getForObject(audioUrl, byte[].class);
+            
+            if (audioData != null) {
+                log.debug("Audio downloaded successfully: {} bytes", audioData.length);
+                return audioData;
+            } else {
+                log.warn("Audio download returned null data");
+                return null;
+            }
+            
+        } catch (Exception e) {
+            log.error("Error downloading audio from URL: {}: {}", audioUrl, e.getMessage(), e);
+            return null;
         }
     }
     
