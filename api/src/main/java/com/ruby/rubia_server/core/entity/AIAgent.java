@@ -52,6 +52,10 @@ public class AIAgent {
     @Builder.Default
     private BigDecimal temperature = BigDecimal.valueOf(0.7); // Parâmetro de criatividade da IA (0.0 a 1.0)
 
+    @Column(name = "ai_message_limit", nullable = false)
+    @Builder.Default
+    private Integer aiMessageLimit = 10; // Limite de mensagens que este agente pode responder por conversa
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true; // Se o agente está ativo e disponível para uso

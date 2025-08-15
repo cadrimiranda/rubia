@@ -68,10 +68,6 @@ public class Conversation {
     @Builder.Default
     private Boolean aiAutoResponseEnabled = true;
 
-    @Column(name = "ai_message_limit", nullable = false)
-    @Builder.Default
-    private Integer aiMessageLimit = 5;
-
     @Column(name = "ai_messages_used", nullable = false)
     @Builder.Default
     private Integer aiMessagesUsed = 0;

@@ -12,6 +12,8 @@ import com.ruby.rubia_server.core.service.AIDraftService;
 import com.ruby.rubia_server.core.service.CqrsMetricsService;
 import com.ruby.rubia_server.core.service.OpenAIService;
 import com.ruby.rubia_server.core.service.ConversationService;
+import com.ruby.rubia_server.core.service.AIAgentService;
+import com.ruby.rubia_server.core.entity.AIAgent;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +52,7 @@ public class UnifiedMessageListener {
     private final RestTemplate restTemplate;
     private final RedisTemplate<String, String> redisTemplate;
     private final ConversationService conversationService;
+    private final AIAgentService aiAgentService;
     
     // Configurações do debounce
     private static final long DEBOUNCE_DELAY_SECONDS = 8; // Aguarda 3 segundos
@@ -151,9 +154,10 @@ public class UnifiedMessageListener {
                 return;
             }
             
-            if (conversation.getAiMessagesUsed() >= conversation.getAiMessageLimit()) {
+            Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(conversation.getCompany().getId());
+            if (conversation.getAiMessagesUsed() >= aiMessageLimit) {
                 log.debug("Skipping draft generation - AI message limit reached ({}/{}) for conversation: {}", 
-                    conversation.getAiMessagesUsed(), conversation.getAiMessageLimit(), conversation.getId());
+                    conversation.getAiMessagesUsed(), aiMessageLimit, conversation.getId());
                 return;
             }
             
@@ -218,7 +222,7 @@ public class UnifiedMessageListener {
             }
         }).start();
     }
-    
+
     /**
      * Incrementa contador de mensagens AI usadas para uma conversa
      */

@@ -21,6 +21,7 @@ import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.repository.CampaignRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.entity.AIAgent;
 import com.ruby.rubia_server.core.dto.MessageDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,7 @@ public class ConversationService {
     private final CompanyRepository companyRepository;
     private final CampaignRepository campaignRepository;
     private final MessageRepository messageRepository;
+    private final AIAgentService aiAgentService;
     
     @Autowired
     private UnreadMessageCountService unreadCountService;
@@ -162,7 +164,7 @@ public class ConversationService {
                 .unreadCount(0L)
                 .chatLid(saved.getChatLid())
                 .aiAutoResponseEnabled(saved.getAiAutoResponseEnabled())
-                .aiMessageLimit(saved.getAiMessageLimit())
+                .aiMessageLimit(aiAgentService.getAiMessageLimitForCompany(companyId))
                 .aiMessagesUsed(saved.getAiMessagesUsed())
                 .aiLimitReachedAt(saved.getAiLimitReachedAt())
                 .build();
@@ -484,7 +486,7 @@ public class ConversationService {
                         .map(Integer::longValue).orElse(0L) : 0L)
                 .chatLid(conversation.getChatLid())
                 .aiAutoResponseEnabled(conversation.getAiAutoResponseEnabled())
-                .aiMessageLimit(conversation.getAiMessageLimit())
+                .aiMessageLimit(aiAgentService.getAiMessageLimitForCompany(conversation.getCompany().getId()))
                 .aiMessagesUsed(conversation.getAiMessagesUsed())
                 .aiLimitReachedAt(conversation.getAiLimitReachedAt())
                 .build();
@@ -538,6 +540,7 @@ public class ConversationService {
         conversationRepository.save(conversation);
     }
 
+
     /**
      * Increment AI message usage counter and disable AI if limit reached
      */
@@ -552,21 +555,24 @@ public class ConversationService {
             throw new IllegalArgumentException("Conversation does not belong to user's company");
         }
         
+        // Buscar limite do AIAgent da empresa
+        Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(companyId);
+        
         // Incrementar contador
         conversation.setAiMessagesUsed(conversation.getAiMessagesUsed() + 1);
         
         // Verificar se atingiu o limite
-        if (conversation.getAiMessagesUsed() >= conversation.getAiMessageLimit()) {
+        if (conversation.getAiMessagesUsed() >= aiMessageLimit) {
             conversation.setAiAutoResponseEnabled(false);
             conversation.setAiLimitReachedAt(LocalDateTime.now());
             log.info("AI auto-response disabled for conversation {} - limit reached ({}/{})", 
-                    conversationId, conversation.getAiMessagesUsed(), conversation.getAiMessageLimit());
+                    conversationId, conversation.getAiMessagesUsed(), aiMessageLimit);
         }
         
         conversationRepository.save(conversation);
         
         log.debug("AI message usage updated: {}/{} for conversation: {}", 
-                conversation.getAiMessagesUsed(), conversation.getAiMessageLimit(), conversationId);
+                conversation.getAiMessagesUsed(), aiMessageLimit, conversationId);
     }
 
     /**
@@ -595,42 +601,6 @@ public class ConversationService {
         return toDTO(conversation);
     }
 
-    /**
-     * Set custom AI message limit for a conversation
-     */
-    public ConversationDTO setAiMessageLimit(UUID conversationId, Integer newLimit, UUID companyId) {
-        log.info("Setting AI message limit to {} for conversation: {}", newLimit, conversationId);
-        
-        if (newLimit < 1) {
-            throw new IllegalArgumentException("AI message limit must be at least 1");
-        }
-        
-        Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
-        
-        // Verificar se a conversa pertence à empresa do usuário
-        if (!conversation.getCompany().getId().equals(companyId)) {
-            throw new IllegalArgumentException("Conversation does not belong to user's company");
-        }
-        
-        conversation.setAiMessageLimit(newLimit);
-        
-        // Se o novo limite for menor que o uso atual, desativar AI
-        if (conversation.getAiMessagesUsed() >= newLimit) {
-            conversation.setAiAutoResponseEnabled(false);
-            if (conversation.getAiLimitReachedAt() == null) {
-                conversation.setAiLimitReachedAt(LocalDateTime.now());
-            }
-            log.info("AI auto-response disabled for conversation {} due to new limit ({} used, {} limit)", 
-                    conversationId, conversation.getAiMessagesUsed(), newLimit);
-        }
-        
-        conversation = conversationRepository.save(conversation);
-        
-        log.info("AI message limit updated to {} for conversation: {}", newLimit, conversationId);
-        
-        return toDTO(conversation);
-    }
 
     /**
      * Toggle AI auto-response for a specific conversation
@@ -647,10 +617,13 @@ public class ConversationService {
         }
         
         // Se está tentando ativar AI, verificar se não atingiu o limite
-        if (enabled && conversation.getAiMessagesUsed() >= conversation.getAiMessageLimit()) {
-            throw new IllegalArgumentException(
-                String.format("Cannot enable AI auto-response: message limit reached (%d/%d). Reset the limit first.", 
-                    conversation.getAiMessagesUsed(), conversation.getAiMessageLimit()));
+        if (enabled) {
+            Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(companyId);
+            if (conversation.getAiMessagesUsed() >= aiMessageLimit) {
+                throw new IllegalArgumentException(
+                    String.format("Cannot enable AI auto-response: message limit reached (%d/%d). Reset the limit first.", 
+                        conversation.getAiMessagesUsed(), aiMessageLimit));
+            }
         }
         
         conversation.setAiAutoResponseEnabled(enabled);
@@ -658,7 +631,8 @@ public class ConversationService {
         // Se está desativando manualmente, limpar timestamp de limite atingido
         if (!enabled && conversation.getAiLimitReachedAt() != null) {
             // Só limpar se não atingiu o limite por contagem
-            if (conversation.getAiMessagesUsed() < conversation.getAiMessageLimit()) {
+            Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(companyId);
+            if (conversation.getAiMessagesUsed() < aiMessageLimit) {
                 conversation.setAiLimitReachedAt(null);
             }
         }

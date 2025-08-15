@@ -569,28 +569,6 @@ public class ConversationController {
         }
     }
     
-    @PutMapping("/{conversationId}/ai-limit")
-    public ResponseEntity<ConversationDTO> setAiMessageLimit(
-            @PathVariable UUID conversationId,
-            @RequestParam Integer limit) {
-        
-        log.info("Setting AI message limit to {} for conversation: {}", limit, conversationId);
-        
-        try {
-            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
-            ConversationDTO conversation = conversationService.setAiMessageLimit(conversationId, limit, currentCompanyId);
-            
-            log.info("AI message limit set successfully for conversation: {}", conversationId);
-            return ResponseEntity.ok(conversation);
-            
-        } catch (IllegalArgumentException e) {
-            log.warn("Error setting AI message limit: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            log.error("Unexpected error setting AI message limit: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
     
     // Request DTO for sending messages
     @Data

@@ -27,6 +27,7 @@ public class AIAgentDTO {
     private String temperament;
     private Integer maxResponseLength;
     private BigDecimal temperature;
+    private Integer aiMessageLimit;
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

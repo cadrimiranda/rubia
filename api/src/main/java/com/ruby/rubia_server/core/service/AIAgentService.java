@@ -65,6 +65,7 @@ public class AIAgentService {
                 .temperament(createDTO.getTemperament())
                 .maxResponseLength(createDTO.getMaxResponseLength())
                 .temperature(createDTO.getTemperature())
+                .aiMessageLimit(createDTO.getAiMessageLimit())
                 .isActive(createDTO.getIsActive())
                 .build();
 
@@ -98,6 +99,22 @@ public class AIAgentService {
     public List<AIAgent> getActiveAIAgentsByCompanyId(UUID companyId) {
         log.debug("Fetching active AI agents for company: {}", companyId);
         return aiAgentRepository.findActiveByCompanyId(companyId);
+    }
+
+    /**
+     * Get AI message limit from active AI agent for the company
+     */
+    @Transactional(readOnly = true)
+    public Integer getAiMessageLimitForCompany(UUID companyId) {
+        try {
+            List<AIAgent> activeAgents = getActiveAIAgentsByCompanyId(companyId);
+            if (!activeAgents.isEmpty()) {
+                return activeAgents.get(0).getAiMessageLimit();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get AI agent limit for company {}, using default: {}", companyId, e.getMessage());
+        }
+        return 10; // Default fallback matching current default
     }
 
     @Transactional(readOnly = true)
@@ -140,6 +157,9 @@ public class AIAgentService {
         }
         if (updateDTO.getTemperature() != null) {
             aiAgent.setTemperature(updateDTO.getTemperature());
+        }
+        if (updateDTO.getAiMessageLimit() != null) {
+            aiAgent.setAiMessageLimit(updateDTO.getAiMessageLimit());
         }
         if (updateDTO.getIsActive() != null) {
             aiAgent.setIsActive(updateDTO.getIsActive());
