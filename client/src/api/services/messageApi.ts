@@ -85,9 +85,13 @@ export class MessageAPI {
     return apiClient.delete<void>(`${this.basePath}/${messageId}`)
   }
 
-  async getUnreadCount(conversationId?: string): Promise<{ count: number }> {
-    const params = conversationId ? { conversationId } : undefined
-    return apiClient.get<{ count: number }>(`${this.basePath}/unread-count`, params)
+  async getUnreadCount(conversationId: string): Promise<{ count: number }> {
+    return apiClient.get<{ count: number }>(`/api/unread-counts/conversation/${conversationId}`)
+  }
+
+  async getUnreadCountsBatch(conversationIds: string[]): Promise<Record<string, number>> {
+    const response = await apiClient.post<Record<string, number>>('/api/unread-counts/conversations', conversationIds)
+    return response
   }
 
   async markConversationAsRead(conversationId: string): Promise<{ updated: number }> {

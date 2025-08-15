@@ -351,10 +351,7 @@ export const BloodCenterChat: React.FC = () => {
           backendStatus as ConversationStatus
         );
 
-        const unreadCount: Record<string, number> = {};
-
         const conversationsAsDonors = response.content.map((conv) => {
-          unreadCount[conv.id] = conv.unreadCount ?? 0;
 
           return {
             id: conv.customerId,
@@ -389,7 +386,26 @@ export const BloodCenterChat: React.FC = () => {
           };
         });
 
-        updateUnreadCountBulk(unreadCount);
+        // Buscar unread counts da API específica usando batch
+        try {
+          const conversationIds = conversationsAsDonors.map(donor => donor.conversationId);
+          const unreadCountMap = await messageApi.getUnreadCountsBatch(conversationIds);
+          updateUnreadCountBulk(unreadCountMap);
+        } catch (error) {
+          console.error("❌ Erro ao buscar unread counts batch:", error);
+          // Fallback para counts individuais em caso de erro
+          const unreadCountMap: Record<string, number> = {};
+          for (const donor of conversationsAsDonors) {
+            try {
+              const { count } = await messageApi.getUnreadCount(donor.conversationId);
+              unreadCountMap[donor.conversationId] = count;
+            } catch (err) {
+              console.error(`❌ Erro ao buscar unread count para ${donor.conversationId}:`, err);
+              unreadCountMap[donor.conversationId] = 0;
+            }
+          }
+          updateUnreadCountBulk(unreadCountMap);
+        }
 
         // Atualizar estado da paginação
         currentPageRef.current = pageToLoad;
