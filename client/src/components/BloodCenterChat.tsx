@@ -95,6 +95,8 @@ export const BloodCenterChat: React.FC = () => {
   const [currentDraftMessage, setCurrentDraftMessage] =
     useState<MessageDTO | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
+  const [aiAutoResponseEnabled, setAiAutoResponseEnabled] =
+    useState<boolean>(true);
 
   // Estados para paginação infinita
   const [hasMorePages, setHasMorePages] = useState(true);
@@ -145,7 +147,8 @@ export const BloodCenterChat: React.FC = () => {
   ]);
 
   // Chat store para mensagens em tempo real
-  const { messagesCache, updateUnreadCountBulk } = useChatStore();
+  const { messagesCache, updateUnreadCountBulk, toggleAiAutoResponse } =
+    useChatStore();
 
   // Combinar mensagens locais (enviadas) com mensagens do WebSocket (recebidas)
   const activeMessages = React.useMemo(() => {
@@ -567,7 +570,20 @@ export const BloodCenterChat: React.FC = () => {
     [donors, state.selectedDonor, updateState]
   );
 
-  // Função para lidar com agendamento
+  const handleAiToggleChange = React.useCallback(
+    async (enabled: boolean) => {
+      if (!state.selectedDonor?.conversationId) return;
+
+      try {
+        await toggleAiAutoResponse(state.selectedDonor.conversationId, enabled);
+        setAiAutoResponseEnabled(enabled);
+      } catch (error) {
+        console.error("Failed to toggle AI auto response:", error);
+      }
+    },
+    [state.selectedDonor, toggleAiAutoResponse]
+  );
+
   const handleSchedule = React.useCallback(
     (scheduleData: {
       type: string;
@@ -871,6 +887,21 @@ export const BloodCenterChat: React.FC = () => {
 
       // Armazenar referência da mensagem DRAFT para o MessageInput
       setCurrentDraftMessage(draftMessage);
+
+      // Carregar o estado do AI para esta conversa
+      if (donor.conversationId) {
+        try {
+          const conversation = await conversationApi.getById(
+            donor.conversationId
+          );
+          setAiAutoResponseEnabled(conversation.aiAutoResponseEnabled ?? true);
+        } catch (error) {
+          console.error("Erro ao carregar configuração de AI:", error);
+          setAiAutoResponseEnabled(true); // Valor padrão em caso de erro
+        }
+      } else {
+        setAiAutoResponseEnabled(true); // Valor padrão para conversas novas
+      }
     },
     [state.messages, state.selectedDonor, updateState]
   );
@@ -1841,6 +1872,8 @@ export const BloodCenterChat: React.FC = () => {
               currentStatus={currentStatus}
               onStatusChange={handleConversationStatusChange}
               onScheduleClick={handleDirectSchedule}
+              aiAutoResponseEnabled={aiAutoResponseEnabled}
+              onAiToggleChange={handleAiToggleChange}
             />
 
             <MessageList

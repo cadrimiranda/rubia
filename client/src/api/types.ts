@@ -118,6 +118,8 @@ export interface ConversationDTO {
   messageCount?: number;
   lastMessage?: MessageDTO;
   unreadCount: number;
+  chatLid?: string;
+  aiAutoResponseEnabled?: boolean;
 }
 
 export interface MessageDTO {

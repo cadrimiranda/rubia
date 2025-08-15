@@ -1,6 +1,6 @@
 import React from "react";
-import { User, Circle, MoreVertical, Check, Calendar } from "lucide-react";
-import { Dropdown, Button } from "antd";
+import { User, Circle, MoreVertical, Check, Calendar, Bot, BotOff } from "lucide-react";
+import { Dropdown, Button, Switch, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import type { Donor } from "../../types/types";
 import type { ChatStatus } from "../../types/index";
@@ -12,6 +12,8 @@ interface ChatHeaderProps {
   currentStatus: ChatStatus;
   onStatusChange?: (donorId: string, newStatus: ChatStatus) => void;
   onScheduleClick?: (donorId: string) => void;
+  aiAutoResponseEnabled?: boolean;
+  onAiToggleChange?: (enabled: boolean) => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -20,6 +22,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   currentStatus,
   onStatusChange,
   onScheduleClick,
+  aiAutoResponseEnabled = true,
+  onAiToggleChange,
 }) => {
   const getStatusInfo = (status: ChatStatus) => {
     switch (status) {
@@ -145,6 +149,28 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             {currentStatusInfo.label}
           </span>
         </div>
+
+        {onAiToggleChange && (
+          <Tooltip 
+            title={aiAutoResponseEnabled ? "IA automática ativada" : "IA automática desativada"}
+            placement="bottom"
+          >
+            <div className="flex items-center gap-2">
+              {aiAutoResponseEnabled ? (
+                <Bot className="w-4 h-4 text-blue-600" />
+              ) : (
+                <BotOff className="w-4 h-4 text-gray-400" />
+              )}
+              <Switch
+                size="small"
+                checked={aiAutoResponseEnabled}
+                onChange={onAiToggleChange}
+                checkedChildren="IA"
+                unCheckedChildren="OFF"
+              />
+            </div>
+          </Tooltip>
+        )}
 
         {onScheduleClick && (
           <Button

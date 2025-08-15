@@ -109,6 +109,10 @@ interface ChatStoreActions {
     conversationId: string,
     updates: Record<string, unknown>
   ) => void;
+  toggleAiAutoResponse: (
+    conversationId: string,
+    enabled: boolean
+  ) => Promise<void>;
   setUserTyping: (
     conversationId: string,
     userId: string,
@@ -887,6 +891,34 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
             ...updates,
           },
         });
+      }
+    },
+
+    toggleAiAutoResponse: async (conversationId: string, enabled: boolean) => {
+      try {
+        const updatedConversation = await conversationApi.toggleAiAutoResponse(conversationId, enabled);
+        
+        // Atualizar o estado local
+        const state = get();
+        const updatedChats = state.chats.map((chat) =>
+          chat.id === conversationId 
+            ? { ...chat, aiAutoResponseEnabled: updatedConversation.aiAutoResponseEnabled } 
+            : chat
+        );
+
+        set({ chats: updatedChats });
+
+        if (state.activeChat?.id === conversationId) {
+          set({
+            activeChat: {
+              ...state.activeChat,
+              aiAutoResponseEnabled: updatedConversation.aiAutoResponseEnabled,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Failed to toggle AI auto response:', error);
+        throw error;
       }
     },
 

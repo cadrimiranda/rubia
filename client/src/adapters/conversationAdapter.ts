@@ -27,7 +27,8 @@ class ConversationAdapter {
       channel: dto.channel || 'WHATSAPP',
       closedAt: dto.closedAt ? new Date(dto.closedAt) : undefined,
       createdAt: new Date(dto.createdAt),
-      updatedAt: new Date(dto.updatedAt)
+      updatedAt: new Date(dto.updatedAt),
+      aiAutoResponseEnabled: dto.aiAutoResponseEnabled ?? true
     }
   }
 

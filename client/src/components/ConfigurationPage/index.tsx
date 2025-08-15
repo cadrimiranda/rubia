@@ -47,7 +47,6 @@ import {
 import { useAuthStore } from "../../store/useAuthStore";
 import { aiModelService } from "../../services/aiModelService";
 import AgentManagement from "../AgentManagement";
-import { FAQManagement } from "../FAQManagement";
 import { userApi } from "../../api";
 
 const { Option } = Select;
@@ -1076,8 +1075,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
               </div>
             </div>
           )}
-
-          {activeTab === "faq" && <FAQManagement />}
 
           {activeTab === "deleted" && (
             <div className="max-w-6xl mx-auto p-8">

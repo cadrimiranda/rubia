@@ -123,6 +123,10 @@ export class ConversationAPI {
       total: entrada + esperando + finalizados
     }
   }
+
+  async toggleAiAutoResponse(id: string, enabled: boolean): Promise<ConversationDTO> {
+    return apiClient.put<ConversationDTO>(`${this.basePath}/${id}/ai-auto-response?enabled=${enabled}`)
+  }
 }
 
 export const conversationApi = new ConversationAPI()
