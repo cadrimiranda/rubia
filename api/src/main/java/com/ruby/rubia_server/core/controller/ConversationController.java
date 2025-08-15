@@ -526,6 +526,72 @@ public class ConversationController {
         }
     }
     
+    @PutMapping("/{conversationId}/ai-auto-response")
+    public ResponseEntity<ConversationDTO> toggleAiAutoResponse(
+            @PathVariable UUID conversationId,
+            @RequestParam Boolean enabled) {
+        
+        log.info("Toggling AI auto-response for conversation: {} to: {}", conversationId, enabled);
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO conversation = conversationService.toggleAiAutoResponse(conversationId, enabled, currentCompanyId);
+            
+            log.info("AI auto-response toggled successfully for conversation: {}", conversationId);
+            return ResponseEntity.ok(conversation);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error toggling AI auto-response: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Unexpected error toggling AI auto-response: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/{conversationId}/ai-reset-limit")
+    public ResponseEntity<ConversationDTO> resetAiMessageLimit(@PathVariable UUID conversationId) {
+        log.info("Resetting AI message limit for conversation: {}", conversationId);
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO conversation = conversationService.resetAiMessageLimit(conversationId, currentCompanyId);
+            
+            log.info("AI message limit reset successfully for conversation: {}", conversationId);
+            return ResponseEntity.ok(conversation);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error resetting AI message limit: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Unexpected error resetting AI message limit: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PutMapping("/{conversationId}/ai-limit")
+    public ResponseEntity<ConversationDTO> setAiMessageLimit(
+            @PathVariable UUID conversationId,
+            @RequestParam Integer limit) {
+        
+        log.info("Setting AI message limit to {} for conversation: {}", limit, conversationId);
+        
+        try {
+            UUID currentCompanyId = companyContextUtil.getCurrentCompanyId();
+            ConversationDTO conversation = conversationService.setAiMessageLimit(conversationId, limit, currentCompanyId);
+            
+            log.info("AI message limit set successfully for conversation: {}", conversationId);
+            return ResponseEntity.ok(conversation);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Error setting AI message limit: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Unexpected error setting AI message limit: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     // Request DTO for sending messages
     @Data
     @Builder

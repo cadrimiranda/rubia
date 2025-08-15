@@ -56,18 +56,29 @@ public class Conversation {
     @JoinColumn(name = "campaign_id")
     private Campaign campaign; // Opcional, para indicar se a conversa faz parte de uma campanha
 
-    // NOVO CAMPO: Tipo da conversa (individual ou grupo)
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "conversation_type", nullable = false)
     @Builder.Default
     private ConversationType conversationType = ConversationType.ONE_TO_ONE;
 
-    // Campo para vincular com o chatLid da Z-API
     @Column(name = "chat_lid", unique = true)
     private String chatLid;
 
-    // Remove a relação direta com Customer.
-    // Os participantes (incluindo Customers) são agora gerenciados pela entidade ConversationParticipant.
+    @Column(name = "ai_auto_response_enabled", nullable = false)
+    @Builder.Default
+    private Boolean aiAutoResponseEnabled = true;
+
+    @Column(name = "ai_message_limit", nullable = false)
+    @Builder.Default
+    private Integer aiMessageLimit = 5;
+
+    @Column(name = "ai_messages_used", nullable = false)
+    @Builder.Default
+    private Integer aiMessagesUsed = 0;
+
+    @Column(name = "ai_limit_reached_at")
+    private LocalDateTime aiLimitReachedAt;
+
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<ConversationParticipant> participants = new ArrayList<>();

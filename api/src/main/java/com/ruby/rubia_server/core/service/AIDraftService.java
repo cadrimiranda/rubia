@@ -55,6 +55,12 @@ public class AIDraftService {
             Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Conversa não encontrada"));
                 
+            // Verificar se IA automática está habilitada para esta conversa
+            if (!conversation.getAiAutoResponseEnabled()) {
+                log.debug("AI auto-response is disabled for conversation: {}", conversationId);
+                return null;
+            }
+            
             if (!shouldGenerateDraft(conversation, normalizedMessage)) {
                 log.debug("Skipping draft generation for conversation: {}", conversationId);
                 return null;

@@ -39,4 +39,8 @@ public class ConversationDTO {
     private MessageDTO lastMessage;
     private Long unreadCount;
     private String chatLid;
+    private Boolean aiAutoResponseEnabled;
+    private Integer aiMessageLimit;
+    private Integer aiMessagesUsed;
+    private LocalDateTime aiLimitReachedAt;
 }

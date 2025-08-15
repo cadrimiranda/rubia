@@ -3,6 +3,7 @@ package com.ruby.rubia_server.core.listener;
 import com.ruby.rubia_server.core.dto.MessageDTO;
 import com.ruby.rubia_server.core.entity.ConversationLastMessage;
 import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.entity.Conversation;
 import com.ruby.rubia_server.core.enums.SenderType;
 import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import com.ruby.rubia_server.core.repository.ConversationLastMessageRepository;
@@ -10,6 +11,7 @@ import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.service.AIDraftService;
 import com.ruby.rubia_server.core.service.CqrsMetricsService;
 import com.ruby.rubia_server.core.service.OpenAIService;
+import com.ruby.rubia_server.core.service.ConversationService;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +49,7 @@ public class UnifiedMessageListener {
     private final OpenAIService openAIService;
     private final RestTemplate restTemplate;
     private final RedisTemplate<String, String> redisTemplate;
+    private final ConversationService conversationService;
     
     // Configurações do debounce
     private static final long DEBOUNCE_DELAY_SECONDS = 8; // Aguarda 3 segundos
@@ -73,7 +76,7 @@ public class UnifiedMessageListener {
         updateConversationLastMessage(event);
         
         // 2. SEGUNDO: Processar draft de IA se aplicável
-        processAIDraft(event);
+        // processAIDraft(event);
     }
     
     /**
@@ -141,6 +144,19 @@ public class UnifiedMessageListener {
                 return;
             }
             
+            // Verificar se AI auto-response está habilitada e não atingiu o limite
+            Conversation conversation = message.getConversation();
+            if (!conversation.getAiAutoResponseEnabled()) {
+                log.debug("Skipping draft generation - AI auto-response disabled for conversation: {}", conversation.getId());
+                return;
+            }
+            
+            if (conversation.getAiMessagesUsed() >= conversation.getAiMessageLimit()) {
+                log.debug("Skipping draft generation - AI message limit reached ({}/{}) for conversation: {}", 
+                    conversation.getAiMessagesUsed(), conversation.getAiMessageLimit(), conversation.getId());
+                return;
+            }
+            
             // NOVO: Detectar se é mensagem de áudio
             if (message.getMedia() != null && isAudioMessage(message)) {
                 log.info("🎤 Processing audio message for blood center: {}", message.getId());
@@ -204,6 +220,18 @@ public class UnifiedMessageListener {
     }
     
     /**
+     * Incrementa contador de mensagens AI usadas para uma conversa
+     */
+    private void incrementAiUsageCounter(UUID conversationId, UUID companyId, String context) {
+        try {
+            conversationService.incrementAiMessageUsage(conversationId, companyId);
+            log.debug("AI message usage incremented for {} in conversation: {}", context, conversationId);
+        } catch (Exception e) {
+            log.error("Failed to increment AI message usage for {} in conversation: {}", context, conversationId, e);
+        }
+    }
+    
+    /**
      * Processa mensagens agrupadas da conversa após o debounce
      */
     private void processGroupedMessages(UUID conversationId) {
@@ -240,6 +268,11 @@ public class UnifiedMessageListener {
             if (draft != null) {
                 log.info("✅ Successfully generated grouped response: {} for conversation: {}", 
                         draft.getId(), conversationId);
+                
+                // Incrementar contador de mensagens AI usadas
+                Conversation conversation = recentMessages.get(0).getConversation();
+                UUID companyId = conversation.getCompany().getId();
+                incrementAiUsageCounter(conversationId, companyId, "grouped text response");
             } else {
                 log.debug("No draft generated for grouped messages in conversation: {}", conversationId);
             }
@@ -248,7 +281,7 @@ public class UnifiedMessageListener {
             log.error("Error processing grouped messages for conversation: {}", conversationId, e);
         }
     }
-    
+
     /**
      * Detecta se a mensagem contém áudio
      */
@@ -303,6 +336,11 @@ public class UnifiedMessageListener {
             if (response != null) {
                 log.info("✅ Blood center response generated automatically from audio transcription for message: {}", 
                     audioMessage.getId());
+                
+                // Incrementar contador de mensagens AI usadas
+                UUID conversationId = audioMessage.getConversation().getId();
+                UUID companyId = audioMessage.getConversation().getCompany().getId();
+                incrementAiUsageCounter(conversationId, companyId, "audio response");
             } else {
                 log.debug("No blood center response generated from audio for message: {}", audioMessage.getId());
             }

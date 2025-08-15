@@ -34,7 +34,7 @@ public class Message {
     @JoinColumn(name = "conversation_id", nullable = false)
     private Conversation conversation;
 
-    @Column(columnDefinition = "TEXT") // Conteúdo da mensagem (pode ser a legenda da mídia, ou nulo se for só mídia)
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @Enumerated(EnumType.STRING)
@@ -45,7 +45,6 @@ public class Message {
     @Column(name = "sender_id")
     private UUID senderId;
 
-    // CAMPOS DE STATUS RESTAURADOS PARA A ENTIDADE MESSAGE
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
