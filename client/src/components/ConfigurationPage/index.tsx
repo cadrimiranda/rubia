@@ -613,16 +613,6 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
                 Templates
               </button>
               <button
-                onClick={() => setActiveTab("faq")}
-                className={`px-6 py-3 font-medium transition-all relative ${
-                  activeTab === "faq"
-                    ? "text-red-600 border-b-2 border-red-500 bg-red-50/50"
-                    : "text-gray-600 hover:text-red-600 hover:bg-gray-50"
-                }`}
-              >
-                FAQ
-              </button>
-              <button
                 onClick={() => {
                   setActiveTab("deleted");
                   loadDeletedTemplates();

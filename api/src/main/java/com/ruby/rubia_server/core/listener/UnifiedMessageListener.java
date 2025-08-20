@@ -55,7 +55,7 @@ public class UnifiedMessageListener {
     private final AIAgentService aiAgentService;
     
     // Configurações do debounce
-    private static final long DEBOUNCE_DELAY_SECONDS = 8; // Aguarda 3 segundos
+    private static final long DEBOUNCE_DELAY_SECONDS = 4; // Aguarda 3 segundos
     private static final String DEBOUNCE_KEY_PREFIX = "debounce:conversation:";
     
     /**
