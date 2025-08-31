@@ -85,29 +85,38 @@ services:
       dockerfile: Dockerfile
     container_name: rubia-api
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      PGDATABASE: ${PGDATABASE}
+      PGPORT: ${PGPORT}
+      PGHOST: ${PGHOST}
       PGUSER: ${PGUSER}
-      PGPASSWORD: ${PGPASSWORD}
+      PORT: ${PORT}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      REDIS_CLUSTER_NODES: ${REDIS_CLUSTER_NODES}
       REDISHOST: ${REDISHOST}
       REDISPORT: ${REDISPORT}
       REDISPASSWORD: ${REDISPASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MESSAGING_PROVIDER: ${MESSAGING_PROVIDER}
+      Z_API_WEBHOOK_BASE_URL: ${Z_API_WEBHOOK_BASE_URL}
       CLIENT_TOKEN: ${CLIENT_TOKEN}
-      ZAPI_WEBHOOK_TOKEN: ${ZAPI_WEBHOOK_TOKEN}
       SECURITY_REQUIRE_SSL: ${SECURITY_REQUIRE_SSL}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL}
+      AI_DEFAULT_TEMPERATURE: ${AI_DEFAULT_TEMPERATURE}
+      AI_DEFAULT_MAX_TOKENS: ${AI_DEFAULT_MAX_TOKENS}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
 
     ports:
       - "8081:8081"
     networks:
       - rubia-network]
+    restart: unless-stopped
     # depends_on:
     #   postgres:
     #     condition: service_healthy
     #   redis:
     #     condition: service_healthy
-    restart: unless-stopped
 
   # React Client
   client:
