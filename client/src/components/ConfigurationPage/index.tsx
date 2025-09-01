@@ -74,7 +74,7 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<
-    "agent" | "campaign" | "templates" | "deleted"
+    "agent" | "campaign" | "templates" | "faq" | "deleted"
   >("agent");
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     name: "Sofia",

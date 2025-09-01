@@ -5,10 +5,11 @@ import com.ruby.rubia_server.core.event.MessageCreatedEvent;
 import com.ruby.rubia_server.core.repository.ConversationLastMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
-import org.springframework.scheduling.annotation.Async;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +24,16 @@ public class ConversationLastMessageService {
     private final ConversationLastMessageRepository conversationLastMessageRepository;
     private final CqrsMetricsService metricsService;
 
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @Retryable(
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2),
-        recover = "recoverFromFailedUpdate"
-    )
-    public void handleMessageCreated(MessageCreatedEvent event) {
+    // DESABILITADO: Migrado para UnifiedMessageListener
+    // @Order(1)
+    // @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    // @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // @Retryable(
+    //     maxAttempts = 3,
+    //     backoff = @Backoff(delay = 1000, multiplier = 2),
+    //     recover = "recoverFromFailedUpdate"
+    // )
+    public void handleMessageCreated_DISABLED(MessageCreatedEvent event) {
         long startTime = System.currentTimeMillis();
         String operation = null;
         

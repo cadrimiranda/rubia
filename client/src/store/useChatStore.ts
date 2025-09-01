@@ -4,10 +4,6 @@ import type { ConversationStatus } from "../api/types";
 import { conversationApi, messageApi, customerApi } from "../api";
 import { conversationAdapter, messageAdapter } from "../adapters";
 import { MessageValidator } from "../utils/validation";
-import {
-  getAllCampaignConversations,
-  getCampaignConversationMessages,
-} from "../mocks/campaignMock";
 // import { mockDonors } from '../mocks/data'
 
 interface ChatStoreState {
@@ -53,6 +49,10 @@ interface ChatStoreState {
   activeConversationId: string | null;
 
   unreadCount: Record<string, number>;
+
+  // Callback para notificar componentes externos sobre refresh necessário
+  onRefreshNeeded: (() => void) | null;
+
 }
 
 interface ChatStoreActions {
@@ -113,6 +113,10 @@ interface ChatStoreActions {
     conversationId: string,
     updates: Record<string, unknown>
   ) => void;
+  toggleAiAutoResponse: (
+    conversationId: string,
+    enabled: boolean
+  ) => Promise<void>;
   setUserTyping: (
     conversationId: string,
     userId: string,
@@ -122,6 +126,10 @@ interface ChatStoreActions {
   setUserOnlineStatus: (userId: string, isOnline: boolean) => void;
   setActiveConversation: (conversationId: string | null) => void;
   getTypingUsers: (conversationId: string) => string[];
+
+  // Callback management
+  setOnRefreshNeeded: (callback: (() => void) | null) => void;
+  triggerRefreshNeeded: () => void;
 
   // Utilitários
   getFilteredChats: () => Chat[];
@@ -148,6 +156,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     onlineUsers: new Set(),
     activeConversationId: null,
     unreadCount: {},
+    onRefreshNeeded: null,
 
     createUnreadCount: (conversationCounters: Record<string, number>) => {
       set({
@@ -224,40 +233,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
 
       set({ isLoading: true, error: null });
 
-      // Tentar carregar conversas mock primeiro (campanhas)
-      try {
-        const mockConversations = getAllCampaignConversations();
-
-        if (mockConversations.length > 0) {
-          // Filtrar conversas por status
-          const filteredConversations = mockConversations.filter((conv) => {
-            if (targetStatus === "ativos") return conv.status === "ENTRADA";
-            if (targetStatus === "aguardando")
-              return conv.status === "ESPERANDO";
-            if (targetStatus === "inativo")
-              return conv.status === "FINALIZADOS";
-            return true;
-          });
-
-          const mockChats = conversationAdapter.toChatArray(
-            filteredConversations
-          );
-
-          set({
-            chats: page === 0 ? mockChats : [...state.chats, ...mockChats],
-            currentPage: page,
-            hasMore: false,
-            totalChats: mockChats.length,
-            isLoading: false,
-            error: null,
-          });
-
-          return;
-        }
-      } catch (mockError) {
-        console.warn("Erro ao carregar conversas de campanha:", mockError);
-      }
-
       // Tentar carregar da API se não há conversas mock
       try {
         const response = await conversationApi.getByStatus(
@@ -297,12 +272,14 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     // Carregamento otimizado de conversas ordenadas por última mensagem (CQRS)
     loadConversationsOrderedByLastMessage: async (page = 0) => {
       const state = get();
-      
       set({ isLoading: true, error: null });
 
       try {
         // Usar endpoint CQRS otimizado
-        const response = await conversationApi.getOrderedByLastMessage(page, 20);
+        const response = await conversationApi.getOrderedByLastMessage(
+          page,
+          20
+        );
 
         const newChats = conversationAdapter.toChatArray(
           response?.content || []
@@ -316,10 +293,8 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
           isLoading: false,
           error: null,
         });
-
       } catch (error) {
         console.error("Erro ao carregar conversas CQRS:", error);
-        
         set({
           chats: page === 0 ? [] : state.chats,
           currentPage: page,
@@ -378,57 +353,20 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
         }
       } catch (error) {
         console.error("Erro ao carregar mensagens:", error);
-
-        // Fallback para mensagens de campanha mock
-        try {
-          const mockMessages = getCampaignConversationMessages(chatId);
-
-          if (mockMessages.length > 0) {
-            const convertedMessages =
-              messageAdapter.toMessageArray(mockMessages);
-
-            set({
-              messagesCache: {
-                ...state.messagesCache,
-                [chatId]: {
-                  messages: convertedMessages,
-                  page: 0,
-                  hasMore: false,
-                },
-              },
-              isLoadingMessages: false,
-            });
-
-            // Atualizar chat ativo se for o mesmo
-            if (state.activeChat?.id === chatId) {
-              set({
-                activeChat: {
-                  ...state.activeChat,
-                  messages: convertedMessages,
-                },
-              });
-            }
-          } else {
-            set({
-              error: "Nenhuma mensagem encontrada",
-              isLoadingMessages: false,
-            });
-          }
-        } catch (mockError) {
-          console.error("Erro ao carregar mensagens mock:", mockError);
-          set({
-            error: "Erro ao carregar mensagens",
-            isLoadingMessages: false,
-          });
-        }
       }
     },
 
     // Refresh das conversas
     refreshConversations: async () => {
+      // Em vez de fazer a API call aqui, notificar o componente externo
       const state = get();
-      set({ currentPage: 0, hasMore: true, chats: [] });
-      await get().loadConversations(state.currentStatus, 0);
+      if (state.onRefreshNeeded) {
+        state.onRefreshNeeded();
+      } else {
+        // Fallback para compatibilidade se não há callback registrado
+        set({ currentPage: 0, hasMore: true, chats: [] });
+        await get().loadConversations(state.currentStatus, 0);
+      }
     },
 
     // Envio de mensagens com optimistic updates
@@ -620,28 +558,7 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     },
 
     // Fixar conversa
-    pinConversation: async (chatId: string) => {
-      const state = get();
-      const chat = state.chats.find((c) => c.id === chatId);
-      if (!chat) return;
-
-      try {
-        if (chat.isPinned) {
-          await (conversationApi as any).unpin(chatId);
-        } else {
-          await (conversationApi as any).pin(chatId);
-        }
-
-        // Atualiza chat local
-        const updatedChats = state.chats.map((c) =>
-          c.id === chatId ? { ...c, isPinned: !c.isPinned } : c
-        );
-        set({ chats: updatedChats });
-      } catch (error) {
-        console.error("Erro ao fixar conversa:", error);
-        set({ error: "Erro ao fixar conversa" });
-      }
-    },
+    pinConversation: async () => {},
 
     // Bloquear cliente
     blockCustomer: async (chatId: string) => {
@@ -990,6 +907,34 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
       }
     },
 
+    toggleAiAutoResponse: async (conversationId: string, enabled: boolean) => {
+      try {
+        const updatedConversation = await conversationApi.toggleAiAutoResponse(conversationId, enabled);
+        
+        // Atualizar o estado local
+        const state = get();
+        const updatedChats = state.chats.map((chat) =>
+          chat.id === conversationId 
+            ? { ...chat, aiAutoResponseEnabled: updatedConversation.aiAutoResponseEnabled } 
+            : chat
+        );
+
+        set({ chats: updatedChats });
+
+        if (state.activeChat?.id === conversationId) {
+          set({
+            activeChat: {
+              ...state.activeChat,
+              aiAutoResponseEnabled: updatedConversation.aiAutoResponseEnabled,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Failed to toggle AI auto response:', error);
+        throw error;
+      }
+    },
+
     setUserTyping: (
       conversationId: string,
       userId: string,
@@ -1078,6 +1023,18 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
       }
 
       return activeTyping.map((u) => u.userName);
+    },
+
+    // Callback management
+    setOnRefreshNeeded: (callback: (() => void) | null) => {
+      set({ onRefreshNeeded: callback });
+    },
+
+    triggerRefreshNeeded: () => {
+      const state = get();
+      if (state.onRefreshNeeded) {
+        state.onRefreshNeeded();
+      }
     },
 
     // Utilitários

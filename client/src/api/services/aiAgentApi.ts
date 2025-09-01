@@ -15,6 +15,7 @@ export interface AIAgent {
   temperament: string
   maxResponseLength: number
   temperature: number
+  aiMessageLimit: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -29,6 +30,7 @@ export interface CreateAIAgentDTO {
   temperament: string
   maxResponseLength?: number
   temperature?: number
+  aiMessageLimit?: number
   isActive?: boolean
 }
 
@@ -40,6 +42,7 @@ export interface UpdateAIAgentDTO {
   temperament?: string
   maxResponseLength?: number
   temperature?: number
+  aiMessageLimit?: number
   isActive?: boolean
 }
 

@@ -46,6 +46,11 @@ public class CreateAIAgentDTO {
     @Builder.Default
     private BigDecimal temperature = BigDecimal.valueOf(0.7);
 
+    @Min(value = 1, message = "AI message limit must be at least 1")
+    @Max(value = 1000, message = "AI message limit must not exceed 1000")
+    @Builder.Default
+    private Integer aiMessageLimit = 10;
+
     @Builder.Default
     private Boolean isActive = true;
 }

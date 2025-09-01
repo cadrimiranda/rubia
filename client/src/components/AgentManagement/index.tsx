@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { User, Check, Plus, Edit3, Trash2, MoreVertical } from "lucide-react";
-import { Button, Select, Input, message, Dropdown, Modal, Slider } from "antd";
+import { Button, Select, Input, message, Dropdown, Modal, Slider, InputNumber } from "antd";
 import { AvatarUpload } from "../AvatarUpload";
 import { aiAgentApi, type AIAgent } from "../../api/services/aiAgentApi";
 import { aiModelService } from "../../services/aiModelService";
@@ -17,6 +17,7 @@ interface AgentConfig {
   temperament: string;
   maxResponseLength: number;
   temperature: number;
+  aiMessageLimit: number;
   isActive: boolean;
 }
 
@@ -33,6 +34,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
     temperament: "AMIGAVEL",
     maxResponseLength: 500,
     temperature: 0.7,
+    aiMessageLimit: 10,
     isActive: true,
   });
 
@@ -43,6 +45,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
   const [remainingSlots, setRemainingSlots] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<AIAgent | null>(null);
+  const [showCustomMessageLimit, setShowCustomMessageLimit] = useState(false);
 
   // Carregar modelo padrão
   useEffect(() => {
@@ -169,6 +172,25 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
     }));
   };
 
+  const handleMessageLimitChange = (value: number | string) => {
+    if (value === "custom") {
+      setShowCustomMessageLimit(true);
+      // Manter o valor atual se já for customizado, senão usar 10 como padrão
+      const currentLimit = agentConfig.aiMessageLimit;
+      const standardValues = [1, 3, 5, 10, 15, 20, 50];
+      if (!standardValues.includes(currentLimit)) {
+        // Já é um valor customizado, manter
+        return;
+      } else {
+        // Valor padrão para modo customizado
+        handleAgentConfigChange("aiMessageLimit", 10);
+      }
+    } else {
+      setShowCustomMessageLimit(false);
+      handleAgentConfigChange("aiMessageLimit", value as number);
+    }
+  };
+
   // Salvar agente
   const handleSaveAgent = async () => {
     if (!user?.companyId) {
@@ -196,6 +218,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         temperament: agentConfig.temperament,
         maxResponseLength: agentConfig.maxResponseLength,
         temperature: agentConfig.temperature,
+        aiMessageLimit: agentConfig.aiMessageLimit,
         isActive: agentConfig.isActive,
       };
 
@@ -227,6 +250,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         temperament: "AMIGAVEL",
         maxResponseLength: 500,
         temperature: 0.7,
+        aiMessageLimit: 10,
         isActive: true,
       });
 
@@ -254,8 +278,14 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       temperament: agent.temperament,
       maxResponseLength: agent.maxResponseLength,
       temperature: agent.temperature,
+      aiMessageLimit: agent.aiMessageLimit,
       isActive: agent.isActive,
     });
+    
+    // Verificar se o valor atual é customizado
+    const standardValues = [1, 3, 5, 10, 15, 20, 50];
+    setShowCustomMessageLimit(!standardValues.includes(agent.aiMessageLimit));
+    
     setShowAgentModal(true);
   };
 
@@ -272,6 +302,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         temperament: agentConfig.temperament,
         maxResponseLength: agentConfig.maxResponseLength,
         temperature: agentConfig.temperature,
+        aiMessageLimit: agentConfig.aiMessageLimit,
         isActive: agentConfig.isActive,
       };
 
@@ -327,6 +358,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
   // Criar novo agente
   const handleCreateNewAgent = () => {
     setSelectedAgent(null);
+    setShowCustomMessageLimit(false);
     setAgentConfig({
       name: "",
       description: "",
@@ -335,6 +367,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
       temperament: "AMIGAVEL",
       maxResponseLength: 500,
       temperature: 0.7,
+      aiMessageLimit: 10,
       isActive: true,
     });
     setShowAgentModal(true);
@@ -478,6 +511,9 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                   <span>Temp: {agent.temperature}</span>
                   <span>Max: {agent.maxResponseLength}</span>
                 </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  Limite AI: {agent.aiMessageLimit} msgs/conversa
+                </div>
               </div>
             ))}
           </div>
@@ -534,6 +570,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
         onCancel={() => {
           setShowAgentModal(false);
           setSelectedAgent(null);
+          setShowCustomMessageLimit(false);
         }}
         width={900}
         footer={
@@ -547,6 +584,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                 onClick={() => {
                   setShowAgentModal(false);
                   setSelectedAgent(null);
+                  setShowCustomMessageLimit(false);
                 }}
                 size="large"
               >
@@ -656,7 +694,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Criatividade (Temperature)
@@ -699,6 +737,62 @@ export const AgentManagement: React.FC<AgentManagementProps> = () => {
                   <Option value={500}>Longa (500 caracteres)</Option>
                   <Option value={1000}>Muito Longa (1000 caracteres)</Option>
                 </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Limite de Mensagens IA
+                </label>
+                {showCustomMessageLimit ? (
+                  <div className="space-y-2">
+                    <InputNumber
+                      value={agentConfig.aiMessageLimit}
+                      onChange={(value) =>
+                        handleAgentConfigChange("aiMessageLimit", value || 1)
+                      }
+                      min={1}
+                      max={1000}
+                      size="large"
+                      className="w-full"
+                      placeholder="Digite o número de mensagens"
+                    />
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => {
+                        setShowCustomMessageLimit(false);
+                        handleAgentConfigChange("aiMessageLimit", 10);
+                      }}
+                      className="p-0 h-auto text-xs"
+                    >
+                      Voltar às opções predefinidas
+                    </Button>
+                  </div>
+                ) : (
+                  <Select
+                    value={(() => {
+                      const standardValues = [1, 3, 5, 10, 15, 20, 50];
+                      return standardValues.includes(agentConfig.aiMessageLimit) 
+                        ? agentConfig.aiMessageLimit 
+                        : "custom";
+                    })()}
+                    onChange={handleMessageLimitChange}
+                    size="large"
+                    className="w-full"
+                  >
+                    <Option value={1}>1 mensagem</Option>
+                    <Option value={3}>3 mensagens</Option>
+                    <Option value={5}>5 mensagens</Option>
+                    <Option value={10}>10 mensagens</Option>
+                    <Option value={15}>15 mensagens</Option>
+                    <Option value={20}>20 mensagens</Option>
+                    <Option value={50}>50 mensagens</Option>
+                    <Option value="custom">Outros...</Option>
+                  </Select>
+                )}
+                <p className="text-xs text-gray-500 mt-2">
+                  Máximo de mensagens automáticas por conversa
+                </p>
               </div>
             </div>
           </div>

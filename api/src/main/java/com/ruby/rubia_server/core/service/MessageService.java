@@ -413,6 +413,70 @@ public class MessageService {
         
     }
     
+    /**
+     * Atualiza apenas o status de uma mensagem e dispara eventos CQRS
+     * Usado principalmente para sincronização de campanhas
+     */
+    public MessageDTO updateMessageStatus(UUID id, MessageStatus newStatus) {
+        
+        
+        Message message = messageRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
+        
+        MessageStatus oldStatus = message.getStatus();
+        message.setStatus(newStatus);
+        
+        // Update delivery/read timestamps based on new status
+        if (newStatus == MessageStatus.DELIVERED && oldStatus != MessageStatus.DELIVERED) {
+            message.setDeliveredAt(java.time.LocalDateTime.now());
+        } else if (newStatus == MessageStatus.READ && oldStatus != MessageStatus.READ) {
+            message.setReadAt(java.time.LocalDateTime.now());
+            if (message.getDeliveredAt() == null) {
+                message.setDeliveredAt(java.time.LocalDateTime.now());
+            }
+        } else if (newStatus == MessageStatus.SENT && oldStatus == MessageStatus.DRAFT) {
+            // When DRAFT becomes SENT, ensure timestamps are set
+            if (message.getDeliveredAt() == null) {
+                message.setDeliveredAt(java.time.LocalDateTime.now());
+            }
+        }
+        
+        Message updated = messageRepository.save(message);
+        
+        // Dispatch CQRS event for status changes that affect last message
+        if (shouldDispatchCQRSEvent(oldStatus, newStatus)) {
+            MessageCreatedEvent event = MessageCreatedEvent.builder()
+                    .messageId(updated.getId())
+                    .conversationId(updated.getConversation().getId())
+                    .content(updated.getContent())
+                    .createdAt(updated.getCreatedAt())
+                    .build();
+            
+            eventPublisher.publishEvent(event);
+            log.debug("Published MessageCreatedEvent for status update: {} -> {} (message: {})", 
+                    oldStatus, newStatus, updated.getId());
+        }
+        
+        User sender = null;
+        if (updated.getSenderType() == SenderType.AGENT && updated.getSenderId() != null) {
+            sender = userRepository.findById(updated.getSenderId()).orElse(null);
+        }
+        
+        return toDTO(updated, sender);
+    }
+    
+    /**
+     * Determina se uma mudança de status deve disparar evento CQRS
+     */
+    private boolean shouldDispatchCQRSEvent(MessageStatus oldStatus, MessageStatus newStatus) {
+        // Disparar evento quando DRAFT vira SENT (mensagens de campanha)
+        // ou quando uma nova mensagem é marcada como DELIVERED/READ
+        return (oldStatus == MessageStatus.DRAFT && newStatus == MessageStatus.SENT) ||
+               (oldStatus != MessageStatus.SENT && newStatus == MessageStatus.SENT) ||
+               (newStatus == MessageStatus.DELIVERED && oldStatus != MessageStatus.DELIVERED) ||
+               (newStatus == MessageStatus.READ && oldStatus != MessageStatus.READ);
+    }
+    
     @Transactional(readOnly = true)
     public long countUnreadByConversation(UUID conversationId) {
         return messageRepository.countUnreadCustomerMessages(conversationId);

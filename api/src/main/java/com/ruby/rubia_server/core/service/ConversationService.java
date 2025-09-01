@@ -21,6 +21,7 @@ import com.ruby.rubia_server.core.repository.UserRepository;
 import com.ruby.rubia_server.core.repository.CampaignRepository;
 import com.ruby.rubia_server.core.repository.MessageRepository;
 import com.ruby.rubia_server.core.entity.Message;
+import com.ruby.rubia_server.core.entity.AIAgent;
 import com.ruby.rubia_server.core.dto.MessageDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,10 @@ public class ConversationService {
     private final CompanyRepository companyRepository;
     private final CampaignRepository campaignRepository;
     private final MessageRepository messageRepository;
+    private final AIAgentService aiAgentService;
+    
+    @Autowired
+    private UnreadMessageCountService unreadCountService;
     
     @Autowired
     private UnreadMessageCountService unreadCountService;
@@ -161,6 +166,10 @@ public class ConversationService {
                 .updatedAt(saved.getUpdatedAt())
                 .unreadCount(0L)
                 .chatLid(saved.getChatLid())
+                .aiAutoResponseEnabled(saved.getAiAutoResponseEnabled())
+                .aiMessageLimit(aiAgentService.getAiMessageLimitForCompany(companyId))
+                .aiMessagesUsed(saved.getAiMessagesUsed())
+                .aiLimitReachedAt(saved.getAiLimitReachedAt())
                 .build();
     }
     
@@ -168,7 +177,6 @@ public class ConversationService {
     public ConversationDTO findById(UUID id, UUID companyId) {
         log.debug("Finding conversation by id: {} for company: {}", id, companyId);
         
-        // Try alternative approach: get conversation and customer separately
         List<Object[]> results = conversationRepository.findConversationWithCustomer(id);
         
         if (results.isEmpty()) {
@@ -193,35 +201,8 @@ public class ConversationService {
             throw new IllegalArgumentException("Conversa não pertence a esta empresa");
         }
         
-        return ConversationDTO.builder()
-                .id(conversation.getId())
-                .companyId(conversation.getCompany() != null ? conversation.getCompany().getId() : null)
-                .customerId(customer != null ? customer.getId() : null)
-                .customerName(customer != null ? customer.getName() : null)
-                .customerPhone(customer != null ? customer.getPhone() : null)
-                .customerBirthDate(customer != null ? customer.getBirthDate() : null)
-                .customerBloodType(customer != null ? customer.getBloodType() : null)
-                .customerLastDonationDate(customer != null ? customer.getLastDonationDate() : null)
-                .customerHeight(customer != null ? customer.getHeight() : null)
-                .customerWeight(customer != null ? customer.getWeight() : null)
-                .assignedUserId(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getId() : null)
-                .assignedUserName(conversation.getAssignedUser() != null ? conversation.getAssignedUser().getName() : null)
-                .campaignId(conversation.getCampaign() != null ? conversation.getCampaign().getId() : null)
-                .campaignName(conversation.getCampaign() != null ? conversation.getCampaign().getName() : null)
-                .status(conversation.getStatus())
-                .channel(conversation.getChannel())
-                .priority(conversation.getPriority())
-                .createdAt(conversation.getCreatedAt())
-                .updatedAt(conversation.getUpdatedAt())
-                .unreadCount(0L)
-                .chatLid(conversation.getChatLid())
-                .build();
+        return toDTO(conversation);
     }
-    
-    
-    
-    
-    
     
     @Transactional(readOnly = true)
     public List<ConversationSummaryDTO> findSummariesByStatus(ConversationStatus status) {
@@ -278,8 +259,6 @@ public class ConversationService {
         return toDTO(updated);
     }
     
-    
-    
     public ConversationDTO update(UUID id, UpdateConversationDTO updateDTO, UUID companyId) {
         log.info("Updating conversation with id: {} for company: {}", id, companyId);
         
@@ -326,8 +305,6 @@ public class ConversationService {
         log.info("Conversation deleted successfully");
     }
     
-    
-    // Company-scoped methods
     @Transactional(readOnly = true)
     public List<ConversationDTO> findByStatusAndCompany(ConversationStatus status, UUID companyId) {
         log.debug("Finding conversations by status: {} for company: {}", status, companyId);
@@ -511,6 +488,10 @@ public class ConversationService {
                     Optional.ofNullable(unreadCountService.getUnreadCount(userId, conversation.getId()))
                         .map(Integer::longValue).orElse(0L) : 0L)
                 .chatLid(conversation.getChatLid())
+                .aiAutoResponseEnabled(conversation.getAiAutoResponseEnabled())
+                .aiMessageLimit(aiAgentService.getAiMessageLimitForCompany(conversation.getCompany().getId()))
+                .aiMessagesUsed(conversation.getAiMessagesUsed())
+                .aiLimitReachedAt(conversation.getAiLimitReachedAt())
                 .build();
     }
     
@@ -560,5 +541,110 @@ public class ConversationService {
         
         conversation.setChatLid(chatLid);
         conversationRepository.save(conversation);
+    }
+
+
+    /**
+     * Increment AI message usage counter and disable AI if limit reached
+     */
+    public void incrementAiMessageUsage(UUID conversationId, UUID companyId) {
+        log.info("Incrementing AI message usage for conversation: {}", conversationId);
+        
+        Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+        
+        // Verificar se a conversa pertence à empresa do usuário
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversation does not belong to user's company");
+        }
+        
+        // Buscar limite do AIAgent da empresa
+        Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(companyId);
+        
+        // Incrementar contador
+        conversation.setAiMessagesUsed(conversation.getAiMessagesUsed() + 1);
+        
+        // Verificar se atingiu o limite
+        if (conversation.getAiMessagesUsed() >= aiMessageLimit) {
+            conversation.setAiAutoResponseEnabled(false);
+            conversation.setAiLimitReachedAt(LocalDateTime.now());
+            log.info("AI auto-response disabled for conversation {} - limit reached ({}/{})", 
+                    conversationId, conversation.getAiMessagesUsed(), aiMessageLimit);
+        }
+        
+        conversationRepository.save(conversation);
+        
+        log.debug("AI message usage updated: {}/{} for conversation: {}", 
+                conversation.getAiMessagesUsed(), aiMessageLimit, conversationId);
+    }
+
+    /**
+     * Reset AI message limit counter and re-enable AI auto-response
+     */
+    public ConversationDTO resetAiMessageLimit(UUID conversationId, UUID companyId) {
+        log.info("Resetting AI message limit for conversation: {}", conversationId);
+        
+        Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+        
+        // Verificar se a conversa pertence à empresa do usuário
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversation does not belong to user's company");
+        }
+        
+        // Resetar contador e reativar AI
+        conversation.setAiMessagesUsed(0);
+        conversation.setAiLimitReachedAt(null);
+        conversation.setAiAutoResponseEnabled(true);
+        
+        conversation = conversationRepository.save(conversation);
+        
+        log.info("AI message limit reset and auto-response re-enabled for conversation: {}", conversationId);
+        
+        return toDTO(conversation);
+    }
+
+
+    /**
+     * Toggle AI auto-response for a specific conversation
+     */
+    public ConversationDTO toggleAiAutoResponse(UUID conversationId, Boolean enabled, UUID companyId) {
+        log.info("Toggling AI auto-response for conversation {} to: {}", conversationId, enabled);
+        
+        Conversation conversation = conversationRepository.findById(conversationId)
+            .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+        
+        // Verificar se a conversa pertence à empresa do usuário
+        if (!conversation.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Conversation does not belong to user's company");
+        }
+        
+        // Se está tentando ativar AI, verificar se não atingiu o limite
+        if (enabled) {
+            Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(companyId);
+            if (conversation.getAiMessagesUsed() >= aiMessageLimit) {
+                throw new IllegalArgumentException(
+                    String.format("Cannot enable AI auto-response: message limit reached (%d/%d). Reset the limit first.", 
+                        conversation.getAiMessagesUsed(), aiMessageLimit));
+            }
+        }
+        
+        conversation.setAiAutoResponseEnabled(enabled);
+        
+        // Se está desativando manualmente, limpar timestamp de limite atingido
+        if (!enabled && conversation.getAiLimitReachedAt() != null) {
+            // Só limpar se não atingiu o limite por contagem
+            Integer aiMessageLimit = aiAgentService.getAiMessageLimitForCompany(companyId);
+            if (conversation.getAiMessagesUsed() < aiMessageLimit) {
+                conversation.setAiLimitReachedAt(null);
+            }
+        }
+        
+        conversation = conversationRepository.save(conversation);
+        
+        log.info("AI auto-response {} for conversation: {}", 
+                enabled ? "enabled" : "disabled", conversationId);
+        
+        return toDTO(conversation);
     }
 }

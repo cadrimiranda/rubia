@@ -38,5 +38,9 @@ public class UpdateAIAgentDTO {
     @DecimalMax(value = "1.0", message = "Temperature must not exceed 1.0")
     private BigDecimal temperature;
 
+    @Min(value = 1, message = "AI message limit must be at least 1")
+    @Max(value = 1000, message = "AI message limit must not exceed 1000")
+    private Integer aiMessageLimit;
+
     private Boolean isActive;
 }

@@ -357,6 +357,7 @@ public class AIAgentController {
                 .temperament(aiAgent.getTemperament())
                 .maxResponseLength(aiAgent.getMaxResponseLength())
                 .temperature(aiAgent.getTemperature())
+                .aiMessageLimit(aiAgent.getAiMessageLimit())
                 .isActive(aiAgent.getIsActive())
                 .createdAt(aiAgent.getCreatedAt())
                 .updatedAt(aiAgent.getUpdatedAt())

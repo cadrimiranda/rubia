@@ -87,4 +87,9 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     
     @Query("SELECT m FROM Message m WHERE m.conversation.company.id = :companyId")
     List<Message> findByConversationCompanyId(@Param("companyId") UUID companyId);
+    
+    @Query("SELECT m FROM Message m WHERE m.conversation.id = :conversationId AND " +
+           "m.senderType = 'CUSTOMER' AND m.createdAt >= :since ORDER BY m.createdAt ASC")
+    List<Message> findRecentCustomerMessages(@Param("conversationId") UUID conversationId, 
+                                           @Param("since") LocalDateTime since);
 }

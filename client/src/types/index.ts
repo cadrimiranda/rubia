@@ -75,6 +75,7 @@ export interface Chat {
   closedAt?: Date
   createdAt: Date
   updatedAt: Date
+  aiAutoResponseEnabled?: boolean
 }
 
 export interface WhatsAppInstance {

@@ -28,6 +28,22 @@ public interface ConversationLastMessageRepository extends JpaRepository<Convers
                           @Param("lastMessageContent") String lastMessageContent);
 
     @Modifying
+    @Query(value = """
+        INSERT INTO conversation_last_message (conversation_id, last_message_date, last_message_id, last_message_content, created_at, updated_at)
+        VALUES (:conversationId, :lastMessageDate, :lastMessageId, :lastMessageContent, NOW(), NOW())
+        ON CONFLICT (conversation_id) 
+        DO UPDATE SET 
+            last_message_date = EXCLUDED.last_message_date,
+            last_message_id = EXCLUDED.last_message_id,
+            last_message_content = EXCLUDED.last_message_content,
+            updated_at = NOW()
+        """, nativeQuery = true)
+    void upsertLastMessage(@Param("conversationId") UUID conversationId,
+                          @Param("lastMessageDate") LocalDateTime lastMessageDate,
+                          @Param("lastMessageId") UUID lastMessageId,
+                          @Param("lastMessageContent") String lastMessageContent);
+
+    @Modifying
     @Query("DELETE FROM ConversationLastMessage clm WHERE clm.conversationId = :conversationId")
     void deleteByConversationId(@Param("conversationId") UUID conversationId);
 }

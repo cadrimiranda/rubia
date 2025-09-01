@@ -107,7 +107,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           phone: user.phone || normalizedPhone,
           lastMessage: "",
           timestamp: "",
-          unread: 0,
           status: "offline" as const,
           bloodType: "O+",
           email: "",
@@ -118,6 +117,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           weight: 0,
           height: 0,
           hasActiveConversation: true,
+          conversationId: "",
         };
 
         onNewContactCreate({
@@ -155,7 +155,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           phone: user.phone || normalizedPhone,
           lastMessage: "",
           timestamp: "",
-          unread: 0,
           status: "offline" as const,
           bloodType: "O+",
           email: "",
@@ -166,6 +165,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
           weight: 0,
           height: 0,
           hasActiveConversation: true,
+          conversationId: "",
         };
 
         onNewContactCreate({

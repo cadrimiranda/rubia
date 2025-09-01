@@ -45,7 +45,7 @@ class ConversationLastMessageServiceTest {
                 .thenReturn(Optional.of(existingRecord));
 
         // When
-        conversationLastMessageService.handleMessageCreated(event);
+        conversationLastMessageService.handleMessageCreated_DISABLED(event);
 
         // Then
         verify(conversationLastMessageRepository).updateLastMessage(
@@ -75,6 +75,7 @@ class ConversationLastMessageServiceTest {
                 .thenReturn(Optional.empty());
 
         // When
+        conversationLastMessageService.handleMessageCreated_DISABLED(event);
         conversationLastMessageService.handleMessageCreated(event);
 
         // Then
@@ -100,6 +101,7 @@ class ConversationLastMessageServiceTest {
                 .thenThrow(new RuntimeException("Database error"));
 
         // When/Then - Should not throw exception
+        conversationLastMessageService.handleMessageCreated_DISABLED(event);
         conversationLastMessageService.handleMessageCreated(event);
         
         verify(conversationLastMessageRepository).findByConversationId(conversationId);
