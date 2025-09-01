@@ -127,6 +127,7 @@ export const DonorCard: React.FC<DonorCardProps> = ({
     <div
       key={donor.id}
       onClick={handleSelectConversation}
+      onClick={() => onDonorSelect(donor)}
       onContextMenu={(e) => onContextMenu(e, donor.id)}
       className={`p-3 mb-2 rounded-lg ${cardClassName}`}
     >

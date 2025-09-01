@@ -57,6 +57,9 @@ public class ConversationService {
     @Autowired
     private UnreadMessageCountService unreadCountService;
     
+    @Autowired
+    private UnreadMessageCountService unreadCountService;
+    
     public Optional<ConversationDTO> findByCustomerIdAndCampaignId(UUID customerId, UUID campaignId) {
         log.debug("Finding conversation by customer id: {} and campaign id: {}", customerId, campaignId);
         

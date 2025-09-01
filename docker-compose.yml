@@ -111,6 +111,7 @@ services:
       - "8081:8081"
     networks:
       - rubia-network]
+
     restart: unless-stopped
     # depends_on:
     #   postgres:

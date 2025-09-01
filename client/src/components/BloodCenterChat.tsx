@@ -369,6 +369,10 @@ export const BloodCenterChat: React.FC = () => {
         );
 
         const conversationsAsDonors = response.content.map((conv) => {
+        const unreadCount: Record<string, number> = {};
+
+        const conversationsAsDonors = response.content.map((conv) => {
+          unreadCount[conv.id] = conv.unreadCount ?? 0;
 
           return {
             id: conv.customerId,
@@ -423,6 +427,7 @@ export const BloodCenterChat: React.FC = () => {
           }
           updateUnreadCountBulk(unreadCountMap);
         }
+
 
         // Atualizar estado da paginação
         currentPageRef.current = pageToLoad;

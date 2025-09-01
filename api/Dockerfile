@@ -1,4 +1,3 @@
-# --- Stage 1: Build ---
 FROM eclipse-temurin:22-jdk-ubi9-minimal AS build
 
 WORKDIR /app

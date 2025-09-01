@@ -76,6 +76,7 @@ class ConversationLastMessageServiceTest {
 
         // When
         conversationLastMessageService.handleMessageCreated_DISABLED(event);
+        conversationLastMessageService.handleMessageCreated(event);
 
         // Then
         verify(conversationLastMessageRepository).save(any(ConversationLastMessage.class));
@@ -101,6 +102,7 @@ class ConversationLastMessageServiceTest {
 
         // When/Then - Should not throw exception
         conversationLastMessageService.handleMessageCreated_DISABLED(event);
+        conversationLastMessageService.handleMessageCreated(event);
         
         verify(conversationLastMessageRepository).findByConversationId(conversationId);
     }

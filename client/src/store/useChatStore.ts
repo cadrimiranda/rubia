@@ -52,6 +52,7 @@ interface ChatStoreState {
 
   // Callback para notificar componentes externos sobre refresh necessário
   onRefreshNeeded: (() => void) | null;
+
 }
 
 interface ChatStoreActions {
@@ -271,7 +272,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
     // Carregamento otimizado de conversas ordenadas por última mensagem (CQRS)
     loadConversationsOrderedByLastMessage: async (page = 0) => {
       const state = get();
-
       set({ isLoading: true, error: null });
 
       try {
@@ -295,7 +295,6 @@ export const useChatStore = create<ChatStoreState & ChatStoreActions>(
         });
       } catch (error) {
         console.error("Erro ao carregar conversas CQRS:", error);
-
         set({
           chats: page === 0 ? [] : state.chats,
           currentPage: page,

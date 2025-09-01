@@ -25,6 +25,7 @@ const ConversationsStatuses: React.FC<ConversationsStatusesProps> = ({
         <button
           onClick={() => onStatusChange("ativos")}
           className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+          className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
             currentStatus === "ativos"
               ? "bg-green-500 text-white"
               : "text-gray-600 hover:bg-gray-100"
@@ -55,6 +56,7 @@ const ConversationsStatuses: React.FC<ConversationsStatusesProps> = ({
         <button
           onClick={() => onStatusChange("inativo")}
           className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+
             currentStatus === "inativo"
               ? "bg-red-500 text-white"
               : "text-gray-600 hover:bg-gray-100"
@@ -66,6 +68,7 @@ const ConversationsStatuses: React.FC<ConversationsStatusesProps> = ({
               {statusStats.finalizados}
             </span>
           )}
+
         </button>
       </div>
     </div>
